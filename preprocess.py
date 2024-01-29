@@ -5,22 +5,28 @@ def preprocess_osm_data(file_path, output_file):
     # Parse the XML file
     tree = ET.parse(file_path)
     root = tree.getroot()
+    first_node = root.find('node')
+    zero_lat = float(first_node.get('lat'))
+    zero_lon = float(first_node.get('lon'))
 
-    nodes = {}
-    ways = {}
+    nodes = []
+    ways = []
 
     # Process nodes
     for node in root.findall('node'):
         node_id = node.get('id')
-        lat = float(node.get('lat'))
-        lon = float(node.get('lon'))
-        nodes[node_id] = lat,lon
+        lat = float(node.get('lat')) - zero_lat
+        lon = float(node.get('lon')) - zero_lon
+        nodes.append({'id':node_id, 'lat':lat, 'lon':lon})
 
     # Process ways
     for way in root.findall('way'):
+        # Ensure way is highway
+        if way.find('tag[@k="highway"]') is None:
+            continue
         way_id = way.get('id')
         nd_refs = [nd.get('ref') for nd in way.findall('nd')]
-        ways[way_id] = {'node_refs': nd_refs}
+        ways.append({'id':way_id, 'node_refs': nd_refs})
 
     # Combined data
     simplified_data = {'nodes': nodes, 'ways': ways}
