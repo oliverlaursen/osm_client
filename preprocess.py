@@ -63,7 +63,7 @@ def preprocess_osm_data(file_path, output_file):
     print(f"Data preprocessed and saved to {output_file}")
 
 if __name__ == '__main__':
-    name = "samsø2"
+    name = "danmark"
     file_path = f'maps/{name}.osm'  # Replace with your OSM data file path
     output_path = f'OSM_Unity_Client/Assets/maps/{name}.json'  # Replace with your output file path
     preprocessed_data = preprocess_osm_data(file_path, output_path)
