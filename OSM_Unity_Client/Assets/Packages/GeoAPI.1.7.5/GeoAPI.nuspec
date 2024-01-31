@@ -1,0 +1,21 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2013/05/nuspec.xsd">
+  <metadata>
+    <id>GeoAPI</id>
+    <version>1.7.5</version>
+    <authors>NetTopologySuite Team</authors>
+    <owners>nettopologysuite - team</owners>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <licenseUrl>https://raw.githubusercontent.com/NetTopologySuite/GeoAPI/master/LICENSE.md</licenseUrl>
+    <projectUrl>https://github.com/NetTopologySuite/GeoAPI</projectUrl>
+    <iconUrl>https://raw.githubusercontent.com/NetTopologySuite/GeoAPI/master/icon.png</iconUrl>
+    <description>GeoAPI.NET project provides a common framework based on OGC/ISO standards to improve interoperability among .NET GIS projects.</description>
+    <releaseNotes>This version matches NetTopologySuite v1.15 API.</releaseNotes>
+    <copyright>Copyright 2007-2017</copyright>
+    <tags>OGC SFS NTS GIS</tags>
+    <dependencies>
+      <dependency id="GeoAPI.Core" version="1.7.5" />
+      <dependency id="GeoAPI.CoordinateSystems" version="1.7.5" />
+    </dependencies>
+  </metadata>
+</package>

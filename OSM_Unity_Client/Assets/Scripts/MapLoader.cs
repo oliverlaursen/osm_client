@@ -1,26 +1,19 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using GeoAPI.CoordinateSystems;
-using GeoAPI.CoordinateSystems.Transformations;
 using ProjNet.CoordinateSystems;
 using ProjNet.CoordinateSystems.Transformations;
+using GeoAPI.CoordinateSystems;
+using GeoAPI.CoordinateSystems.Transformations;
 
-[System.Serializable]
-public class Node
-{
-    public string id;
-    public double lat;
-    public double lon;
-}
 
 public class Point
 {
-    public string id;
+    public long id;
     public double x;
     public double y;
 
-    public Point(string id, double x, double y)
+    public Point(long id, double x, double y)
     {
         this.id = id;
         this.x = x;
@@ -28,26 +21,12 @@ public class Point
     }
 }
 
-[System.Serializable]
-public class Way
-{
-    public string id;
-    public long[] node_refs;
-}
-
-[System.Serializable]
-public class PreprocessedOSM
-{
-    public List<Node> nodes;
-    public List<Way> ways;
-}
-
 public class MapLoader : MonoBehaviour
 {
     List<Node> nodeList;
     public Point LatLonToPoint(Node node)
     {
-        double lat = node.lat;
+        /*double lat = node.lat;
         double lon = node.lon;
 
         ICoordinateSystem sourceCS = GeographicCoordinateSystem.WGS84;
@@ -60,13 +39,38 @@ public class MapLoader : MonoBehaviour
         double[] input = { longitude, latitude };
         double[] output = transformation.MathTransform.Transform(input);
 
-        return new Point(node.id, output[0], output[1]);
+        return new Point(node.id, output[0], output[1]);*/
+        return new Point(0, 0, 0);
     }
-    public TextAsset mapFile;
 
+    public Dictionary<long, (double, double)> ProjectCoordinates(PreprocessedOSM preprocessed)
+    {
+        nodeList = preprocessed.nodes;
+        var points = new Dictionary<long, (double, double)>();
+        foreach (Node node in nodeList)
+        {
+            Point point = LatLonToPoint(node);
+            points[point.id] = (point.x, point.y);
+        }
+        return points;
+    }
 
+    public void DrawRoads(Dictionary<long, (double, double)> points, List<Way> ways)
+    {
+        foreach (Way way in ways)
+        {
+            var nr = way.node_refs;
+            for (int i = 0; i < nr.Length - 1; i++)
+            {
+                var node1Pos = points[nr[i]];
+                var node2Pos = points[nr[i + 1]];
+                Vector3 pos1 = new Vector3((float)node1Pos.Item1, (float)node1Pos.Item2, 0);
+                Vector3 pos2 = new Vector3((float)node2Pos.Item1, (float)node2Pos.Item2, 0);
+                Debug.DrawLine(pos1, pos2, Color.red, 10000f);
 
-    
+            }
+        }
+    }
 }
 
 

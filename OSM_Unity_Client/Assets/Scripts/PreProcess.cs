@@ -10,9 +10,30 @@ using System.Collections.Concurrent;
 using System.Threading.Tasks;
 
 
+[System.Serializable]
+public class Node
+{
+    public string id;
+    public double lat;
+    public double lon;
+}
+
+[System.Serializable]
+public class Way
+{
+    public string id;
+    public long[] node_refs;
+}
+
+[System.Serializable]
+public class PreprocessedOSM
+{
+    public List<Node> nodes;
+    public List<Way> ways;
+}
+
 public class PreProcess : MonoBehaviour {
-    public TextAsset mapFile;
-    public void PreProcessMap(){
+    public static PreprocessedOSM PreProcessMap(TextAsset mapFile){
 
         HashSet<string> blacklist = new HashSet<string>
         {
@@ -74,10 +95,17 @@ public class PreProcess : MonoBehaviour {
                }
            });
             var result = new PreprocessedOSM { nodes = nodes.ToList(), ways = ways.ToList() };
-            // Save the filtered data to a binary file
-            //var path = String.Format("Assets/maps/{0}.pre", mapFile.name);
-            //WriteToBinaryFile(path, result);
-        
+            return result;
+        }
+    }
+
+    public byte[] SerializeToByteArray(PreprocessedOSM data)
+    {
+        BinaryFormatter formatter = new BinaryFormatter();
+        using (MemoryStream stream = new MemoryStream())
+        {
+            formatter.Serialize(stream, data);
+            return stream.ToArray();
         }
     }
 
@@ -87,9 +115,5 @@ public class PreProcess : MonoBehaviour {
             {
                 formatter.Serialize(stream, result);
             }
-    }
-
-    void Start(){
-        PreProcessMap();
     }
 }
