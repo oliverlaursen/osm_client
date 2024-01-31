@@ -23,8 +23,7 @@ public class Point
 
 public class MapLoader : MonoBehaviour
 {
-    List<Node> nodeList;
-    public Point LatLonToPoint(Node node)
+    public static Point LatLonToPoint(Node node)
     {
         /*double lat = node.lat;
         double lon = node.lon;
@@ -43,9 +42,8 @@ public class MapLoader : MonoBehaviour
         return new Point(0, 0, 0);
     }
 
-    public Dictionary<long, (double, double)> ProjectCoordinates(PreprocessedOSM preprocessed)
+    public static Dictionary<long, (double, double)> ProjectCoordinates(List<Node> nodeList)
     {
-        nodeList = preprocessed.nodes;
         var points = new Dictionary<long, (double, double)>();
         foreach (Node node in nodeList)
         {
@@ -55,7 +53,7 @@ public class MapLoader : MonoBehaviour
         return points;
     }
 
-    public void DrawRoads(Dictionary<long, (double, double)> points, List<Way> ways)
+    public static void DrawRoads(Dictionary<long, (double, double)> points, List<Way> ways)
     {
         foreach (Way way in ways)
         {
