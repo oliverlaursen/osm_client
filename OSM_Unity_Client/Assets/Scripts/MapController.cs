@@ -8,7 +8,8 @@ public class MapController : MonoBehaviour
     void Start()
     {
         var preprocessed = PreProcess.PreProcessMap(mapFile);
-        var coordinates = MapLoader.ProjectCoordinates(preprocessed.nodes);
+        var mapLoader = gameObject.AddComponent<MapLoader>();
+        var coordinates = mapLoader.ProjectCoordinates(preprocessed.nodes);
         MapLoader.DrawRoads(coordinates, preprocessed.ways);
     }
 }

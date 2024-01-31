@@ -1,10 +1,11 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using DotSpatial.Projections;
+using System;
 using ProjNet.CoordinateSystems;
 using ProjNet.CoordinateSystems.Transformations;
-using GeoAPI.CoordinateSystems;
-using GeoAPI.CoordinateSystems.Transformations;
+using Unity.VisualScripting;
 
 
 public class Point
@@ -23,32 +24,41 @@ public class Point
 
 public class MapLoader : MonoBehaviour
 {
-    public static Point LatLonToPoint(Node node)
-    {
-        /*double lat = node.lat;
-        double lon = node.lon;
+    private CoordinateTransformationFactory coordinateTransformationFactory;
+    private GeographicCoordinateSystem geographicCoordinateSystem;
 
-        ICoordinateSystem sourceCS = GeographicCoordinateSystem.WGS84;
-        ICoordinateSystem targetCS = ProjectedCoordinateSystem.WebMercator;
-
-        // Create a coordinate transformation
-        ICoordinateTransformation transformation = new CoordinateTransformationFactory().CreateFromCoordinateSystems(sourceCS, targetCS);
-
-        // Transform the coordinates
-        double[] input = { longitude, latitude };
-        double[] output = transformation.MathTransform.Transform(input);
-
-        return new Point(node.id, output[0], output[1]);*/
-        return new Point(0, 0, 0);
+    void Awake(){
+        coordinateTransformationFactory = new CoordinateTransformationFactory();
+        geographicCoordinateSystem = GeographicCoordinateSystem.WGS84;
     }
 
-    public static Dictionary<long, (double, double)> ProjectCoordinates(List<Node> nodeList)
+    public Point ConvertLatLonToUTM(Node node)
     {
+        var longitude = node.lon;
+        var latitude = node.lat;
+        int utmZone = (int)Math.Floor((longitude + 180) / 6) + 1;
+
+        // Create UTM Coordinate System
+        var utmCoordinateSystem = ProjectedCoordinateSystem.WGS84_UTM(utmZone, latitude >= 0);
+
+        // Create Transformation
+        var transformation = coordinateTransformationFactory.CreateFromCoordinateSystems(geographicCoordinateSystem, utmCoordinateSystem);
+
+        // Perform the transformation
+        double[] fromPoint = new double[] { longitude, latitude };
+        double[] toPoint = transformation.MathTransform.Transform(fromPoint);
+
+        return new Point(node.id, toPoint[0], toPoint[1]);
+    }
+
+    public Dictionary<long, (double, double)> ProjectCoordinates(List<Node> nodeList)
+    {
+        var zero_ref = ConvertLatLonToUTM(nodeList[0]);
         var points = new Dictionary<long, (double, double)>();
         foreach (Node node in nodeList)
         {
-            Point point = LatLonToPoint(node);
-            points[point.id] = (point.x, point.y);
+            Point point = ConvertLatLonToUTM(node);
+            points[point.id] = (point.x - zero_ref.x, point.y - zero_ref.y);
         }
         return points;
     }
@@ -61,11 +71,10 @@ public class MapLoader : MonoBehaviour
             for (int i = 0; i < nr.Length - 1; i++)
             {
                 var node1Pos = points[nr[i]];
-                var node2Pos = points[nr[i + 1]];
-                Vector3 pos1 = new Vector3((float)node1Pos.Item1, (float)node1Pos.Item2, 0);
-                Vector3 pos2 = new Vector3((float)node2Pos.Item1, (float)node2Pos.Item2, 0);
+                var node2Pos = points[nr[i+1]];
+                Vector3 pos1 = new((float)node1Pos.Item1, (float)node1Pos.Item2, 0);
+                Vector3 pos2 = new((float)node2Pos.Item1, (float)node2Pos.Item2, 0);
                 Debug.DrawLine(pos1, pos2, Color.red, 10000f);
-
             }
         }
     }

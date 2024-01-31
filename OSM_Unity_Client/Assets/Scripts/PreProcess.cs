@@ -13,7 +13,7 @@ using System.Threading.Tasks;
 [System.Serializable]
 public class Node
 {
-    public string id;
+    public long id;
     public double lat;
     public double lon;
 }
@@ -21,7 +21,7 @@ public class Node
 [System.Serializable]
 public class Way
 {
-    public string id;
+    public long id;
     public long[] node_refs;
 }
 
@@ -61,7 +61,8 @@ public class PreProcess : MonoBehaviour {
             "via_ferreta",
             "sidewalk",
             "crossing",
-            "proposed"
+            "proposed",
+            "track",
         };
 
         // Load osm .pbf file
@@ -78,7 +79,7 @@ public class PreProcess : MonoBehaviour {
                {
                    nodes.Add(new Node
                    {
-                       id = osmGeo.Id.Value.ToString(),
+                       id = osmGeo.Id.Value,
                        lat = (osmGeo as OsmSharp.Node).Latitude.Value,
                        lon = (osmGeo as OsmSharp.Node).Longitude.Value,
                    });
@@ -89,7 +90,7 @@ public class PreProcess : MonoBehaviour {
                {
                    ways.Add(new Way
                    {
-                       id = osmGeo.Id.Value.ToString(),
+                       id = osmGeo.Id.Value,
                        node_refs = (osmGeo as OsmSharp.Way).Nodes
                    });
                }
