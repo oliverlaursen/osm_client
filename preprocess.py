@@ -2,6 +2,7 @@ import xml.etree.ElementTree as ET
 import json
 import math
 import utm
+import pickle
 
 highway_blacklist = [
     "pedestrian",
@@ -58,12 +59,12 @@ def preprocess_osm_data(file_path, output_file):
 
     # Write the simplified data to a JSON file  
     with open(output_file, 'w') as outfile:
-        json.dump(simplified_data, outfile, indent=4)
+        json.dump(simplified_data, outfile)
 
     print(f"Data preprocessed and saved to {output_file}")
 
 if __name__ == '__main__':
-    name = "danmark"
+    name = "samsø"
     file_path = f'maps/{name}.osm'  # Replace with your OSM data file path
     output_path = f'OSM_Unity_Client/Assets/maps/{name}.json'  # Replace with your output file path
     preprocessed_data = preprocess_osm_data(file_path, output_path)
