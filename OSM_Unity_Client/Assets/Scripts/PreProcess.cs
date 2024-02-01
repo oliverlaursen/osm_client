@@ -58,10 +58,12 @@ public class PreProcess : MonoBehaviour
 
             var filteredWays = from osmGeo in source
                                where
-                               (osmGeo.Type == OsmSharp.OsmGeoType.Way
-                               && !blacklist.Contains(osmGeo.Tags["highway"]))
+                               osmGeo.Type == OsmSharp.OsmGeoType.Way
+                               && osmGeo.Tags.TryGetValue("highway", out var highway)
+                               && !blacklist.Contains(highway)
 
                                select osmGeo as OsmSharp.Way;
+            
             var ways = filteredWays.ToHashSet();
             var nodes = filteredNodes.ToHashSet();
             return new PreprocessedOSM { ways = ways, nodes = nodes };
