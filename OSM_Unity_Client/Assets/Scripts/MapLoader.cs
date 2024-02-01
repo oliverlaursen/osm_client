@@ -1,11 +1,7 @@
-using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using DotSpatial.Projections;
-using System;
 using ProjNet.CoordinateSystems;
 using ProjNet.CoordinateSystems.Transformations;
-using Unity.VisualScripting;
 
 
 public class Point
@@ -32,29 +28,39 @@ public class MapLoader : MonoBehaviour
         geographicCoordinateSystem = GeographicCoordinateSystem.WGS84;
     }
 
-    public Point ConvertLatLonToUTM(Node node, ProjectedCoordinateSystem utmCoordinateSystem)
+    public Point ConvertLatLonToUTM(OsmSharp.Node node, ProjectedCoordinateSystem utmCoordinateSystem)
     {
         // Create Transformation
         var transformation = coordinateTransformationFactory.CreateFromCoordinateSystems(geographicCoordinateSystem, utmCoordinateSystem);
 
         // Perform the transformation
-        double[] fromPoint = new double[] { node.lon, node.lat };
+        double[] fromPoint = new double[] { (double)node.Longitude, (double)node.Latitude };
         double[] toPoint = transformation.MathTransform.Transform(fromPoint);
 
-        return new Point(node.id, toPoint[0], toPoint[1]);
+        return new Point((long) node.Id, toPoint[0], toPoint[1]);
     }
 
-    public Dictionary<long, (double, double)> ProjectCoordinates(List<Node> nodeList)
+    public OsmSharp.Node GetFirstNode(HashSet<OsmSharp.Node> nodeList)
     {
-        var firstPoint = nodeList[0];
-        int utmZone = (int)((firstPoint.lon + 180) / 6) + 1;
-        bool zoneIsNorth = firstPoint.lat >= 0;
+        foreach (OsmSharp.Node node in nodeList)
+        {
+            return node;
+        }
+        return null;
+    }
+
+    public Dictionary<long, (double, double)> ProjectCoordinates(HashSet<OsmSharp.Node> nodeList)
+    {
+        Debug.Log("Length of nodeList: " + nodeList.Count);
+        var firstNode = GetFirstNode(nodeList);
+        int utmZone = (int)((firstNode.Longitude + 180) / 6) + 1;
+        bool zoneIsNorth = firstNode.Latitude >= 0;
         var utmCoordinateSystem = ProjectedCoordinateSystem.WGS84_UTM(utmZone, zoneIsNorth);
 
 
-        var zeroRef = ConvertLatLonToUTM(firstPoint, utmCoordinateSystem);
+        var zeroRef = ConvertLatLonToUTM(firstNode, utmCoordinateSystem);
         var points = new Dictionary<long, (double, double)>();
-        foreach (Node node in nodeList)
+        foreach (OsmSharp.Node node in nodeList)
         {
             Point point = ConvertLatLonToUTM(node, utmCoordinateSystem);
             points[point.id] = (point.x - zeroRef.x, point.y - zeroRef.y);
@@ -62,11 +68,11 @@ public class MapLoader : MonoBehaviour
         return points;
     }
 
-    public static void DrawRoads(Dictionary<long, (double, double)> points, List<Way> ways)
+    public static void DrawRoads(Dictionary<long, (double, double)> points, HashSet<OsmSharp.Way> ways)
     {
-        foreach (Way way in ways)
+        foreach (OsmSharp.Way way in ways)
         {
-            var nr = way.node_refs;
+            var nr = way.Nodes;
             for (int i = 0; i < nr.Length - 1; i++)
             {
                 var node1Pos = points[nr[i]];
