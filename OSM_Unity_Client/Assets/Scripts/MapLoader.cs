@@ -32,20 +32,13 @@ public class MapLoader : MonoBehaviour
         geographicCoordinateSystem = GeographicCoordinateSystem.WGS84;
     }
 
-    public Point ConvertLatLonToUTM(Node node)
+    public Point ConvertLatLonToUTM(Node node, ProjectedCoordinateSystem utmCoordinateSystem)
     {
-        var longitude = node.lon;
-        var latitude = node.lat;
-        int utmZone = (int)Math.Floor((longitude + 180) / 6) + 1;
-
-        // Create UTM Coordinate System
-        var utmCoordinateSystem = ProjectedCoordinateSystem.WGS84_UTM(utmZone, latitude >= 0);
-
         // Create Transformation
         var transformation = coordinateTransformationFactory.CreateFromCoordinateSystems(geographicCoordinateSystem, utmCoordinateSystem);
 
         // Perform the transformation
-        double[] fromPoint = new double[] { longitude, latitude };
+        double[] fromPoint = new double[] { node.lon, node.lat };
         double[] toPoint = transformation.MathTransform.Transform(fromPoint);
 
         return new Point(node.id, toPoint[0], toPoint[1]);
@@ -53,12 +46,18 @@ public class MapLoader : MonoBehaviour
 
     public Dictionary<long, (double, double)> ProjectCoordinates(List<Node> nodeList)
     {
-        var zero_ref = ConvertLatLonToUTM(nodeList[0]);
+        var firstPoint = nodeList[0];
+        int utmZone = (int)((firstPoint.lon + 180) / 6) + 1;
+        bool zoneIsNorth = firstPoint.lat >= 0;
+        var utmCoordinateSystem = ProjectedCoordinateSystem.WGS84_UTM(utmZone, zoneIsNorth);
+
+
+        var zeroRef = ConvertLatLonToUTM(firstPoint, utmCoordinateSystem);
         var points = new Dictionary<long, (double, double)>();
         foreach (Node node in nodeList)
         {
-            Point point = ConvertLatLonToUTM(node);
-            points[point.id] = (point.x - zero_ref.x, point.y - zero_ref.y);
+            Point point = ConvertLatLonToUTM(node, utmCoordinateSystem);
+            points[point.id] = (point.x - zeroRef.x, point.y - zeroRef.y);
         }
         return points;
     }
