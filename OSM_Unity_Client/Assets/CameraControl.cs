@@ -12,7 +12,7 @@ public class CameraControl : MonoBehaviour
 
 
     void Update()
-    {
+    {   
         // Zoom
         float scroll = Input.GetAxis("Mouse ScrollWheel");
         Camera.main.orthographicSize -= scroll * zoomSpeed;

@@ -111,22 +111,22 @@ public class MapLoader : MonoBehaviour
         return scaledPoints;
     }
 
-    public static void DrawRoads(Dictionary<long, (double, double)> points, IEnumerable<OsmSharp.Way> ways)
+    public static void DrawRoads(Dictionary<long, (double, double)> points, IEnumerable<OsmSharp.Way> ways, GLLineRenderer lineRenderer)
     {
+        lineRenderer.ClearLines(); // Clear existing lines
+
         foreach (OsmSharp.Way way in ways)
         {
-            // Create line renderer
-            GameObject lineObject = new GameObject("Line");
-            LineRenderer lineRenderer = lineObject.AddComponent<LineRenderer>();
-            lineRenderer.material = new Material(Shader.Find("Sprites/Default"));
-            lineRenderer.widthMultiplier = 2;
             var nr = way.Nodes;
-            lineRenderer.positionCount = nr.Count(); // Set this based on your way's point count
-            for (int i = 0; i < nr.Length; i++)
+            for (int i = 0; i < nr.Length - 1; i++)
             {
                 var node1Pos = points[nr[i]];
+                var node2Pos = points[nr[i + 1]];
                 Vector3 pos1 = new((float)node1Pos.Item1, (float)node1Pos.Item2, 0);
-                lineRenderer.SetPosition(i, pos1);
+                Vector3 pos2 = new((float)node2Pos.Item1, (float)node2Pos.Item2, 0);
+
+                // Use GLLineRenderer to add lines
+                lineRenderer.AddLine(pos1, pos2);
             }
         }
     }
