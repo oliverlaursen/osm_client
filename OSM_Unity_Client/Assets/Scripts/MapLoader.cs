@@ -18,27 +18,14 @@ public class Point
         this.x = x;
         this.y = y;
     }
-}
+};
 
-public struct NodeData
-{
-    public float Latitude;
-    public float Longitude;
-    public uint Id;
-
-    public NodeData(OsmSharp.Node node)
-    {
-        Latitude = (float)node.Latitude;
-        Longitude = (float)node.Longitude;
-        Id = (uint)node.Id;
-    }
-}
 
 public struct ProjectedData
 {
-    public float x;
-    public float y;
-    public uint id;
+    public double x;
+    public double y;
+    public long id;
 };
 
 public class MapLoader : MonoBehaviour
@@ -58,39 +45,90 @@ public class MapLoader : MonoBehaviour
         return new Point(latSum / count, lonSum / count);
     }
 
+    public (double, double, double, double) FindBoundingBox(ProjectedData[] points)
+    {
+        double minX = double.MaxValue;
+        double maxX = double.MinValue;
+        double minY = double.MaxValue;
+        double maxY = double.MinValue;
+        foreach (ProjectedData point in points)
+        {
+            if (point.x < minX)
+            {
+                minX = point.x;
+            }
+            if (point.x > maxX)
+            {
+                maxX = point.x;
+            }
+            if (point.y < minY)
+            {
+                minY = point.y;
+            }
+            if (point.y > maxY)
+            {
+                maxY = point.y;
+            }
+        }
+        return (minX, maxX, minY, maxY);
+    }
+
     public Dictionary<long, (double, double)> ProjectCoordinates(IEnumerable<OsmSharp.Node> nodeList)
     {
+        double targetWidth = 800;
+        double targetHeight = 600;
         var centerPoint = GetCenterPoint(nodeList);
-        var points = new Dictionary<long, (double, double)>();
-        foreach (OsmSharp.Node node in nodeList)
+        var points = new ProjectedData[nodeList.Count()];
+        for (int i = 0; i < nodeList.Count(); i++)
         {
+            var node = nodeList.ElementAt(i);
             var projected = ProjectToAzimuthalEquidistant(node, centerPoint);
-            points.Add((long)node.Id, (projected.x, projected.y));
+            points[i] = new ProjectedData { x = projected.x, y = projected.y, id = (long)node.Id };
         }
-        return points;
+        var (minX, maxX, minY, maxY) = FindBoundingBox(points);
+        double mapWidth = maxX - minX;
+        double mapHeight = maxY - minY;
+
+        // Calculate scale factors for both dimensions
+        double scaleX = targetWidth / mapWidth;
+        double scaleY = targetHeight / mapHeight;
+
+        // Use the smaller scale factor to maintain aspect ratio
+        double scaleFactor = Math.Min(scaleX, scaleY);
+        var scaledPoints = new Dictionary<long, (double, double)>();
+        foreach (var point in points)
+        {
+            // Scale points
+            double scaledX = (point.x - minX) * scaleFactor;
+            double scaledY = (point.y - minY) * scaleFactor;
+
+            // Center points within the target dimensions
+            double offsetX = (targetWidth - (mapWidth * scaleFactor)) / 2;
+            double offsetY = (targetHeight - (mapHeight * scaleFactor)) / 2;
+
+            scaledPoints[point.id] = (scaledX + offsetX, scaledY + offsetY);
+        }
+        return scaledPoints;
     }
 
     public static void DrawRoads(Dictionary<long, (double, double)> points, IEnumerable<OsmSharp.Way> ways)
     {
-        var notPresent = 0;
         foreach (OsmSharp.Way way in ways)
         {
+            // Create line renderer
+            GameObject lineObject = new GameObject("Line");
+            LineRenderer lineRenderer = lineObject.AddComponent<LineRenderer>();
+            lineRenderer.material = new Material(Shader.Find("Sprites/Default"));
+            lineRenderer.widthMultiplier = 2;
             var nr = way.Nodes;
-            for (int i = 0; i < nr.Length - 1; i++)
+            lineRenderer.positionCount = nr.Count(); // Set this based on your way's point count
+            for (int i = 0; i < nr.Length; i++)
             {
-                if (!points.ContainsKey(nr[i]) || !points.ContainsKey(nr[i + 1]))
-                {
-                    notPresent += 1;
-                    continue;
-                }
                 var node1Pos = points[nr[i]];
-                var node2Pos = points[nr[i + 1]];
                 Vector3 pos1 = new((float)node1Pos.Item1, (float)node1Pos.Item2, 0);
-                Vector3 pos2 = new((float)node2Pos.Item1, (float)node2Pos.Item2, 0);
-                Debug.DrawLine(pos1, pos2, Color.red, 10000f);
+                lineRenderer.SetPosition(i, pos1);
             }
         }
-        Debug.Log("Not present: " + notPresent);
     }
 
     public static Point ProjectToAzimuthalEquidistant(OsmSharp.Node node, Point centerPoint)
