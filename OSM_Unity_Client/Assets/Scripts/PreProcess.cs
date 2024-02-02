@@ -15,8 +15,7 @@ public class PreProcess : MonoBehaviour
 {
     public static PreprocessedOSM PreProcessMap(TextAsset mapFile)
     {
-
-        HashSet<string> blacklist = new HashSet<string>
+         HashSet<string> blacklist = new HashSet<string>
         {
             "pedestrian",
             "footway",
@@ -46,7 +45,6 @@ public class PreProcess : MonoBehaviour
             "track",
         };
 
-        // Load osm .pbf file
         using (var memStream = new MemoryStream(mapFile.bytes))
         {
             var source = new PBFOsmStreamSource(memStream);
