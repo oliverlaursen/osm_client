@@ -4,8 +4,7 @@ using UnityEngine;
 public class MapController : MonoBehaviour
 {
     public TextAsset mapFile;
-    public ComputeShader projectionShader;
-    // Use this for initialization
+
     void Start()
     {
         Stopwatch stopwatch = new Stopwatch();
@@ -17,7 +16,7 @@ public class MapController : MonoBehaviour
 
         var mapLoader = gameObject.AddComponent<MapLoader>();
         stopwatch.Start();
-        var coordinates = mapLoader.ProjectCoordinates(preprocessed.nodes, projectionShader);
+        var coordinates = mapLoader.ProjectCoordinates(preprocessed.nodes);
         stopwatch.Stop();
         UnityEngine.Debug.Log("Projection took " + stopwatch.ElapsedMilliseconds + " ms");
         stopwatch.Reset();

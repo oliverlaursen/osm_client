@@ -58,51 +58,15 @@ public class MapLoader : MonoBehaviour
         return new Point(latSum / count, lonSum / count);
     }
 
-    public Dictionary<long, (double, double)> ProjectCoordinates(IEnumerable<OsmSharp.Node> nodeList, ComputeShader shader)
+    public Dictionary<long, (double, double)> ProjectCoordinates(IEnumerable<OsmSharp.Node> nodeList)
     {
         var centerPoint = GetCenterPoint(nodeList);
         var points = new Dictionary<long, (double, double)>();
-        var array = nodeList.ToArray();
-        var count = array.Count();
-        ComputeBuffer inputBuffer = new ComputeBuffer(count, Marshal.SizeOf(typeof(NodeData)));
-        ComputeBuffer outputBuffer = new ComputeBuffer(count, Marshal.SizeOf(typeof(ProjectedData)));
-
-        var nodeDataList = nodeList.Select(node => new NodeData(node)).ToArray();
-        inputBuffer.SetData(nodeDataList);
-
-        // Find the kernel ID
-        int kernelId = shader.FindKernel("CSMain");
-
-        // Set buffers and any required parameters for the shader
-        shader.SetBuffer(kernelId, "nodesInput", inputBuffer);
-        shader.SetBuffer(kernelId, "resultOutput", outputBuffer);
-        shader.SetFloat("centerLatitude", (float)centerPoint.x);
-        shader.SetFloat("centerLongitude", (float)centerPoint.y);
-
-
-        int threadGroupsX = (count + 64 - 1) / 64; // This ensures rounding up
-        Debug.Log("Thread groups: " + threadGroupsX);
-        shader.Dispatch(kernelId, threadGroupsX, 1, 1);
-
-
-        // Get the result from the output buffer
-        // Create an array to hold the output data
-        ProjectedData[] outputPositions = new ProjectedData[count];
-        // Retrieve the data from the output buffer
-        outputBuffer.GetData(outputPositions);
-
-        inputBuffer.Release();
-        outputBuffer.Release();
-
-
-        foreach (ProjectedData projected in outputPositions)
+        foreach (OsmSharp.Node node in nodeList)
         {
-            points.TryAdd(projected.id, (projected.x, projected.y));
+            var projected = ProjectToAzimuthalEquidistant(node, centerPoint);
+            points.Add((long)node.Id, (projected.x, projected.y));
         }
-        Debug.Log("Count: " + count);
-        Debug.Log("Total points: " + outputPositions.Count());
-        Debug.Log("Points where not 0: " + outputPositions.Where(p => p.id != 0).Count());
-        Debug.Log("Duplicate points: " + outputPositions.GroupBy(p => p.id).Where(g => g.Count() > 1).Count());
         return points;
     }
 
