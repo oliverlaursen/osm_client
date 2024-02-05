@@ -68,9 +68,6 @@ impl Preprocessor {
         let mut roads: Vec<Road> = Vec::new();
         let mut nodes_to_keep: Vec<NodeId> = Vec::new();
         for obj in pbf.par_iter().map(Result::unwrap) {
-            if !is_valid_highway(obj.tags(), &blacklist) {
-                continue;
-            }
             match obj {
                 osmpbfreader::OsmObj::Node(node) => nodes.push(Node {
                     id: node.id,
@@ -78,6 +75,9 @@ impl Preprocessor {
                     lon: node.lon(),
                 }),
                 osmpbfreader::OsmObj::Way(way) => {
+                    if !is_valid_highway(&way.tags, &blacklist) {
+                        continue;
+                    }
                     nodes_to_keep.extend(&way.nodes);
                     roads.push(Road {
                         id: way.id,
@@ -97,7 +97,6 @@ impl Preprocessor {
     }
 
     pub fn get_nodes(&mut self) {
-        println!("NODES {:?}", self.nodes.len());
         // Filter out nodes that are not in nodes_to_keep
         let nodes = self
             .nodes
