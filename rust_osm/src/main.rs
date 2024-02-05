@@ -7,14 +7,11 @@
 
 use osmpbfreader::{blocks::nodes, NodeId, OsmId, WayId};
 use rayon::prelude::*;
+use serde::Serialize;
 use std::{
-    cmp::Ordering,
-    collections::{BinaryHeap, HashMap, HashSet},
-    hash, string,
+    cmp::Ordering, collections::{BinaryHeap, HashMap, HashSet}, hash, io::Write, string
 };
 
-#[macro_use]
-extern crate osmpbfreader;
 #[derive(Debug, Clone)]
 pub struct Node {
     id: NodeId,
@@ -46,8 +43,8 @@ pub struct Preprocessor {
     pub roads: Vec<Road>,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
-struct Edge {
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct Edge {
     node: NodeId,
     cost: u32, // This could be distance, time, etc.
 }
@@ -107,7 +104,11 @@ fn build_graph(nodes: &HashMap<NodeId, Node>, roads: &[Road]) -> HashMap<NodeId,
     graph
 }
 
-fn dijkstra(graph: &HashMap<NodeId, Vec<Edge>>, start: NodeId, goal: NodeId) -> Option<u32> {
+fn dijkstra(
+    graph: &HashMap<NodeId, Vec<Edge>>,
+    start: NodeId,
+    goal: NodeId,
+) -> (Option<u32>, Vec<NodeId>) {
     let mut dist: HashMap<NodeId, u32> = HashMap::new();
     let mut heap = BinaryHeap::new();
 
@@ -119,7 +120,7 @@ fn dijkstra(graph: &HashMap<NodeId, Vec<Edge>>, start: NodeId, goal: NodeId) -> 
 
     while let Some(Edge { node, cost }) = heap.pop() {
         if node == goal {
-            return Some(cost);
+            return (Some(cost), dist.keys().cloned().collect());
         }
 
         if cost > *dist.get(&node).unwrap_or(&u32::MAX) {
@@ -138,7 +139,7 @@ fn dijkstra(graph: &HashMap<NodeId, Vec<Edge>>, start: NodeId, goal: NodeId) -> 
         }
     }
 
-    None
+    (None, vec![])
 }
 
 // Add your nodes and roads initialization here, and then call build_graph and dijkstra accordingly.
@@ -239,27 +240,26 @@ fn is_valid_highway(tags: &osmpbfreader::Tags, blacklist: &HashSet<&str>) -> boo
         .any(|(k, v)| (k == "highway" && !blacklist.contains(v.as_str())))
 }
 
+impl Preprocessor {
+    pub fn osm_to_graph(filename: &str) -> HashMap<NodeId, Vec<Edge>> {
+        let mut preprocessor = Preprocessor::get_roads_and_nodes(is_valid_highway, filename);
+        preprocessor.filter_nodes();
+        let graph = build_graph(&preprocessor.nodes, &preprocessor.roads);
+        graph
+    }
+    pub fn write_graph_to_file(graph: &HashMap<NodeId, Vec<Edge>>, filename: &str) {
+        let mut file = std::fs::File::create(filename).unwrap();
+        let serialized: Vec<u8> = bincode::serialize(&graph).unwrap();
+        file.write_all(&serialized).unwrap();
+    }
+}
+
 fn main() {
     let time = std::time::Instant::now();
 
-    let mut preprocessor = Preprocessor::get_roads_and_nodes(is_valid_highway, "andorra.osm.pbf");
-    preprocessor.filter_nodes();
-    println!("Nodes: {:?}", preprocessor.nodes.len());
-    println!("Roads: {:?}", preprocessor.roads.len());
-    println!("Time: {:?}", time.elapsed());
-
-    let graph = build_graph(&preprocessor.nodes, &preprocessor.roads);
-    let start = NodeId(51446486);
-    let goal = NodeId(2021666213);
-    let cost = dijkstra(&graph, start, goal);
-    println!(
-        "Shortest path from {} to {}: {} ",
-        start.0,
-        goal.0,
-        cost.unwrap_or(0)
-    );
+    let graph = Preprocessor::osm_to_graph("src/test_data/andorra.osm.testpbf");
+    Preprocessor::write_graph_to_file(&graph, "graph.bin");
 }
-
 
 //TESTS
 fn initialize(filename: &str) -> Preprocessor {
@@ -269,32 +269,37 @@ fn initialize(filename: &str) -> Preprocessor {
 }
 
 #[test]
-fn test_real_all() { //checks if file has been parsed correctly, with 2 nodes and 1 road
+fn test_real_all() {
+    //checks if file has been parsed correctly, with 2 nodes and 1 road
     let preprocessor = initialize("src/test_data/minimal.osm.testpbf");
     assert_eq!(1, preprocessor.roads.len());
     assert_eq!(2, preprocessor.nodes.len());
 }
 
 #[test]
-fn road_is_oneway() { //checks if road is a oneway road
+fn road_is_oneway() {
+    //checks if road is a oneway road
     let preprocessor = initialize("src/test_data/minimal.osm.testpbf");
     assert_eq!(CarDirection::FORWARD, preprocessor.roads[0].direction);
 }
 
 #[test]
-fn does_not_include_blacklisted_roads() { //length of the road list should be 1, since one of the roads is pedestrian, which is blacklisted
-    let preprocessor = initialize("src/test_data/minimal_ignored_road.osm.testpbf");    
+fn does_not_include_blacklisted_roads() {
+    //length of the road list should be 1, since one of the roads is pedestrian, which is blacklisted
+    let preprocessor = initialize("src/test_data/minimal_ignored_road.osm.testpbf");
     assert_eq!(1, preprocessor.roads.len());
 }
 
 #[test]
-fn one_node_is_dropped() { //amount of nodes kept are 2, because one node is not referenced by a road
+fn one_node_is_dropped() {
+    //amount of nodes kept are 2, because one node is not referenced by a road
     let preprocessor = initialize("src/test_data/one_node_is_dropped.osm.testpbf");
     assert_eq!(2, preprocessor.nodes.len());
 }
 
 #[test]
-fn all_nodes_to_keep_are_kept() { //checks that all nodes in nodes kept is also in nodes to keep.
+fn all_nodes_to_keep_are_kept() {
+    //checks that all nodes in nodes kept is also in nodes to keep.
     let preprocessor = initialize("src/test_data/minimal.osm.testpbf");
     let nodes_to_keep = &preprocessor.nodes_to_keep;
     let nodes_kept = &preprocessor.nodes;
@@ -304,39 +309,36 @@ fn all_nodes_to_keep_are_kept() { //checks that all nodes in nodes kept is also 
 }
 
 #[test]
-fn dijkstra_test() { //distance is noted down as 206m from open street map. 2% error margin allowed
+fn dijkstra_test() {
+    //distance is noted down as 206m from open street map. 2% error margin allowed
     let preprocessor = initialize("src/test_data/ribe_slice.osm.testpbf");
     let graph = build_graph(&preprocessor.nodes, &preprocessor.roads);
     let start = NodeId(603896384); //seminarievej
-    let goal = NodeId(603896385 ); //Drost peders vej
-    let cost = dijkstra(&graph, start, goal).unwrap() as f32;
+    let goal = NodeId(603896385); //Drost peders vej
+    let (cost, nodes) = dijkstra(&graph, start, goal);
+    let cost = cost.unwrap() as f32;
     let measured_dist = 206.;
     let min_expect = measured_dist * 0.98;
     let max_expect = measured_dist * 1.02;
     assert_eq!(true, min_expect <= cost && cost <= max_expect);
-
 }
 
 //6600188499 la masana
 //53275038 canillo
 
 #[test]
-fn bigger_dijkstra_test() { //distance is noted down as 13.7km from google maps. 2% error margin allowed
+fn bigger_dijkstra_test() {
+    //distance is noted down as 13.7km from google maps. 2% error margin allowed
     let preprocessor = initialize("src/test_data/andorra.osm.testpbf");
     let graph = build_graph(&preprocessor.nodes, &preprocessor.roads);
     let start = NodeId(6600188499); //la masana
     let goal = NodeId(53275038); //canillo
-    let cost = dijkstra(&graph, start, goal).unwrap() as f32;
+    let (cost, nodes) = dijkstra(&graph, start, goal);
+    let cost = cost.unwrap() as f32;
     let measured_dist = 13700.;
     let min_expect = measured_dist * 0.98;
     let max_expect = measured_dist * 1.02;
 
-    println!(
-        "Shortest path from {} to {}: {} ",
-        start.0,
-        goal.0,
-        cost
-    );
+    println!("Shortest path from {} to {}: {} ", start.0, goal.0, cost);
     assert_eq!(true, min_expect <= cost && cost <= max_expect);
-
 }
