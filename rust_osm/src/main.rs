@@ -316,3 +316,27 @@ fn dijkstra_test() { //distance is noted down as 206m from open street map. 2% e
     assert_eq!(true, min_expect <= cost && cost <= max_expect);
 
 }
+
+//6600188499 la masana
+//53275038 canillo
+
+#[test]
+fn bigger_dijkstra_test() { //distance is noted down as 13.7km from google maps. 2% error margin allowed
+    let preprocessor = initialize("src/test_data/andorra.osm.testpbf");
+    let graph = build_graph(&preprocessor.nodes, &preprocessor.roads);
+    let start = NodeId(6600188499); //la masana
+    let goal = NodeId(53275038); //canillo
+    let cost = dijkstra(&graph, start, goal).unwrap() as f32;
+    let measured_dist = 13700.;
+    let min_expect = measured_dist * 0.98;
+    let max_expect = measured_dist * 1.02;
+
+    println!(
+        "Shortest path from {} to {}: {} ",
+        start.0,
+        goal.0,
+        cost
+    );
+    assert_eq!(true, min_expect <= cost && cost <= max_expect);
+
+}
