@@ -2,6 +2,10 @@
 using UnityEngine;
 using Newtonsoft.Json;
 using System.Collections.Generic;
+using UnityEditor.U2D.Animation;
+using Unity.VisualScripting;
+using System;
+using System.Linq;
 
 public class MapController : MonoBehaviour
 {
@@ -77,29 +81,19 @@ public class MapController : MonoBehaviour
 
     public void DrawAllWays(Dictionary<long, float[]> nodes, Dictionary<long, long[]> ways)
     {
+        var lineRenderer = Camera.main.gameObject.GetComponent<GLLineRenderer>();
         foreach (var way in ways.Values)
         {
-            for (int j = 0; j < way.Length - 1; j++)
-            {
-                var node1 = nodes[way[j]];
-                var node2 = nodes[way[j + 1]];
-                var node1Vector = new Vector3(node1[0], node1[1], 0);
-                var node2Vector = new Vector3(node2[0], node2[1], 0);
-                UnityEngine.Debug.DrawLine(node1Vector, node2Vector, Color.red, 10000f);
-            }
+            var coords = Array.ConvertAll(way, node => new Vector3(nodes[node][0], nodes[node][1], 0)).ToList();
+            lineRenderer.AddLine(coords, Color.white);
         }
     }
 
     public void DrawPath(Dictionary<long, float[]> nodes, long[] path)
     {
-        for (int j = 0; j < path.Length - 1; j++)
-        {
-            var node1 = nodes[path[j]];
-            var node2 = nodes[path[j + 1]];
-            var node1Vector = new Vector3(node1[0], node1[1], 0);
-            var node2Vector = new Vector3(node2[0], node2[1], 0);
-            UnityEngine.Debug.DrawLine(node1Vector, node2Vector, Color.green, 10000f);
-        }
+        var lineRenderer = Camera.main.gameObject.GetComponent<GLLineRenderer>();
+        var coords = Array.ConvertAll(path, node => new Vector3(nodes[node][0], nodes[node][1], 0)).ToList();
+        lineRenderer.AddLine(coords, Color.red);
     }
 
     void Start()
