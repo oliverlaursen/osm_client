@@ -68,7 +68,7 @@ impl Preprocessor {
         let mut roads: Vec<Road> = Vec::new();
         let mut nodes_to_keep: Vec<NodeId> = Vec::new();
         for obj in pbf.par_iter().map(Result::unwrap) {
-            if is_valid_highway(obj.tags(), &blacklist) {
+            if !is_valid_highway(obj.tags(), &blacklist) {
                 continue;
             }
             match obj {
@@ -97,6 +97,7 @@ impl Preprocessor {
     }
 
     pub fn get_nodes(&mut self) {
+        println!("NODES {:?}", self.nodes.len());
         // Filter out nodes that are not in nodes_to_keep
         let nodes = self
             .nodes
@@ -114,9 +115,19 @@ fn is_valid_highway(tags: &osmpbfreader::Tags, blacklist: &HashSet<&str>) -> boo
 fn main() {
     let time = std::time::Instant::now();
 
-    let mut preprocessor = Preprocessor::get_roads_and_nodes(is_valid_highway, "denmark.osm.pbf");
+    let mut preprocessor = Preprocessor::get_roads_and_nodes(is_valid_highway, "andorra.osm.pbf");
     preprocessor.get_nodes();
     println!("Nodes: {:?}", preprocessor.nodes.len());
     println!("Roads: {:?}", preprocessor.roads.len());
     println!("Time: {:?}", time.elapsed());
+}
+
+#[test]
+fn test_real_all() {
+    let mut preprocessor = Preprocessor::get_roads_and_nodes(is_valid_highway, "minimal.osm.pbf");
+    preprocessor.get_nodes();
+    println!("nodes to keep {:?}", preprocessor.nodes_to_keep.len());
+    println!("nodes: {}, roads: {}", preprocessor.nodes.len(), preprocessor.roads.len());
+    assert_eq!(1, preprocessor.roads.len());
+    assert_eq!(2, preprocessor.nodes.len());
 }
