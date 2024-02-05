@@ -17,6 +17,7 @@ pub struct Node {
     lat: f64,
     lon: f64,
 }
+
 #[derive(Debug)]
 pub struct Road {
     id: WayId,
@@ -24,7 +25,7 @@ pub struct Road {
     direction: CarDirection,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum CarDirection {
     FORWARD,
     TWOWAY,
@@ -136,16 +137,42 @@ fn main() {
     println!("Time: {:?}", time.elapsed());
 }
 
-#[test]
-fn test_real_all() {
-    let mut preprocessor = Preprocessor::get_roads_and_nodes(is_valid_highway, "minimal.osm.pbf");
+
+//TESTS
+fn initialize(filename: &str) -> Preprocessor {
+    let mut preprocessor = Preprocessor::get_roads_and_nodes(is_valid_highway, filename);
     preprocessor.filter_nodes();
-    println!("nodes to keep {:?}", preprocessor.nodes_to_keep.len());
-    println!(
-        "nodes: {}, roads: {}",
-        preprocessor.nodes.len(),
-        preprocessor.roads.len()
-    );
+    preprocessor
+}
+
+#[test]
+fn test_real_all() { //checks if file has been parsed correctly, with 2 nodes and 1 road
+    let preprocessor = initialize("src/test_data/minimal.osm.testpbf");
     assert_eq!(1, preprocessor.roads.len());
     assert_eq!(2, preprocessor.nodes.len());
 }
+
+#[test]
+fn road_is_oneway() { //checks if road is a oneway road
+    let preprocessor = initialize("src/test_data/minimal.osm.testpbf");
+    assert_eq!(CarDirection::FORWARD, preprocessor.roads[0].direction);
+}
+
+#[test]
+fn does_not_include_blacklisted_roads() { //length of the road list should be 1, since one of the roads is pedestrian, which is blacklisted
+    let preprocessor = initialize("src/test_data/minimal_ignored_road.osm.testpbf");    
+    assert_eq!(1, preprocessor.roads.len());
+}
+
+#[test]
+fn one_node_is_dropped() { //amount of nodes kept are 2, because one node is not referenced by a road
+    let preprocessor = initialize("src/test_data/one_node_is_dropped.osm.testpbf");
+    assert_eq!(2, preprocessor.nodes.len());
+}
+/* 
+#[test]
+fn all_nodes_to_keep_are_kept() {
+    let preprocessor = initialize("src/test_data/minimal.osm.testpbf");
+    let nodes_to_keep = &preprocessor.nodes_to_keep;
+    let nodes_kept = &preprocessor.nodes;
+} */
