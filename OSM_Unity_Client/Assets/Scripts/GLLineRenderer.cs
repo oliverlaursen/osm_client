@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using Unity.VisualScripting;
 using UnityEngine;
 
@@ -57,5 +58,32 @@ public class GLLineRenderer : MonoBehaviour
             points.Add(new Vector3(center.x + radius * Mathf.Cos(angle), center.y + radius * Mathf.Sin(angle), center.z));
         }
         AddLine(points, color);
+    }
+
+    public void AddCircle1(Vector3 center)
+    {
+        AddCircle(center, 2.5f, Color.green);
+    }
+
+    public void AddCircle2(Vector3 center)
+    {
+        AddCircle(center, 2.5f, new Color(1, 0.64f, 0, 1));
+    }
+
+    public void Clear()
+    {
+        Lines.Clear();
+    }
+
+    public void ClearPath(){
+        Lines = Lines.Where(line => line.Color != Color.red).ToList();
+    }
+
+    public void ClearCircle1(){
+        Lines = Lines.Where(line => line.Color != Color.green).ToList();
+    }
+
+    public void ClearCircle2(){
+        Lines = Lines.Where(line => line.Color != new Color(1, 0.64f, 0, 1)).ToList();
     }
 }
