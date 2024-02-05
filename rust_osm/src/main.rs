@@ -7,15 +7,24 @@
 
 use osmpbfreader::{NodeId, OsmId, WayId};
 use rayon::prelude::*;
-use std::{collections::HashSet, hash, string};
+use std::{
+    cmp::Ordering,
+    collections::{BinaryHeap, HashMap, HashSet},
+    hash, string,
+};
 
 #[macro_use]
 extern crate osmpbfreader;
 #[derive(Debug, Clone)]
 pub struct Node {
     id: NodeId,
-    lat: f64,
-    lon: f64,
+    coord: Coord,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct Coord {
+    pub lat: f64,
+    pub lon: f64,
 }
 
 #[derive(Debug)]
@@ -33,9 +42,106 @@ pub enum CarDirection {
 
 pub struct Preprocessor {
     pub nodes_to_keep: HashSet<NodeId>,
-    pub nodes: Vec<Node>,
+    pub nodes: HashMap<NodeId, Node>,
     pub roads: Vec<Road>,
 }
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+struct Edge {
+    node: NodeId,
+    cost: u32, // This could be distance, time, etc.
+}
+
+impl Ord for Edge {
+    fn cmp(&self, other: &Self) -> Ordering {
+        // Notice we flip the ordering here because BinaryHeap is a max heap by default
+        other.cost.cmp(&self.cost)
+    }
+}
+
+impl PartialOrd for Edge {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Coord {
+    pub fn distance_to(&self, end: Coord) -> f64 {
+        let r: f64 = 6_378_100.0;
+
+        let dlon: f64 = (end.lon - self.lon).to_radians();
+        let dlat: f64 = (end.lat - self.lat).to_radians();
+        let lat1: f64 = (self.lat).to_radians();
+        let lat2: f64 = (end.lat).to_radians();
+
+        let a: f64 = ((dlat / 2.0).sin()) * ((dlat / 2.0).sin())
+            + ((dlon / 2.0).sin()) * ((dlon / 2.0).sin()) * (lat1.cos()) * (lat2.cos());
+        let c: f64 = 2.0 * ((a.sqrt()).atan2((1.0 - a).sqrt()));
+
+        r * c
+    }
+}
+
+fn build_graph(nodes: &HashMap<NodeId, Node>, roads: &[Road]) -> HashMap<NodeId, Vec<Edge>> {
+    let mut graph: HashMap<NodeId, Vec<Edge>> = HashMap::new();
+    for road in roads {
+        for window in road.node_refs.windows(2) {
+            let from = window[0];
+            let to = window[1];
+            let from_coord = nodes.get(&from).unwrap().coord;
+            let to_coord = nodes.get(&to).unwrap().coord;
+            let cost = from_coord.distance_to(to_coord) as u32;
+            graph
+                .entry(from)
+                .or_insert_with(Vec::new)
+                .push(Edge { node: to, cost });
+
+            if matches!(road.direction, CarDirection::TWOWAY) {
+                graph
+                    .entry(to)
+                    .or_insert_with(Vec::new)
+                    .push(Edge { node: from, cost });
+            }
+        }
+    }
+    graph
+}
+
+fn dijkstra(graph: &HashMap<NodeId, Vec<Edge>>, start: NodeId, goal: NodeId) -> Option<u32> {
+    let mut dist: HashMap<NodeId, u32> = HashMap::new();
+    let mut heap = BinaryHeap::new();
+
+    dist.insert(start, 0);
+    heap.push(Edge {
+        node: start,
+        cost: 0,
+    });
+
+    while let Some(Edge { node, cost }) = heap.pop() {
+        if node == goal {
+            return Some(cost);
+        }
+
+        if cost > *dist.get(&node).unwrap_or(&u32::MAX) {
+            continue;
+        }
+
+        for edge in &graph[&node] {
+            let next = Edge {
+                node: edge.node,
+                cost: cost + edge.cost,
+            };
+            if next.cost < *dist.get(&next.node).unwrap_or(&u32::MAX) {
+                heap.push(next.clone());
+                dist.insert(next.node, next.cost);
+            }
+        }
+    }
+
+    None
+}
+
+// Add your nodes and roads initialization here, and then call build_graph and dijkstra accordingly.
 
 impl Preprocessor {
     pub fn get_roads_and_nodes(
@@ -79,8 +185,10 @@ impl Preprocessor {
             match obj {
                 osmpbfreader::OsmObj::Node(node) => nodes.push(Node {
                     id: node.id,
-                    lat: node.lat(),
-                    lon: node.lon(),
+                    coord: Coord {
+                        lat: node.lat(),
+                        lon: node.lon(),
+                    },
                 }),
                 osmpbfreader::OsmObj::Way(way) => {
                     if !is_valid_highway(&way.tags, &blacklist) {
@@ -103,10 +211,14 @@ impl Preprocessor {
             }
         }
         let nodes_to_keep_hashset = HashSet::from_iter(nodes_to_keep);
+        let nodes_hashmap = nodes
+            .iter()
+            .map(|node| (node.id, node.clone()))
+            .collect::<HashMap<NodeId, Node>>();
 
         Preprocessor {
             nodes_to_keep: nodes_to_keep_hashset,
-            nodes,
+            nodes: nodes_hashmap,
             roads,
         }
     }
@@ -116,9 +228,9 @@ impl Preprocessor {
         let nodes = self
             .nodes
             .par_iter() // Use a parallel iterator
-            .filter(|node| self.nodes_to_keep.contains(&node.id))
-            .cloned()
-            .collect::<Vec<Node>>();
+            .map(|(nodeid, node)| (*nodeid, node.clone())) // Dereference the tuple elements before cloning
+            .filter(|(nodeid, _)| self.nodes_to_keep.contains(nodeid))
+            .collect();
         self.nodes = nodes;
     }
 }
@@ -130,11 +242,22 @@ fn is_valid_highway(tags: &osmpbfreader::Tags, blacklist: &HashSet<&str>) -> boo
 fn main() {
     let time = std::time::Instant::now();
 
-    let mut preprocessor = Preprocessor::get_roads_and_nodes(is_valid_highway, "denmark.osm.pbf");
+    let mut preprocessor = Preprocessor::get_roads_and_nodes(is_valid_highway, "andorra.osm.pbf");
     preprocessor.filter_nodes();
     println!("Nodes: {:?}", preprocessor.nodes.len());
     println!("Roads: {:?}", preprocessor.roads.len());
     println!("Time: {:?}", time.elapsed());
+
+    let graph = build_graph(&preprocessor.nodes, &preprocessor.roads);
+    let start = NodeId(51446486);
+    let goal = NodeId(2021666213);
+    let cost = dijkstra(&graph, start, goal);
+    println!(
+        "Shortest path from {} to {}: {} ",
+        start.0,
+        goal.0,
+        cost.unwrap_or(0)
+    );
 }
 
 
