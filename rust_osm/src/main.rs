@@ -5,75 +5,91 @@
 // Version 2, as published by Sam Hocevar. See the COPYING file for
 // more details.
 
+use std::{collections::HashSet, hash, string};
+
+use osmpbfreader::{NodeId, OsmId, WayId};
+
 #[macro_use]
 extern crate osmpbfreader;
+#[derive(Debug)]
+pub struct Node {
+    id: NodeId,
+    lat: f64,
+    lon: f64,
+}
+#[derive(Debug)]
+pub struct Road {
+    id: WayId,
+    node_refs: Vec<NodeId>
+}
 
-fn count<F: Fn(&osmpbfreader::Tags) -> bool>(filter: F, filename: &std::ffi::OsStr) {
+pub fn get_roads_and_nodes(filter: fn(&osmpbfreader::Tags, &HashSet<&str>) -> bool, filename: &str) -> (Vec<Node>, Vec<Road>) {
+    let blacklist: HashSet<&str> = HashSet::from_iter([
+        "pedestrian",
+        "footway",
+        "steps",
+        "path",
+        "cycleway",
+        "proposed",
+        "construction",
+        "bridleway",
+        "abandoned",
+        "platform",
+        "raceway",
+        "service",
+        "services",
+        "rest_area",
+        "escape",
+        "raceway",
+        "busway",
+        "footway",
+        "bridlway",
+        "steps",
+        "corridor",
+        "via_ferreta",
+        "sidewalk",
+        "crossing",
+        "proposed",
+        "track",
+    ]);
     let r = std::fs::File::open(&std::path::Path::new(filename)).unwrap();
     let mut pbf = osmpbfreader::OsmPbfReader::new(r);
-    let mut nb_nodes = 0;
-    let mut sum_lon = 0.;
-    let mut sum_lat = 0.;
-    let mut nb_ways = 0;
-    let mut nb_way_nodes = 0;
-    let mut nb_rels = 0;
-    let mut nb_rel_refs = 0;
+    let mut nodes: Vec<Node> = Vec::new();
+    let mut roads: Vec<Road> = Vec::new();
     for obj in pbf.par_iter().map(Result::unwrap) {
-        if !filter(obj.tags()) {
+        if !filter(obj.tags(), &blacklist) {
             continue;
         }
         match obj {
             osmpbfreader::OsmObj::Node(node) => {
-                nb_nodes += 1;
-                sum_lon += node.lon();
-                sum_lat += node.lat();
+                nodes.push(Node { id: node.id, lat: node.lat(), lon: node.lon() })
             }
             osmpbfreader::OsmObj::Way(way) => {
-                nb_ways += 1;
-                nb_way_nodes += way.nodes.len();
+                roads.push(Road { id: way.id, node_refs: way.nodes })
             }
-            osmpbfreader::OsmObj::Relation(rel) => {
-                nb_rels += 1;
-                nb_rel_refs += rel.refs.len();
+            osmpbfreader::OsmObj::Relation(_) => {
+                ()
             }
         }
     }
-    println!(
-        "{} nodes, mean coord: {}, {}.",
-        nb_nodes,
-        sum_lat / nb_nodes as f64,
-        sum_lon / nb_nodes as f64
-    );
-    println!(
-        "{} ways, mean |nodes|: {}",
-        nb_ways,
-        nb_way_nodes as f64 / nb_ways as f64
-    );
-    println!(
-        "{} relations, mean |references|: {}",
-        nb_rels,
-        nb_rel_refs as f64 / nb_rels as f64
-    );
+    return (nodes, roads);
+}
+
+fn filter(tags: &osmpbfreader::Tags, blacklist: &HashSet<&str>) -> bool {
+    
+    for (k, v) in tags.iter() {
+        if k == "highway" && blacklist.contains(v.as_str()) {
+            return false;
+        } else {
+            return true;}
+    }
+    return true;
 }
 
 fn main() {
-    let args: Vec<_> = std::env::args_os().collect();
-    match args.len() {
-        2 => {
-            println!("counting objects...");
-            count(|_| true, &args[1]);
-        }
-        3 => {
-            let key = args[2].to_str().unwrap();
-            println!("counting objects with \"{}\" in tags...", key);
-            count(|tags| tags.contains_key(key), &args[1]);
-        }
-        4 => {
-            let key = args[2].to_str().unwrap();
-            let val = args[3].to_str().unwrap();
-            println!("counting objects with tags[\"{}\"] = \"{}\"...", key, val);
-            count(|tags| tags.contains(key, val), &args[1]);
-        }
-        _ => println!("usage: count filename [key [value]]",),
-    };
+    let time = std::time::Instant::now();
+    let (nodes, roads) = get_roads_and_nodes(filter, "denmark.osm.pbf");
+    println!("Nodes: {:?}", nodes.len());  
+    println!("Roads: {:?}", roads.len());
+    println!("Time: {:?}", time.elapsed());
 }
