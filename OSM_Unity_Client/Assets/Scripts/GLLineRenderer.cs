@@ -12,7 +12,10 @@ public class ColoredLine
 public class GLLineRenderer : MonoBehaviour
 {
     public Material lineMaterial;
-    public List<ColoredLine> Lines { get; set; } = new List<ColoredLine>();
+    public (List<List<Vector3>>, Color) map_lines { get; set; } = (new(), Color.white);
+    public (List<List<Vector3>>, Color) circles1 { get; set; } = (new(), Color.green);
+    public (List<List<Vector3>>, Color) circles2 { get; set; } = (new(), new Color(1, 0.64f, 0, 1));
+    public (List<List<Vector3>>, Color) path { get; set; } = (new(), Color.red);
 
     void OnPostRender()
     {
@@ -25,30 +28,33 @@ public class GLLineRenderer : MonoBehaviour
         GL.PushMatrix();
         lineMaterial.SetPass(0);
         GL.LoadProjectionMatrix(Camera.main.projectionMatrix);
-        GL.Begin(GL.LINES);
 
-        foreach (var line in Lines)
-        {
-            if (line.Points.Count < 2) continue; // Nothing to draw for this line
+        DrawLines(map_lines.Item1, map_lines.Item2);
+        DrawLines(circles1.Item1, circles1.Item2);
+        DrawLines(circles2.Item1, circles2.Item2);
+        DrawLines(path.Item1, path.Item2);
 
-            GL.Color(line.Color);
-            for (int i = 0; i < line.Points.Count - 1; i++)
-            {
-                GL.Vertex(line.Points[i]);
-                GL.Vertex(line.Points[i + 1]);
-            }
-        }
-
-        GL.End();
         GL.PopMatrix();
     }
 
-    public void AddLine(List<Vector3> points, Color color)
+    public void DrawLines(List<List<Vector3>> lines, Color color)
     {
-        Lines.Add(new ColoredLine { Points = points, Color = color });
+        foreach (var line in lines)
+        {
+            GL.Begin(GL.LINES);
+            GL.Color(color);
+
+            for (int i = 0; i < line.Count - 1; i++)
+            {
+                GL.Vertex(line[i]);
+                GL.Vertex(line[i + 1]);
+            }
+            GL.End();
+        }
     }
 
-    public void AddCircle(Vector3 center, float radius, Color color, int resolution = 100)
+
+    public List<Vector3> GetCircle(Vector3 center, float radius, int resolution = 100)
     {
         List<Vector3> points = new List<Vector3>();
 
@@ -57,33 +63,43 @@ public class GLLineRenderer : MonoBehaviour
             float angle = i * 2 * Mathf.PI / resolution;
             points.Add(new Vector3(center.x + radius * Mathf.Cos(angle), center.y + radius * Mathf.Sin(angle), center.z));
         }
-        AddLine(points, color);
+        return points;
     }
 
     public void AddCircle1(Vector3 center)
     {
-        AddCircle(center, 2.5f, Color.green);
+        var circle = GetCircle(center, 2.5f);
+        circles1.Item1.Add(circle);
     }
 
     public void AddCircle2(Vector3 center)
     {
-        AddCircle(center, 2.5f, new Color(1, 0.64f, 0, 1));
+        var circle = GetCircle(center, 2.5f);
+        circles2.Item1.Add(circle);
     }
 
-    public void Clear()
+    public void AddPath(List<Vector3> path)
     {
-        Lines.Clear();
+        this.path.Item1.Add(path);
     }
 
-    public void ClearPath(){
-        Lines = Lines.Where(line => line.Color != Color.red).ToList();
+    public void AddMapLine(List<Vector3> path)
+    {
+        map_lines.Item1.Add(path);
     }
 
-    public void ClearCircle1(){
-        Lines = Lines.Where(line => line.Color != Color.green).ToList();
+    public void ClearPath()
+    {
+        path = (new(), Color.red);
     }
 
-    public void ClearCircle2(){
-        Lines = Lines.Where(line => line.Color != new Color(1, 0.64f, 0, 1)).ToList();
+    public void ClearCircle1()
+    {
+        circles1 = (new(), Color.green);
+    }
+
+    public void ClearCircle2()
+    {
+        circles2 = (new(), new Color(1, 0.64f, 0, 1));
     }
 }

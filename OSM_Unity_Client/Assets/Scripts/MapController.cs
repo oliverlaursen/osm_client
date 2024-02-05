@@ -83,30 +83,26 @@ public class MapController : MonoBehaviour
 
     public void DrawAllWays(Dictionary<long, float[]> nodes, Dictionary<long, long[]> ways)
     {
-        var lineRenderer = Camera.main.gameObject.GetComponent<GLLineRenderer>();
+        var meshGenerator = GetComponent<MeshGenerator>();
         foreach (var way in ways.Values)
         {
-            var coords = Array.ConvertAll(way, node => new Vector3(nodes[node][0], nodes[node][1], 0)).ToList();
-            lineRenderer.AddLine(coords, Color.white);
+            var positions = Array.ConvertAll(way, node => new Vector3(nodes[node][0], nodes[node][1], 0)).ToList();
+            meshGenerator.AddLineStrip(positions, Color.white);
         }
+        meshGenerator.UpdateMesh();
     }
 
     public void DrawPath(Dictionary<long, float[]> nodes, long[] path)
     {
         var lineRenderer = Camera.main.gameObject.GetComponent<GLLineRenderer>();
         var coords = Array.ConvertAll(path, node => new Vector3(nodes[node][0], nodes[node][1], 0)).ToList();
-        lineRenderer.AddLine(coords, Color.red);
+        lineRenderer.AddPath(coords);
     }
 
     void Start()
     {
-        var graph = DeserializeGraph("Assets/Maps/andorra.json");
+        var graph = DeserializeGraph("Assets/Maps/denmark.json");
         this.graph = graph;
         DrawAllWays(graph.nodes, graph.ways);
-        var start = 51361816;
-        var end = 1922638424;
-        var (distance, path) = Dijkstra(graph, start, end);
-        UnityEngine.Debug.Log("Distance: " + distance);
-        DrawPath(graph.nodes, path);
     }
 }
