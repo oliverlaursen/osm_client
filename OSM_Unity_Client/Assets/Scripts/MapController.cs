@@ -9,6 +9,8 @@ using System.Linq;
 
 public class MapController : MonoBehaviour
 {
+    public Dictionary<long, float[]> node_positions = new Dictionary<long, float[]>();
+
     private long[] ReconstructPath(Dictionary<long, long> previous, long start, long end)
             {
                 var path = new List<long>();
@@ -99,6 +101,7 @@ public class MapController : MonoBehaviour
     void Start()
     {
         var graph = DeserializeGraph("Assets/Maps/andorra.json");
+        node_positions = graph.nodes;
         DrawAllWays(graph.nodes, graph.ways);
         var start = 51361816;
         var end = 1922638424;
