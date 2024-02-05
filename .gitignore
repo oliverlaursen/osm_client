@@ -1,0 +1,4 @@
+*.osm
+*.osm.pbf
+*.bytes
+rust_osm/target
