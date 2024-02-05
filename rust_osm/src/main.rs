@@ -11,7 +11,7 @@ use osmpbfreader::{NodeId, OsmId, WayId};
 
 #[macro_use]
 extern crate osmpbfreader;
-#[derive(Debug)]
+#[derive(Debug,Clone)]
 pub struct Node {
     id: NodeId,
     lat: f64,
@@ -20,76 +20,105 @@ pub struct Node {
 #[derive(Debug)]
 pub struct Road {
     id: WayId,
-    node_refs: Vec<NodeId>
+    node_refs: Vec<NodeId>,
 }
 
-pub fn get_roads_and_nodes(filter: fn(&osmpbfreader::Tags, &HashSet<&str>) -> bool, filename: &str) -> (Vec<Node>, Vec<Road>) {
-    let blacklist: HashSet<&str> = HashSet::from_iter([
-        "pedestrian",
-        "footway",
-        "steps",
-        "path",
-        "cycleway",
-        "proposed",
-        "construction",
-        "bridleway",
-        "abandoned",
-        "platform",
-        "raceway",
-        "service",
-        "services",
-        "rest_area",
-        "escape",
-        "raceway",
-        "busway",
-        "footway",
-        "bridlway",
-        "steps",
-        "corridor",
-        "via_ferreta",
-        "sidewalk",
-        "crossing",
-        "proposed",
-        "track",
-    ]);
-    let r = std::fs::File::open(&std::path::Path::new(filename)).unwrap();
-    let mut pbf = osmpbfreader::OsmPbfReader::new(r);
-    let mut nodes: Vec<Node> = Vec::new();
-    let mut roads: Vec<Road> = Vec::new();
-    for obj in pbf.par_iter().map(Result::unwrap) {
-        if !filter(obj.tags(), &blacklist) {
-            continue;
-        }
-        match obj {
-            osmpbfreader::OsmObj::Node(node) => {
-                nodes.push(Node { id: node.id, lat: node.lat(), lon: node.lon() })
-            }
-            osmpbfreader::OsmObj::Way(way) => {
-                roads.push(Road { id: way.id, node_refs: way.nodes })
-            }
-            osmpbfreader::OsmObj::Relation(_) => {
-                ()
-            }
-        }
-    }
-    return (nodes, roads);
+pub struct Preprocessor {
+    pub nodes_to_keep: HashSet<NodeId>,
+    pub nodes: Vec<Node>,
+    pub roads: Vec<Road>,
 }
 
-fn filter(tags: &osmpbfreader::Tags, blacklist: &HashSet<&str>) -> bool {
-    
-    for (k, v) in tags.iter() {
-        if k == "highway" && blacklist.contains(v.as_str()) {
-            return false;
-        } else {
-            return true;}
+impl Preprocessor {
+    pub fn get_roads_and_nodes(
+        is_valid_highway: fn(&osmpbfreader::Tags, &HashSet<&str>) -> bool,
+        filename: &str,
+    ) -> Self {
+        let blacklist: HashSet<&str> = HashSet::from_iter([
+            "pedestrian",
+            "footway",
+            "steps",
+            "path",
+            "cycleway",
+            "proposed",
+            "construction",
+            "bridleway",
+            "abandoned",
+            "platform",
+            "raceway",
+            "service",
+            "services",
+            "rest_area",
+            "escape",
+            "raceway",
+            "busway",
+            "footway",
+            "bridlway",
+            "steps",
+            "corridor",
+            "via_ferreta",
+            "sidewalk",
+            "crossing",
+            "proposed",
+            "track",
+        ]);
+        let r = std::fs::File::open(&std::path::Path::new(filename)).unwrap();
+        let mut pbf = osmpbfreader::OsmPbfReader::new(r);
+        let mut nodes: Vec<Node> = Vec::new();
+        let mut roads: Vec<Road> = Vec::new();
+        let mut nodes_to_keep: Vec<NodeId> = Vec::new();
+        for obj in pbf.par_iter().map(Result::unwrap) {
+            if is_valid_highway(obj.tags(), &blacklist) {
+                continue;
+            }
+            match obj {
+                osmpbfreader::OsmObj::Node(node) => nodes.push(Node {
+                    id: node.id,
+                    lat: node.lat(),
+                    lon: node.lon(),
+                }),
+                osmpbfreader::OsmObj::Way(way) => {
+                    nodes_to_keep.extend(&way.nodes);
+                    roads.push(Road {
+                        id: way.id,
+                        node_refs: way.nodes,
+                    })
+                }
+                osmpbfreader::OsmObj::Relation(_) => (),
+            }
+        }
+        let mut nodes_to_keep_hashset: HashSet<NodeId> = HashSet::with_capacity(nodes_to_keep.len());
+        let _ = &nodes_to_keep_hashset.extend(nodes_to_keep.clone().into_iter());
+        println!("Nodes to keep: {:?}", nodes_to_keep.len());
+
+        Preprocessor {
+            nodes_to_keep: nodes_to_keep_hashset,
+            nodes,
+            roads,
+        }
     }
-    return true;
+
+    pub fn get_nodes(&mut self) {
+        // Filter out nodes that are not in nodes_to_keep
+        let nodes = self
+            .nodes
+            .iter()
+            .filter(|node| self.nodes_to_keep.contains(&node.id))
+            .cloned()
+            .collect::<Vec<Node>>();
+        self.nodes = nodes;
+    }
+}
+fn is_valid_highway(tags: &osmpbfreader::Tags, blacklist: &HashSet<&str>) -> bool {
+    tags.iter().any(|(k,v)| (k == "highway" && !blacklist.contains(v.as_str())))
 }
 
 fn main() {
     let time = std::time::Instant::now();
-    let (nodes, roads) = get_roads_and_nodes(filter, "denmark.osm.pbf");
-    println!("Nodes: {:?}", nodes.len());  
-    println!("Roads: {:?}", roads.len());
+
+    let mut preprocessor = Preprocessor::get_roads_and_nodes(is_valid_highway, "denmark.osm.pbf");
+    preprocessor.get_nodes();
+    println!("Nodes: {:?}", preprocessor.nodes.len());
+    println!("Roads: {:?}", preprocessor.roads.len());
     println!("Time: {:?}", time.elapsed());
 }
