@@ -5,20 +5,28 @@
 // Version 2, as published by Sam Hocevar. See the COPYING file for
 // more details.
 
-use osmpbfreader::{blocks::nodes, NodeId, OsmId, WayId};
+use osmpbfreader::{NodeId, WayId};
 use rayon::prelude::*;
 use serde::Serialize;
+use serde_json;
 use std::{
-    cmp::Ordering, collections::{BinaryHeap, HashMap, HashSet}, hash, io::Write, string
+    cmp::Ordering, collections::{BinaryHeap, HashMap, HashSet}, f64::consts::PI, io::Write
 };
 
-#[derive(Debug, Clone)]
+#[derive(Serialize)]
+pub struct FullGraph {
+    graph: HashMap<NodeId, Vec<Edge>>,
+    nodes: HashMap<NodeId, (f64, f64)>,
+    ways: HashMap<WayId, Vec<NodeId>>,
+}
+
+#[derive(Debug, Clone, Serialize)]
 pub struct Node {
     id: NodeId,
     coord: Coord,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Serialize)]
 pub struct Coord {
     pub lat: f64,
     pub lon: f64,
@@ -241,24 +249,124 @@ fn is_valid_highway(tags: &osmpbfreader::Tags, blacklist: &HashSet<&str>) -> boo
 }
 
 impl Preprocessor {
-    pub fn osm_to_graph(filename: &str) -> HashMap<NodeId, Vec<Edge>> {
-        let mut preprocessor = Preprocessor::get_roads_and_nodes(is_valid_highway, filename);
-        preprocessor.filter_nodes();
-        let graph = build_graph(&preprocessor.nodes, &preprocessor.roads);
-        graph
+    pub fn new() -> Self {
+        Preprocessor {
+            nodes_to_keep: HashSet::new(),
+            nodes: HashMap::new(),
+            roads: Vec::new(),
+        }
     }
-    pub fn write_graph_to_file(graph: &HashMap<NodeId, Vec<Edge>>, filename: &str) {
+
+    pub fn write_full_graph(graph: FullGraph, filename: &str) {
         let mut file = std::fs::File::create(filename).unwrap();
-        let serialized: Vec<u8> = bincode::serialize(&graph).unwrap();
-        file.write_all(&serialized).unwrap();
+        let serialized = serde_json::to_string(&graph).unwrap();
+        file.write_all(serialized.as_bytes()).unwrap();
+    }
+
+    pub fn project_nodes_to_2d(&self) -> HashMap<NodeId, (f64, f64)> {
+        let center_point = self
+            .nodes
+            .iter()
+            .fold((0.0, 0.0), |acc, (_, node)| {
+                (acc.0 + node.coord.lat, acc.1 + node.coord.lon)
+            });
+        let center_point = (
+            center_point.0 / self.nodes.len() as f64,
+            center_point.1 / self.nodes.len() as f64,
+        );
+        let projected_points = self
+            .nodes
+            .iter()
+            .map(|(nodeid, node)| {
+                let projected = azimuthal_equidistant_projection(node.coord, center_point);
+                (*nodeid, projected)
+            })
+            .collect();
+        let scaled_points = scale_points(projected_points);
+        scaled_points
     }
 }
+fn find_bounding_box(points: &HashMap<NodeId, (f64, f64)>) -> (f64, f64, f64, f64) {
+    let mut min_x = f64::MAX;
+    let mut min_y = f64::MAX;
+    let mut max_x = f64::MIN;
+    let mut max_y = f64::MIN;
+    for (_, (x, y)) in points.iter() {
+        min_x = min_x.min(*x);
+        min_y = min_y.min(*y);
+        max_x = max_x.max(*x);
+        max_y = max_y.max(*y);
+    }
+    (min_x, min_y, max_x, max_y)
+}
+
+fn scale_points(projected_points: HashMap<NodeId, (f64, f64)>) -> HashMap<NodeId, (f64, f64)> {
+    let target_width = 800.0;
+    let target_height = 600.0;
+    let (min_x, min_y, max_x, max_y) = find_bounding_box(&projected_points);
+    let width = max_x - min_x;
+    let height = max_y - min_y;
+    let scale_x = target_width / width;
+    let scale_y = target_height / height;
+    let scale_factor = scale_x.min(scale_y);
+    projected_points
+        .iter()
+        .map(|(nodeid, (x, y))| {
+            let scaled_x = (x - min_x) * scale_factor;
+            let scaled_y = (y - min_y) * scale_factor;
+            let offset_x = (target_width - width * scale_factor) / 2.0;
+            let offset_y = (target_height - height * scale_factor) / 2.0;
+            (
+                *nodeid,
+                (scaled_x + offset_x, scaled_y + offset_y),
+            )
+        })
+        .collect()
+}
+
+fn azimuthal_equidistant_projection(coord: Coord, center: (f64, f64)) -> (f64, f64) {
+     let lat_rad = coord.lat * (PI / 180.0);
+     let lon_rad = coord.lon * (PI / 180.0);
+     let center_lat_rad = center.0 * (PI / 180.0);
+     let center_lon_rad = center.1 * (PI / 180.0);
+ 
+     let r = 6371000.0;
+ 
+     let delta_lon = lon_rad - center_lon_rad;
+     let central_angle = (center_lat_rad.sin() * lat_rad.sin() +
+                          center_lat_rad.cos() * lat_rad.cos() * delta_lon.cos()).acos();
+ 
+     let distance = r * central_angle;
+ 
+     let azimuth = delta_lon.sin().atan2(center_lat_rad.cos() * lat_rad.tan() -
+                                         center_lat_rad.sin() * delta_lon.cos());
+ 
+     let x = distance * azimuth.sin();
+     let y = distance * azimuth.cos();
+ 
+     (x,y)
+ }
 
 fn main() {
     let time = std::time::Instant::now();
 
-    let graph = Preprocessor::osm_to_graph("src/test_data/andorra.osm.testpbf");
-    Preprocessor::write_graph_to_file(&graph, "graph.bin");
+    let mut preprocessor = Preprocessor::get_roads_and_nodes(is_valid_highway, "src/test_data/andorra.osm.testpbf");
+    preprocessor.filter_nodes();
+    let graph = build_graph(&preprocessor.nodes, &preprocessor.roads);
+
+    let projected_points: HashMap<NodeId, (f64, f64)> = preprocessor.project_nodes_to_2d();
+    let roads: HashMap<WayId, Vec<NodeId>> = preprocessor
+        .roads
+        .iter()
+        .map(|road| (road.id, road.node_refs.clone()))
+        .collect();
+    let full_graph = FullGraph { 
+        graph, 
+        nodes: projected_points, 
+        ways: roads 
+    };
+    Preprocessor::write_full_graph(full_graph, "../OSM_UNITY_CLIENT/Assets/Maps/andorra.json");
+    println!("Time: {:?}", time.elapsed());
 }
 
 //TESTS
@@ -315,7 +423,7 @@ fn dijkstra_test() {
     let graph = build_graph(&preprocessor.nodes, &preprocessor.roads);
     let start = NodeId(603896384); //seminarievej
     let goal = NodeId(603896385); //Drost peders vej
-    let (cost, nodes) = dijkstra(&graph, start, goal);
+    let (cost, _) = dijkstra(&graph, start, goal);
     let cost = cost.unwrap() as f32;
     let measured_dist = 206.;
     let min_expect = measured_dist * 0.98;
@@ -333,7 +441,7 @@ fn bigger_dijkstra_test() {
     let graph = build_graph(&preprocessor.nodes, &preprocessor.roads);
     let start = NodeId(6600188499); //la masana
     let goal = NodeId(53275038); //canillo
-    let (cost, nodes) = dijkstra(&graph, start, goal);
+    let (cost, _) = dijkstra(&graph, start, goal);
     let cost = cost.unwrap() as f32;
     let measured_dist = 13700.;
     let min_expect = measured_dist * 0.98;

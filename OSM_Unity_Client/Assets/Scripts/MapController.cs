@@ -1,33 +1,35 @@
 ﻿using System.Diagnostics;
 using UnityEngine;
+using Newtonsoft.Json;
+using System.Collections.Generic;
 
 public class MapController : MonoBehaviour
 {
-    public TextAsset mapFile;
-    private GLLineRenderer lineRenderer;
+    public Graph DeserializeGraph(string filename)
+    {
+        string json = System.IO.File.ReadAllText(filename);
+        var graph = JsonConvert.DeserializeObject<Graph>(json);
+        return graph;
+    }
+
+    public void DrawAllWays(Dictionary<long, float[]> nodes, Dictionary<long, long[]> ways)
+    {
+        foreach (var way in ways.Values)
+        {
+            for (int j = 0; j < way.Length - 1; j++)
+            {
+                var node1 = nodes[way[j]];
+                var node2 = nodes[way[j + 1]];
+                var node1Vector = new Vector3(node1[0], node1[1], 0);
+                var node2Vector = new Vector3(node2[0], node2[1], 0);
+                UnityEngine.Debug.DrawLine(node1Vector, node2Vector, Color.red, 10000f);
+            }
+        }
+    }
 
     void Start()
     {
-        // Get GLLinerenderer from camera
-        lineRenderer = Camera.main.GetComponent<GLLineRenderer>();
-
-        Stopwatch stopwatch = new Stopwatch();
-        stopwatch.Start();
-        var preprocessed = PreProcess.PreProcessMap(mapFile);
-        stopwatch.Stop();
-        UnityEngine.Debug.Log("Preprocessing took " + stopwatch.ElapsedMilliseconds + " ms");
-        stopwatch.Reset();
-
-        var mapLoader = gameObject.AddComponent<MapLoader>();
-        stopwatch.Start();
-        var coordinates = mapLoader.ProjectCoordinates(preprocessed.nodes);
-        stopwatch.Stop();
-        UnityEngine.Debug.Log("Projection took " + stopwatch.ElapsedMilliseconds + " ms");
-        stopwatch.Reset();
-
-        stopwatch.Start();
-        MapLoader.DrawRoads(coordinates, preprocessed.ways, lineRenderer);
-        stopwatch.Stop();
-        UnityEngine.Debug.Log("Drawing roads took " + stopwatch.ElapsedMilliseconds + " ms");
+        var graph = DeserializeGraph("Assets/Maps/andorra.json");
+        DrawAllWays(graph.nodes, graph.ways);
     }
 }

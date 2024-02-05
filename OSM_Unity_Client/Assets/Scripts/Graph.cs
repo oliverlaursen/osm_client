@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.PlayerLoop;
 
@@ -28,44 +29,17 @@ public class Node
 {
     public long id;
     public Coord coord;
-    public int uses;
 }
 
 public class Edge
 {
-    public long way_id;
-    public long source_id;
-    public long target_id;
-    public Coord[] geometry;
-    public long[] node_ids;
-
-    public double length()
-    {
-        double length = 0;
-        for (int i = 0; i < geometry.Length - 1; i++)
-        {
-            length += geometry[i].distance(geometry[i + 1]);
-        }
-        return length;
-    }
-
-    public double length_until(long nodeId)
-    {
-        double length = 0;
-        for (int i = 0; i < geometry.Length - 1; i++)
-        {
-            length += geometry[i].distance(geometry[i + 1]);
-            if (node_ids[i] == nodeId)
-            {
-                return length;
-            }
-        }
-        return length;
-    }   
+    public long node;
+    public int cost;
 }
 
 public class Graph
 {
-    public Node[] nodes;
-    public Edge[] edges;
+    public Dictionary<long,Edge[]> graph;
+    public Dictionary<long, float[]> nodes;
+    public Dictionary<long, long[]> ways;
 }
