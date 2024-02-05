@@ -5,13 +5,13 @@
 // Version 2, as published by Sam Hocevar. See the COPYING file for
 // more details.
 
-use std::{collections::HashSet, hash, string};
-use rayon::prelude::*;
 use osmpbfreader::{NodeId, OsmId, WayId};
+use rayon::prelude::*;
+use std::{collections::HashSet, hash, string};
 
 #[macro_use]
 extern crate osmpbfreader;
-#[derive(Debug,Clone)]
+#[derive(Debug, Clone)]
 pub struct Node {
     id: NodeId,
     lat: f64,
@@ -21,6 +21,13 @@ pub struct Node {
 pub struct Road {
     id: WayId,
     node_refs: Vec<NodeId>,
+    direction: CarDirection,
+}
+
+#[derive(Debug)]
+pub enum CarDirection {
+    FORWARD,
+    TWOWAY,
 }
 
 pub struct Preprocessor {
@@ -82,6 +89,13 @@ impl Preprocessor {
                     roads.push(Road {
                         id: way.id,
                         node_refs: way.nodes,
+                        direction: way.tags.get("oneway").map_or(CarDirection::TWOWAY, |v| {
+                            if v == "yes" {
+                                CarDirection::FORWARD
+                            } else {
+                                CarDirection::TWOWAY
+                            }
+                        }),
                     })
                 }
                 osmpbfreader::OsmObj::Relation(_) => (),
@@ -96,7 +110,7 @@ impl Preprocessor {
         }
     }
 
-    pub fn get_nodes(&mut self) {
+    pub fn filter_nodes(&mut self) {
         // Filter out nodes that are not in nodes_to_keep
         let nodes = self
             .nodes
@@ -108,14 +122,15 @@ impl Preprocessor {
     }
 }
 fn is_valid_highway(tags: &osmpbfreader::Tags, blacklist: &HashSet<&str>) -> bool {
-    tags.iter().any(|(k,v)| (k == "highway" && !blacklist.contains(v.as_str())))
+    tags.iter()
+        .any(|(k, v)| (k == "highway" && !blacklist.contains(v.as_str())))
 }
 
 fn main() {
     let time = std::time::Instant::now();
 
-    let mut preprocessor = Preprocessor::get_roads_and_nodes(is_valid_highway, "andorra.osm.pbf");
-    preprocessor.get_nodes();
+    let mut preprocessor = Preprocessor::get_roads_and_nodes(is_valid_highway, "denmark.osm.pbf");
+    preprocessor.filter_nodes();
     println!("Nodes: {:?}", preprocessor.nodes.len());
     println!("Roads: {:?}", preprocessor.roads.len());
     println!("Time: {:?}", time.elapsed());
@@ -124,9 +139,13 @@ fn main() {
 #[test]
 fn test_real_all() {
     let mut preprocessor = Preprocessor::get_roads_and_nodes(is_valid_highway, "minimal.osm.pbf");
-    preprocessor.get_nodes();
+    preprocessor.filter_nodes();
     println!("nodes to keep {:?}", preprocessor.nodes_to_keep.len());
-    println!("nodes: {}, roads: {}", preprocessor.nodes.len(), preprocessor.roads.len());
+    println!(
+        "nodes: {}, roads: {}",
+        preprocessor.nodes.len(),
+        preprocessor.roads.len()
+    );
     assert_eq!(1, preprocessor.roads.len());
     assert_eq!(2, preprocessor.nodes.len());
 }
