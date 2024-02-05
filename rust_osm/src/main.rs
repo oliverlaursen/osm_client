@@ -6,7 +6,7 @@
 // more details.
 
 use std::{collections::HashSet, hash, string};
-
+use rayon::prelude::*;
 use osmpbfreader::{NodeId, OsmId, WayId};
 
 #[macro_use]
@@ -100,7 +100,7 @@ impl Preprocessor {
         // Filter out nodes that are not in nodes_to_keep
         let nodes = self
             .nodes
-            .iter()
+            .par_iter() // Use a parallel iterator
             .filter(|node| self.nodes_to_keep.contains(&node.id))
             .cloned()
             .collect::<Vec<Node>>();
@@ -114,7 +114,7 @@ fn is_valid_highway(tags: &osmpbfreader::Tags, blacklist: &HashSet<&str>) -> boo
 fn main() {
     let time = std::time::Instant::now();
 
-    let mut preprocessor = Preprocessor::get_roads_and_nodes(is_valid_highway, "andorra.osm.pbf");
+    let mut preprocessor = Preprocessor::get_roads_and_nodes(is_valid_highway, "denmark.osm.pbf");
     preprocessor.get_nodes();
     println!("Nodes: {:?}", preprocessor.nodes.len());
     println!("Roads: {:?}", preprocessor.roads.len());

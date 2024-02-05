@@ -7,3 +7,4 @@ edition = "2021"
 
 [dependencies]
 osmpbfreader = "0.16.1"
+rayon = "1.8.1"
