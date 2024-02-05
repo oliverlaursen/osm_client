@@ -5,7 +5,7 @@
 // Version 2, as published by Sam Hocevar. See the COPYING file for
 // more details.
 
-use osmpbfreader::{NodeId, OsmId, WayId};
+use osmpbfreader::{blocks::nodes, NodeId, OsmId, WayId};
 use rayon::prelude::*;
 use std::{
     cmp::Ordering,
@@ -292,10 +292,27 @@ fn one_node_is_dropped() { //amount of nodes kept are 2, because one node is not
     let preprocessor = initialize("src/test_data/one_node_is_dropped.osm.testpbf");
     assert_eq!(2, preprocessor.nodes.len());
 }
-/* 
+
 #[test]
-fn all_nodes_to_keep_are_kept() {
+fn all_nodes_to_keep_are_kept() { //checks that all nodes in nodes kept is also in nodes to keep.
     let preprocessor = initialize("src/test_data/minimal.osm.testpbf");
     let nodes_to_keep = &preprocessor.nodes_to_keep;
     let nodes_kept = &preprocessor.nodes;
-} */
+    for node in nodes_kept {
+        assert_eq!(true, nodes_to_keep.contains(node.0));
+    }
+}
+
+#[test]
+fn dijkstra_test() { //distance is noted down as 206m from open street map. 2% error margin allowed
+    let preprocessor = initialize("src/test_data/ribe_slice.osm.testpbf");
+    let graph = build_graph(&preprocessor.nodes, &preprocessor.roads);
+    let start = NodeId(603896384); //seminarievej
+    let goal = NodeId(603896385 ); //Drost peders vej
+    let cost = dijkstra(&graph, start, goal).unwrap() as f32;
+    let measured_dist = 206.;
+    let min_expect = measured_dist * 0.98;
+    let max_expect = measured_dist * 1.02;
+    assert_eq!(true, min_expect <= cost && cost <= max_expect);
+
+}
