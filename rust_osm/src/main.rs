@@ -87,9 +87,7 @@ impl Preprocessor {
                 osmpbfreader::OsmObj::Relation(_) => (),
             }
         }
-        let mut nodes_to_keep_hashset: HashSet<NodeId> = HashSet::with_capacity(nodes_to_keep.len());
-        let _ = &nodes_to_keep_hashset.extend(nodes_to_keep.clone().into_iter());
-        println!("Nodes to keep: {:?}", nodes_to_keep.len());
+        let nodes_to_keep_hashset = HashSet::from_iter(nodes_to_keep);
 
         Preprocessor {
             nodes_to_keep: nodes_to_keep_hashset,
@@ -116,7 +114,7 @@ fn is_valid_highway(tags: &osmpbfreader::Tags, blacklist: &HashSet<&str>) -> boo
 fn main() {
     let time = std::time::Instant::now();
 
-    let mut preprocessor = Preprocessor::get_roads_and_nodes(is_valid_highway, "denmark.osm.pbf");
+    let mut preprocessor = Preprocessor::get_roads_and_nodes(is_valid_highway, "andorra.osm.pbf");
     preprocessor.get_nodes();
     println!("Nodes: {:?}", preprocessor.nodes.len());
     println!("Roads: {:?}", preprocessor.roads.len());
