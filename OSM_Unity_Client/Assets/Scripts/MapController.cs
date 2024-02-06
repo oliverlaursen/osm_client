@@ -114,7 +114,7 @@ public class MapController : MonoBehaviour
 
     void Start()
     {
-        var graph = DeserializeGraph("Assets/Maps/denmark.json");
+        var graph = DeserializeGraph("Assets/Maps/" + mapFileName);
         var height = GetHeight(graph.nodes);
         Camera.main.GetComponent<CameraControl>().maxOrthoSize = height/2;
         Camera.main.orthographicSize = height / 2;

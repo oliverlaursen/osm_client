@@ -219,9 +219,9 @@ impl Preprocessor {
                 osmpbfreader::OsmObj::Relation(_) => (),
             }
         }
-        let nodes_to_keep_hashset = HashSet::from_iter(nodes_to_keep);
+        let nodes_to_keep_hashset = HashSet::from_par_iter(nodes_to_keep);
         let nodes_hashmap = nodes
-            .iter()
+            .par_iter()
             .map(|node| (node.id, node.clone()))
             .collect::<HashMap<NodeId, Node>>();
 
@@ -276,52 +276,14 @@ impl Preprocessor {
         );
         let projected_points = self
             .nodes
-            .iter()
+            .par_iter()
             .map(|(nodeid, node)| {
                 let projected = azimuthal_equidistant_projection(node.coord, center_point);
                 (*nodeid, projected)
             })
             .collect();
-        //let scaled_points = scale_points(&projected_points);
         projected_points
     }
-}
-fn find_bounding_box(points: &HashMap<NodeId, (f64, f64)>) -> (f64, f64, f64, f64) {
-    let mut min_x = f64::MAX;
-    let mut min_y = f64::MAX;
-    let mut max_x = f64::MIN;
-    let mut max_y = f64::MIN;
-    for (_, (x, y)) in points.iter() {
-        min_x = min_x.min(*x);
-        min_y = min_y.min(*y);
-        max_x = max_x.max(*x);
-        max_y = max_y.max(*y);
-    }
-    (min_x, min_y, max_x, max_y)
-}
-
-fn scale_points(projected_points: HashMap<NodeId, (f64, f64)>) -> HashMap<NodeId, (f64, f64)> {
-    let target_width = 800.0;
-    let target_height = 600.0;
-    let (min_x, min_y, max_x, max_y) = find_bounding_box(&projected_points);
-    let width = max_x - min_x;
-    let height = max_y - min_y;
-    let scale_x = target_width / width;
-    let scale_y = target_height / height;
-    let scale_factor = scale_x.min(scale_y);
-    projected_points
-        .iter()
-        .map(|(nodeid, (x, y))| {
-            let scaled_x = (x - min_x) * scale_factor;
-            let scaled_y = (y - min_y) * scale_factor;
-            let offset_x = (target_width - width * scale_factor) / 2.0;
-            let offset_y = (target_height - height * scale_factor) / 2.0;
-            (
-                *nodeid,
-                (scaled_x + offset_x, scaled_y + offset_y),
-            )
-        })
-        .collect()
 }
 
 fn azimuthal_equidistant_projection(coord: Coord, center: (f64, f64)) -> (f64, f64) {
@@ -357,7 +319,7 @@ fn main() {
     let projected_points: HashMap<NodeId, (f64, f64)> = preprocessor.project_nodes_to_2d();
     let roads: HashMap<WayId, Vec<NodeId>> = preprocessor
         .roads
-        .iter()
+        .par_iter()
         .map(|road| (road.id, road.node_refs.clone()))
         .collect();
     let full_graph = FullGraph { 
