@@ -68,13 +68,13 @@ public class GLLineRenderer : MonoBehaviour
 
     public void AddCircle1(Vector3 center)
     {
-        var circle = GetCircle(center, 2.5f);
+        var circle = GetCircle(center, 10f);
         circles1.Item1.Add(circle);
     }
 
     public void AddCircle2(Vector3 center)
     {
-        var circle = GetCircle(center, 2.5f);
+        var circle = GetCircle(center, 10f);
         circles2.Item1.Add(circle);
     }
 
