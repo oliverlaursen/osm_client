@@ -534,7 +534,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0e7d19701430f4f9087b25f2765f71f1, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  mapFileName: andorra.json
+  mapFileName: denmark.json
 --- !u!114 &693338888
 MonoBehaviour:
   m_ObjectHideFlags: 0

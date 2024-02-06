@@ -35,14 +35,14 @@ pub struct Coord {
     pub lon: f64,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Road {
     id: WayId,
     node_refs: Vec<NodeId>,
     direction: CarDirection,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum CarDirection {
     FORWARD,
     TWOWAY,
@@ -90,22 +90,22 @@ impl Coord {
     }
 }
 
-fn build_graph(nodes: &HashMap<NodeId, Node>, roads: &[Road]) -> HashMap<NodeId, Vec<Edge>> {
+fn build_graph(nodes: &HashMap<NodeId, Node>, roads: &HashMap<WayId, Road>) -> HashMap<NodeId, Vec<Edge>> {
     let mut graph: HashMap<NodeId, Vec<Edge>> = HashMap::new();
     let mut roads_associated_with_node: HashMap<NodeId, Vec<WayId>> = HashMap::new();
     for road in roads {
-        for node in &road.node_refs {
+        for node in &road.1.node_refs {
             roads_associated_with_node
                 .entry(*node)
                 .or_insert(Vec::new())
-                .push(road.id);
+                .push(*road.0);
         }
     }
     // For each road, add the next node to the graph
     for node in roads_associated_with_node {
         let mut edges: Vec<Edge> = Vec::new();
         for road_id in node.1 {
-            let road = roads.iter().find(|r| r.id == road_id).unwrap();
+            let road = roads.get(&road_id).unwrap();
             let index = road.node_refs.iter().position(|x| *x == node.0).unwrap();
             if index != 0 {
                 let next_node = road.node_refs[index - 1];
@@ -126,7 +126,7 @@ fn build_graph(nodes: &HashMap<NodeId, Node>, roads: &[Road]) -> HashMap<NodeId,
         }
         graph.insert(node.0, edges);
     }
-    
+
     graph
 }
 
@@ -332,13 +332,17 @@ fn main() {
     let mut preprocessor =
         Preprocessor::get_roads_and_nodes(is_valid_highway, "src/test_data/denmark.osm.pbf");
     preprocessor.filter_nodes();
-    let graph = build_graph(&preprocessor.nodes, &preprocessor.roads);
 
     let projected_points: HashMap<NodeId, (f64, f64)> = preprocessor.project_nodes_to_2d();
-    let roads: HashMap<WayId, Vec<NodeId>> = preprocessor
+    let roads: HashMap<WayId, Road> = preprocessor
         .roads
         .par_iter()
-        .map(|road| (road.id, road.node_refs.clone()))
+        .map(|road| (road.id.clone(), road.clone()))
+        .collect();
+    let graph = build_graph(&preprocessor.nodes, &roads);
+    let roads = roads
+        .par_iter()
+        .map(|(wayid, road)| (wayid.clone(), road.node_refs.clone()))
         .collect();
     let full_graph = FullGraph {
         graph,

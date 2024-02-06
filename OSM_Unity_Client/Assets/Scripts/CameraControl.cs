@@ -21,6 +21,7 @@ public class CameraControl : MonoBehaviour
 
     void Update()
     {
+        circleSize = (float)(maxOrthoSize * 0.05);
         if (circleAInstance != null)
         {
             // Scale the circle to the camera size
