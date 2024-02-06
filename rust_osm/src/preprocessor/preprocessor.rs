@@ -33,7 +33,19 @@ pub struct Preprocessor {
 }
 
 impl Preprocessor {
-    pub fn is_valid_highway(&self, tags: &osmpbfreader::Tags) -> bool {
+    pub fn is_valid_highway(&self, blacklist: &HashSet<&str>, tags: &osmpbfreader::Tags) -> bool {
+        tags.iter()
+            .any(|(k, v)| (k == "highway" && !blacklist.contains(v.as_str())))
+    }
+
+    pub fn get_roads_and_nodes(
+        &mut self,
+        filename: &str,
+    ) {
+        let r = std::fs::File::open(&std::path::Path::new(filename)).unwrap();
+        let mut pbf = osmpbfreader::OsmPbfReader::new(r);
+        let mut roads: Vec<Road> = Vec::new();
+        let mut nodes_to_keep: Vec<NodeId> = Vec::new();
         let blacklist: HashSet<&str> = HashSet::from_iter([
             "pedestrian",
             "footway",
@@ -62,22 +74,10 @@ impl Preprocessor {
             "proposed",
             "track",
         ]);
-        tags.iter()
-            .any(|(k, v)| (k == "highway" && !blacklist.contains(v.as_str())))
-    }
-
-    pub fn get_roads_and_nodes(
-        &mut self,
-        filename: &str,
-    ) {
-        let r = std::fs::File::open(&std::path::Path::new(filename)).unwrap();
-        let mut pbf = osmpbfreader::OsmPbfReader::new(r);
-        let mut roads: Vec<Road> = Vec::new();
-        let mut nodes_to_keep: Vec<NodeId> = Vec::new();
         for obj in pbf.par_iter().map(Result::unwrap) {
             match obj {
                 osmpbfreader::OsmObj::Way(way) => {
-                    if !self.is_valid_highway(&way.tags) {
+                    if !self.is_valid_highway(&blacklist,&way.tags) {
                         continue;
                     }
                     nodes_to_keep.extend(&way.nodes);
@@ -165,6 +165,7 @@ impl Preprocessor {
             center_point.0 / self.nodes.len() as f64,
             center_point.1 / self.nodes.len() as f64,
         );
+        
         let projected_points = self
             .nodes
             .par_iter()
