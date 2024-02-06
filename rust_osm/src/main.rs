@@ -282,8 +282,8 @@ impl Preprocessor {
                 (*nodeid, projected)
             })
             .collect();
-        let scaled_points = scale_points(projected_points);
-        scaled_points
+        //let scaled_points = scale_points(&projected_points);
+        projected_points
     }
 }
 fn find_bounding_box(points: &HashMap<NodeId, (f64, f64)>) -> (f64, f64, f64, f64) {
@@ -350,7 +350,7 @@ fn azimuthal_equidistant_projection(coord: Coord, center: (f64, f64)) -> (f64, f
 fn main() {
     let time = std::time::Instant::now();
 
-    let mut preprocessor = Preprocessor::get_roads_and_nodes(is_valid_highway, "src/test_data/andorra.osm.testpbf");
+    let mut preprocessor = Preprocessor::get_roads_and_nodes(is_valid_highway, "src/test_data/denmark.osm.pbf");
     preprocessor.filter_nodes();
     let graph = build_graph(&preprocessor.nodes, &preprocessor.roads);
 
@@ -365,7 +365,7 @@ fn main() {
         nodes: projected_points, 
         ways: roads 
     };
-    Preprocessor::write_full_graph(full_graph, "../OSM_UNITY_CLIENT/Assets/Maps/andorra.json");
+    Preprocessor::write_full_graph(full_graph, "../OSM_UNITY_CLIENT/Assets/Maps/denmark.json");
     println!("Time: {:?}", time.elapsed());
 }
 
