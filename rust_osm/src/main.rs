@@ -5,15 +5,12 @@
 // Version 2, as published by Sam Hocevar. See the COPYING file for
 // more details.
 
-use osmpbfreader::{NodeId, WayId};
+use osmpbfreader::{NodeId, OsmPbfReader, WayId};
 use rayon::prelude::*;
 use serde::Serialize;
 use serde_json;
 use std::{
-    cmp::Ordering,
-    collections::{BinaryHeap, HashMap, HashSet},
-    f64::consts::PI,
-    io::Write,
+    cmp::Ordering, collections::{BinaryHeap, HashMap, HashSet}, f64::consts::PI, fs::File, io::Write
 };
 
 #[derive(Serialize)]
@@ -90,7 +87,10 @@ impl Coord {
     }
 }
 
-fn build_graph(nodes: &HashMap<NodeId, Node>, roads: &HashMap<WayId, Road>) -> HashMap<NodeId, Vec<Edge>> {
+fn build_graph(
+    nodes: &HashMap<NodeId, Node>,
+    roads: &HashMap<WayId, Road>,
+) -> HashMap<NodeId, Vec<Edge>> {
     let mut graph: HashMap<NodeId, Vec<Edge>> = HashMap::new();
     let mut roads_associated_with_node: HashMap<NodeId, Vec<WayId>> = HashMap::new();
     for road in roads {
@@ -205,18 +205,10 @@ impl Preprocessor {
         ]);
         let r = std::fs::File::open(&std::path::Path::new(filename)).unwrap();
         let mut pbf = osmpbfreader::OsmPbfReader::new(r);
-        let mut nodes: Vec<Node> = Vec::new();
         let mut roads: Vec<Road> = Vec::new();
         let mut nodes_to_keep: Vec<NodeId> = Vec::new();
         for obj in pbf.par_iter().map(Result::unwrap) {
             match obj {
-                osmpbfreader::OsmObj::Node(node) => nodes.push(Node {
-                    id: node.id,
-                    coord: Coord {
-                        lat: node.lat(),
-                        lon: node.lon(),
-                    },
-                }),
                 osmpbfreader::OsmObj::Way(way) => {
                     if !is_valid_highway(&way.tags, &blacklist) {
                         continue;
@@ -234,20 +226,45 @@ impl Preprocessor {
                         }),
                     })
                 }
-                osmpbfreader::OsmObj::Relation(_) => (),
+                _ => continue,
             }
         }
         let nodes_to_keep_hashset = HashSet::from_par_iter(nodes_to_keep);
-        let nodes_hashmap = nodes
+
+        let nodes = Self::get_nodes(filename, &nodes_to_keep_hashset);
+        let nodes_hashmap: HashMap<NodeId, Node> = nodes
             .par_iter()
             .map(|node| (node.id, node.clone()))
-            .collect::<HashMap<NodeId, Node>>();
-
+            .collect();
         Preprocessor {
             nodes_to_keep: nodes_to_keep_hashset,
             nodes: nodes_hashmap,
             roads,
         }
+    }
+
+    pub fn get_nodes(filename: &str, nodes_to_keep: &HashSet<NodeId>) -> Vec<Node>{
+        let mut nodes: Vec<Node> = Vec::new();
+        let r = std::fs::File::open(&std::path::Path::new(filename)).unwrap();
+        let mut pbf = osmpbfreader::OsmPbfReader::new(r);
+        for obj in pbf.par_iter().map(Result::unwrap) {
+            match obj {
+                osmpbfreader::OsmObj::Node(node) => {
+                    if !nodes_to_keep.contains(&node.id) {
+                        continue;
+                    }
+                    nodes.push(Node {
+                        id: node.id,
+                        coord: Coord {
+                            lat: node.lat(),
+                            lon: node.lon(),
+                        },
+                    })
+                }
+                _ => return nodes, // Can return early since nodes are at the start of the file
+            }
+        }
+        return nodes;
     }
 
     pub fn filter_nodes(&mut self) {
@@ -328,29 +345,36 @@ fn azimuthal_equidistant_projection(coord: Coord, center: (f64, f64)) -> (f64, f
 
 fn main() {
     let time = std::time::Instant::now();
-
     let mut preprocessor =
         Preprocessor::get_roads_and_nodes(is_valid_highway, "src/test_data/denmark.osm.pbf");
     preprocessor.filter_nodes();
-
+    println!("Time to get roads and nodes: {:?}", time.elapsed());
+    let time = std::time::Instant::now();
     let projected_points: HashMap<NodeId, (f64, f64)> = preprocessor.project_nodes_to_2d();
+    println!("Time to project nodes: {:?}", time.elapsed());
+    let time = std::time::Instant::now();
     let roads: HashMap<WayId, Road> = preprocessor
         .roads
         .par_iter()
         .map(|road| (road.id.clone(), road.clone()))
         .collect();
+
     let graph = build_graph(&preprocessor.nodes, &roads);
+    println!("Time to build graph: {:?}", time.elapsed());
+    let time = std::time::Instant::now();
+
     let roads = roads
         .par_iter()
         .map(|(wayid, road)| (wayid.clone(), road.node_refs.clone()))
         .collect();
+
     let full_graph = FullGraph {
         graph,
         nodes: projected_points,
         ways: roads,
     };
     Preprocessor::write_full_graph(full_graph, "../OSM_UNITY_CLIENT/Assets/Maps/denmark.json");
-    println!("Time: {:?}", time.elapsed());
+    println!("Time to write to disk: {:?}", time.elapsed());
 }
 
 //TESTS
