@@ -7,24 +7,26 @@ using Unity.VisualScripting;
 using System;
 using System.Linq;
 
+using System.IO;
+
 public class MapController : MonoBehaviour
 {
     public Graph graph;
     public string mapFileName = "andorra.json";
 
     private long[] ReconstructPath(Dictionary<long, long> previous, long start, long end)
-            {
-                var path = new List<long>();
-                var current = end;
-                while (current != start)
-                {
-                    path.Add(current);
-                    current = previous[current];
-                }
-                path.Add(start);
-                path.Reverse();
-                return path.ToArray();
-            }
+    {
+        var path = new List<long>();
+        var current = end;
+        while (current != start)
+        {
+            path.Add(current);
+            current = previous[current];
+        }
+        path.Add(start);
+        path.Reverse();
+        return path.ToArray();
+    }
     public (float, long[]) Dijkstra(Graph graph, long start, long end)
     {
         var nodes = graph.nodes;
@@ -75,10 +77,92 @@ public class MapController : MonoBehaviour
         return (float.MaxValue, new long[0]);
     }
 
-    public Graph DeserializeGraph(string filename)
+
+    public static Graph DeserializeGraph(string mapFile)
     {
-        string json = System.IO.File.ReadAllText(filename);
-        var graph = JsonConvert.DeserializeObject<Graph>(json);
+        var jsonString = File.ReadAllText(mapFile);
+        var graph = new Graph()
+        {
+            graph = new Dictionary<long, Edge[]>(),
+            nodes = new Dictionary<long, float[]>(), // Assuming structure, adjust as needed
+            ways = new Dictionary<long, long[]>()    // Assuming structure, adjust as needed
+        };
+
+        var reader = new JsonTextReader(new StringReader(jsonString));
+
+        // STEP 1: Process the graph
+
+        reader.Read();
+        reader.Read(); // Skip {"graph":
+        reader.Read(); // StartObject
+        reader.Read(); // Should be PropertyName node
+        while (reader.Value != null)
+        {
+            // Process graph
+            
+            var node_id = Convert.ToInt64(reader.Value);
+            var edges = new List<Edge>();
+            reader.Read(); // Should be StartArray
+            reader.Read(); // Should be StartObject
+
+            while (reader.TokenType != JsonToken.EndArray)
+            {
+                reader.Read(); // Should be PropertyName node
+                reader.Read(); // Should be node id
+                var edge = new Edge();
+                edge.node = Convert.ToInt64(reader.Value.ToString());
+                reader.Read(); // Should be PropertyName cost
+                reader.Read(); // Should be cost value
+                edge.cost = (int)(long)reader.Value;
+                edges.Add(edge);
+                reader.Read(); // Should be EndObject
+                reader.Read(); // Can be EndArray or StartObject
+            }
+            graph.graph[node_id] = edges.ToArray();
+            reader.Read(); // Should be EndArray or EndObject if done with graph
+        }
+
+        // STEP 2: Process the nodes
+        reader.Read(); // Should be PropertyName nodes
+        reader.Read(); // Should be StartObject
+        reader.Read(); // Should be nodeid
+        while (reader.TokenType != JsonToken.EndObject)
+        {
+            var node_id = Convert.ToInt64(reader.Value);
+            reader.Read(); // Should be StartArray
+            reader.Read(); // Should be x value
+            var lon = Convert.ToDouble(reader.Value);
+            reader.Read(); // Should be y value
+            var lat = Convert.ToDouble(reader.Value);
+            graph.nodes[node_id] = new float[] { (float)lon, (float)lat };
+            reader.Read(); // Should be EndArray
+            reader.Read(); // Should be nodeid or EndObject
+        }
+
+        // STEP 3: Process the ways
+        reader.Read(); // Should be PropertyName ways
+        reader.Read(); // Should be StartObject
+        reader.Read(); // Should be wayid
+        while (reader.TokenType != JsonToken.EndObject)
+        {
+            var way_id = Convert.ToInt64(reader.Value);
+            reader.Read(); // Should be StartArray
+            reader.Read(); // Should be nodeid
+            var nodes = new List<long>();
+            while (reader.TokenType != JsonToken.EndArray)
+            {
+                nodes.Add(Convert.ToInt64(reader.Value));
+                reader.Read(); // Should be nodeid or EndArray
+            }
+            graph.ways[way_id] = nodes.ToArray();
+            reader.Read(); // Should be wayid or EndObject
+        }
+
+
+        UnityEngine.Debug.Log("Nodes: " + graph.graph.Count);
+        UnityEngine.Debug.Log("Node locations: " + graph.nodes.Count);
+        UnityEngine.Debug.Log("Ways: " + graph.ways.Count);
+
         return graph;
     }
 
@@ -114,12 +198,18 @@ public class MapController : MonoBehaviour
 
     void Start()
     {
+        var time = new Stopwatch();
+        time.Start();
         var graph = DeserializeGraph("Assets/Maps/" + mapFileName);
+        UnityEngine.Debug.Log("Deserialization time: " + time.ElapsedMilliseconds + "ms");
+        time.Reset();
+        time.Start();
         var height = GetHeight(graph.nodes);
-        Camera.main.GetComponent<CameraControl>().maxOrthoSize = height/2;
+        Camera.main.GetComponent<CameraControl>().maxOrthoSize = height / 2;
         Camera.main.orthographicSize = height / 2;
-        UnityEngine.Debug.Log("Height: " + height);
         this.graph = graph;
         DrawAllWays(graph.nodes, graph.ways);
+        UnityEngine.Debug.Log("Draw time: " + time.ElapsedMilliseconds + "ms");
+        time.Stop();
     }
 }
