@@ -3,3 +3,4 @@
 *.bytes
 rust_osm/target
 *.json
+OSM_Unity_Client/Assets/TextMesh Pro

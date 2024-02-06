@@ -86,7 +86,11 @@ public class CameraControl : MonoBehaviour
         long closestNode = 0;
         foreach (var node in nodes)
         {
-            var distance = Vector2.Distance(position, new Vector2(node.Value[0], node.Value[1]));
+            var x = node.Value[0];
+            var y = node.Value[1];
+            var dX = position.x - x;
+            var dY = position.y - y;
+            var distance = dX*dX + dY*dY;
             if (distance < minDistance)
             {
                 minDistance = distance;

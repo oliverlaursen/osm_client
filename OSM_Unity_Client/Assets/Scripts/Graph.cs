@@ -33,13 +33,13 @@ public class Node
 
 public class Edge
 {
-    public long node;
-    public int cost;
+    public long node {get; set;}
+    public int cost {get; set;}
 }
 
 public class Graph
 {
-    public Dictionary<long,Edge[]> graph;
-    public Dictionary<long, float[]> nodes;
-    public Dictionary<long, long[]> ways;
+    public Dictionary<long,Edge[]> graph {get; set;}
+    public Dictionary<long, float[]> nodes {get; set;}
+    public Dictionary<long, long[]> ways {get; set;}
 }
