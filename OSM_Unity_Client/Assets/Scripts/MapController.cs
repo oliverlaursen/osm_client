@@ -10,6 +10,7 @@ using System.Linq;
 public class MapController : MonoBehaviour
 {
     public Graph graph;
+    public string mapFileName = "andorra.json";
 
     private long[] ReconstructPath(Dictionary<long, long> previous, long start, long end)
             {
@@ -101,7 +102,7 @@ public class MapController : MonoBehaviour
 
     void Start()
     {
-        var graph = DeserializeGraph("Assets/Maps/denmark.json");
+        var graph = DeserializeGraph("Assets/Maps/"+ mapFileName);
         this.graph = graph;
         DrawAllWays(graph.nodes, graph.ways);
     }
