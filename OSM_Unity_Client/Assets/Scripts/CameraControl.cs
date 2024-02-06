@@ -15,8 +15,21 @@ public class CameraControl : MonoBehaviour
     public GameObject circleA;
     public GameObject circleB;
 
+    private GameObject circleAInstance;
+    private GameObject circleBInstance;
+    private float circleSize = 300f;
+
     void Update()
     {
+        if (circleAInstance != null)
+        {
+            // Scale the circle to the camera size
+            circleAInstance.transform.localScale = new Vector3(circleSize * (Camera.main.orthographicSize / maxOrthoSize), circleSize * (Camera.main.orthographicSize / maxOrthoSize), 0);
+        }
+        if (circleBInstance != null)
+        {
+            circleBInstance.transform.localScale = new Vector3(circleSize * (Camera.main.orthographicSize / maxOrthoSize), circleSize * (Camera.main.orthographicSize / maxOrthoSize), 0);
+        }
         zoomSpeed = Camera.main.orthographicSize * 0.4f;
         // Zoom
         float scroll = Input.GetAxis("Mouse ScrollWheel");
@@ -35,16 +48,14 @@ public class CameraControl : MonoBehaviour
                 if (node_selection == 0)
                 {
                     nodeA = closestNode;
-                    // Destroy previous circle
-                    Destroy(GameObject.Find("CircleA(Clone)"));
-                    GameObject circle = Instantiate(circleA, new Vector3(nodeCoords[0], nodeCoords[1], 0), Quaternion.identity);
+                    Destroy(circleAInstance);
+                    circleAInstance = Instantiate(circleA, new Vector3(nodeCoords[0], nodeCoords[1], 0), Quaternion.identity);
                 }
                 else
                 {
                     nodeB = closestNode;
-                    // Destroy previous circle
-                    Destroy(GameObject.Find("CircleB(Clone)"));
-                    GameObject circle = Instantiate(circleB, new Vector3(nodeCoords[0], nodeCoords[1], 0), Quaternion.identity);
+                    Destroy(circleBInstance);
+                    circleBInstance = Instantiate(circleB, new Vector3(nodeCoords[0], nodeCoords[1], 0), Quaternion.identity);
                 }
                 Debug.Log(closestNode);
             }
