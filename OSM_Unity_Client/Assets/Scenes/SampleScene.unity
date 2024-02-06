@@ -339,6 +339,8 @@ MonoBehaviour:
   node_selection: 0
   nodeA: 0
   nodeB: 0
+  circleA: {fileID: 4493101356577633314, guid: 5d45927101ccf4164835bf2670056f56, type: 3}
+  circleB: {fileID: 4929985370936884045, guid: 92143f7408d9f4414a132c34df5c4504, type: 3}
 --- !u!114 &519420034
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -532,6 +534,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0e7d19701430f4f9087b25f2765f71f1, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  mapFileName: andorra.json
 --- !u!114 &693338888
 MonoBehaviour:
   m_ObjectHideFlags: 0

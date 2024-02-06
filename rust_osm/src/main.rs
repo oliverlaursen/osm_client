@@ -10,7 +10,10 @@ use rayon::prelude::*;
 use serde::Serialize;
 use serde_json;
 use std::{
-    cmp::Ordering, collections::{BinaryHeap, HashMap, HashSet}, f64::consts::PI, io::Write
+    cmp::Ordering,
+    collections::{BinaryHeap, HashMap, HashSet},
+    f64::consts::PI,
+    io::Write,
 };
 
 #[derive(Serialize)]
@@ -89,26 +92,41 @@ impl Coord {
 
 fn build_graph(nodes: &HashMap<NodeId, Node>, roads: &[Road]) -> HashMap<NodeId, Vec<Edge>> {
     let mut graph: HashMap<NodeId, Vec<Edge>> = HashMap::new();
+    let mut roads_associated_with_node: HashMap<NodeId, Vec<WayId>> = HashMap::new();
     for road in roads {
-        for window in road.node_refs.windows(2) {
-            let from = window[0];
-            let to = window[1];
-            let from_coord = nodes.get(&from).unwrap().coord;
-            let to_coord = nodes.get(&to).unwrap().coord;
-            let cost = from_coord.distance_to(to_coord) as u32;
-            graph
-                .entry(from)
-                .or_insert_with(Vec::new)
-                .push(Edge { node: to, cost });
-
-            if matches!(road.direction, CarDirection::TWOWAY) {
-                graph
-                    .entry(to)
-                    .or_insert_with(Vec::new)
-                    .push(Edge { node: from, cost });
-            }
+        for node in &road.node_refs {
+            roads_associated_with_node
+                .entry(*node)
+                .or_insert(Vec::new())
+                .push(road.id);
         }
     }
+    // For each road, add the next node to the graph
+    for node in roads_associated_with_node {
+        let mut edges: Vec<Edge> = Vec::new();
+        for road_id in node.1 {
+            let road = roads.iter().find(|r| r.id == road_id).unwrap();
+            let index = road.node_refs.iter().position(|x| *x == node.0).unwrap();
+            if index != 0 {
+                let next_node = road.node_refs[index - 1];
+                let distance = nodes[&node.0].coord.distance_to(nodes[&next_node].coord) as u32;
+                edges.push(Edge {
+                    node: next_node,
+                    cost: distance,
+                });
+            }
+            if index != road.node_refs.len() - 1 && road.direction == CarDirection::TWOWAY {
+                let next_node = road.node_refs[index + 1];
+                let distance = nodes[&node.0].coord.distance_to(nodes[&next_node].coord) as u32;
+                edges.push(Edge {
+                    node: next_node,
+                    cost: distance,
+                });
+            }
+        }
+        graph.insert(node.0, edges);
+    }
+    
     graph
 }
 
@@ -264,12 +282,9 @@ impl Preprocessor {
     }
 
     pub fn project_nodes_to_2d(&self) -> HashMap<NodeId, (f64, f64)> {
-        let center_point = self
-            .nodes
-            .iter()
-            .fold((0.0, 0.0), |acc, (_, node)| {
-                (acc.0 + node.coord.lat, acc.1 + node.coord.lon)
-            });
+        let center_point = self.nodes.iter().fold((0.0, 0.0), |acc, (_, node)| {
+            (acc.0 + node.coord.lat, acc.1 + node.coord.lon)
+        });
         let center_point = (
             center_point.0 / self.nodes.len() as f64,
             center_point.1 / self.nodes.len() as f64,
@@ -287,32 +302,35 @@ impl Preprocessor {
 }
 
 fn azimuthal_equidistant_projection(coord: Coord, center: (f64, f64)) -> (f64, f64) {
-     let lat_rad = coord.lat * (PI / 180.0);
-     let lon_rad = coord.lon * (PI / 180.0);
-     let center_lat_rad = center.0 * (PI / 180.0);
-     let center_lon_rad = center.1 * (PI / 180.0);
- 
-     let r = 6371000.0;
- 
-     let delta_lon = lon_rad - center_lon_rad;
-     let central_angle = (center_lat_rad.sin() * lat_rad.sin() +
-                          center_lat_rad.cos() * lat_rad.cos() * delta_lon.cos()).acos();
- 
-     let distance = r * central_angle;
- 
-     let azimuth = delta_lon.sin().atan2(center_lat_rad.cos() * lat_rad.tan() -
-                                         center_lat_rad.sin() * delta_lon.cos());
- 
-     let x = distance * azimuth.sin();
-     let y = distance * azimuth.cos();
- 
-     (x,y)
- }
+    let lat_rad = coord.lat * (PI / 180.0);
+    let lon_rad = coord.lon * (PI / 180.0);
+    let center_lat_rad = center.0 * (PI / 180.0);
+    let center_lon_rad = center.1 * (PI / 180.0);
+
+    let r = 6371000.0;
+
+    let delta_lon = lon_rad - center_lon_rad;
+    let central_angle = (center_lat_rad.sin() * lat_rad.sin()
+        + center_lat_rad.cos() * lat_rad.cos() * delta_lon.cos())
+    .acos();
+
+    let distance = r * central_angle;
+
+    let azimuth = delta_lon
+        .sin()
+        .atan2(center_lat_rad.cos() * lat_rad.tan() - center_lat_rad.sin() * delta_lon.cos());
+
+    let x = distance * azimuth.sin();
+    let y = distance * azimuth.cos();
+
+    (x, y)
+}
 
 fn main() {
     let time = std::time::Instant::now();
 
-    let mut preprocessor = Preprocessor::get_roads_and_nodes(is_valid_highway, "src/test_data/andorra.osm.testpbf");
+    let mut preprocessor =
+        Preprocessor::get_roads_and_nodes(is_valid_highway, "src/test_data/andorra.osm.testpbf");
     preprocessor.filter_nodes();
     let graph = build_graph(&preprocessor.nodes, &preprocessor.roads);
 
@@ -322,10 +340,10 @@ fn main() {
         .par_iter()
         .map(|road| (road.id, road.node_refs.clone()))
         .collect();
-    let full_graph = FullGraph { 
-        graph, 
-        nodes: projected_points, 
-        ways: roads 
+    let full_graph = FullGraph {
+        graph,
+        nodes: projected_points,
+        ways: roads,
     };
     Preprocessor::write_full_graph(full_graph, "../OSM_UNITY_CLIENT/Assets/Maps/andorra.json");
     println!("Time: {:?}", time.elapsed());

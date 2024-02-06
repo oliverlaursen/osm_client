@@ -12,6 +12,8 @@ public class CameraControl : MonoBehaviour
     public int node_selection = 0;
     public long nodeA;
     public long nodeB;
+    public GameObject circleA;
+    public GameObject circleB;
 
     void Update()
     {
@@ -33,14 +35,16 @@ public class CameraControl : MonoBehaviour
                 if (node_selection == 0)
                 {
                     nodeA = closestNode;
-                    lineRenderer.ClearCircle1();
-                    lineRenderer.AddCircle1(new Vector3(nodeCoords[0], nodeCoords[1], 0));
+                    // Destroy previous circle
+                    Destroy(GameObject.Find("CircleA(Clone)"));
+                    GameObject circle = Instantiate(circleA, new Vector3(nodeCoords[0], nodeCoords[1], 0), Quaternion.identity);
                 }
                 else
                 {
                     nodeB = closestNode;
-                    lineRenderer.ClearCircle2();
-                    lineRenderer.AddCircle2(new Vector3(nodeCoords[0], nodeCoords[1], 0));
+                    // Destroy previous circle
+                    Destroy(GameObject.Find("CircleB(Clone)"));
+                    GameObject circle = Instantiate(circleB, new Vector3(nodeCoords[0], nodeCoords[1], 0), Quaternion.identity);
                 }
                 Debug.Log(closestNode);
             }
