@@ -32,6 +32,38 @@ pub struct Preprocessor {
     pub roads: Vec<Road>,
 }
 
+fn create_blacklist() -> HashSet<&'static str> {
+    let blacklist: HashSet<&str> = HashSet::from_iter([
+        "pedestrian",
+        "footway",
+        "steps",
+        "path",
+        "cycleway",
+        "proposed",
+        "construction",
+        "bridleway",
+        "abandoned",
+        "platform",
+        "raceway",
+        "service",
+        "services",
+        "rest_area",
+        "escape",
+        "raceway",
+        "busway",
+        "footway",
+        "bridlway",
+        "steps",
+        "corridor",
+        "via_ferreta",
+        "sidewalk",
+        "crossing",
+        "proposed",
+        "track",
+    ]);
+    blacklist
+}
+
 impl Preprocessor {
     pub fn is_valid_highway(&self, blacklist: &HashSet<&str>, tags: &osmpbfreader::Tags) -> bool {
         tags.iter()
@@ -46,34 +78,7 @@ impl Preprocessor {
         let mut pbf = osmpbfreader::OsmPbfReader::new(r);
         let mut roads: Vec<Road> = Vec::new();
         let mut nodes_to_keep: Vec<NodeId> = Vec::new();
-        let blacklist: HashSet<&str> = HashSet::from_iter([
-            "pedestrian",
-            "footway",
-            "steps",
-            "path",
-            "cycleway",
-            "proposed",
-            "construction",
-            "bridleway",
-            "abandoned",
-            "platform",
-            "raceway",
-            "service",
-            "services",
-            "rest_area",
-            "escape",
-            "raceway",
-            "busway",
-            "footway",
-            "bridlway",
-            "steps",
-            "corridor",
-            "via_ferreta",
-            "sidewalk",
-            "crossing",
-            "proposed",
-            "track",
-        ]);
+        let blacklist = create_blacklist();
         for obj in pbf.par_iter().map(Result::unwrap) {
             match obj {
                 osmpbfreader::OsmObj::Way(way) => {
