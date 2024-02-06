@@ -5,8 +5,8 @@ using UnityEngine;
 public class CameraControl : MonoBehaviour
 {
     public float zoomSpeed = 1000f;
-    public float minOrthoSize = 20f;
-    public float maxOrthoSize = 320f;
+    public float minOrthoSize = 0.1f;
+    public float maxOrthoSize = float.MaxValue;
     private float mouseSensitivity = 1f;
     private Vector3 lastPosition;
     public int node_selection = 0;
@@ -15,6 +15,7 @@ public class CameraControl : MonoBehaviour
 
     void Update()
     {
+        zoomSpeed = Camera.main.orthographicSize * 0.4f;
         // Zoom
         float scroll = Input.GetAxis("Mouse ScrollWheel");
         Camera.main.orthographicSize -= scroll * zoomSpeed;
@@ -46,14 +47,14 @@ public class CameraControl : MonoBehaviour
 
             if (Input.GetMouseButtonDown(0))
             {
-                lastPosition = Input.mousePosition;
+                lastPosition = Camera.main.ScreenToWorldPoint(Input.mousePosition);
             }
 
             if (Input.GetMouseButton(0))
             {
-                var delta = Input.mousePosition - lastPosition;
-                transform.Translate(-delta.x * mouseSensitivity, -delta.y * mouseSensitivity, 0);
-                lastPosition = Input.mousePosition;
+                Vector3 delta = lastPosition - Camera.main.ScreenToWorldPoint(Input.mousePosition);
+                transform.Translate(delta, Space.World);
+                lastPosition = Camera.main.ScreenToWorldPoint(Input.mousePosition);
             }
         }
     }
@@ -79,7 +80,8 @@ public class CameraControl : MonoBehaviour
         return closestNode;
     }
 
-    public void DijkstraOnSelection(){
+    public void DijkstraOnSelection()
+    {
         var graph = GameObject.Find("Map").GetComponent<MapController>().graph;
         var (distance, path) = GameObject.Find("Map").GetComponent<MapController>().Dijkstra(graph, nodeA, nodeB);
         var lineRenderer = Camera.main.gameObject.GetComponent<GLLineRenderer>();
@@ -87,4 +89,5 @@ public class CameraControl : MonoBehaviour
         GameObject.Find("Map").GetComponent<MapController>().DrawPath(graph.nodes, path);
         Debug.Log("Distance: " + distance);
     }
+
 }

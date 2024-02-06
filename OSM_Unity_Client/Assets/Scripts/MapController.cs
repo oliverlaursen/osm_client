@@ -100,9 +100,25 @@ public class MapController : MonoBehaviour
         lineRenderer.AddPath(coords);
     }
 
+    public float GetHeight(Dictionary<long, float[]> nodes)
+    {
+        var min = float.MaxValue;
+        var max = float.MinValue;
+        foreach (var node in nodes.Values)
+        {
+            min = Mathf.Min(min, node[1]);
+            max = Mathf.Max(max, node[1]);
+        }
+        return max - min;
+    }
+
     void Start()
     {
-        var graph = DeserializeGraph("Assets/Maps/"+ mapFileName);
+        var graph = DeserializeGraph("Assets/Maps/denmark.json");
+        var height = GetHeight(graph.nodes);
+        Camera.main.GetComponent<CameraControl>().maxOrthoSize = height/2;
+        Camera.main.orthographicSize = height / 2;
+        UnityEngine.Debug.Log("Height: " + height);
         this.graph = graph;
         DrawAllWays(graph.nodes, graph.ways);
     }
