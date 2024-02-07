@@ -103,7 +103,7 @@ public class CameraControl : MonoBehaviour
     public void DijkstraOnSelection()
     {
         var graph = GameObject.Find("Map").GetComponent<MapController>().graph;
-        var (distance, path) = GameObject.Find("Map").GetComponent<MapController>().Dijkstra(graph, nodeA, nodeB);
+        var (distance, path) = GameObject.Find("Map").GetComponent<MapController>().Dijkstra(graph, nodeB, nodeA);
         var lineRenderer = Camera.main.gameObject.GetComponent<GLLineRenderer>();
         lineRenderer.ClearPath();
         GameObject.Find("Map").GetComponent<MapController>().DrawPath(graph.nodes, path);
