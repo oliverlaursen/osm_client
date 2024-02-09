@@ -73,6 +73,7 @@ impl FullGraph {
                         cost: distance,
                     });
                 }
+                // Handle two way roads
                 if index != road.node_refs.len() - 1 && road.direction == CarDirection::TWOWAY {
                     let next_node = road.node_refs[index + 1];
                     let distance = nodes[&node.0].coord.distance_to(nodes[&next_node].coord) as u32;
