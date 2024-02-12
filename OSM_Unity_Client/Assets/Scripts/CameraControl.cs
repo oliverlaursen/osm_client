@@ -10,8 +10,8 @@ public class CameraControl : MonoBehaviour
     private float mouseSensitivity = 1f;
     private Vector3 lastPosition;
     public int node_selection = 0;
-    public long nodeA;
-    public long nodeB;
+    public long nodeA = 0;
+    public long nodeB = 0;
     public GameObject circleA;
     public GameObject circleB;
 
@@ -103,11 +103,21 @@ public class CameraControl : MonoBehaviour
     public void DijkstraOnSelection()
     {
         var graph = GameObject.Find("Map").GetComponent<MapController>().graph;
-        var (distance, path) = GameObject.Find("Map").GetComponent<MapController>().Dijkstra(graph, nodeA, nodeB);
+        var (distance, path) = GameObject.Find("Map").GetComponent<MapController>().Dijkstra(graph, nodeB, nodeA);
         var lineRenderer = Camera.main.gameObject.GetComponent<GLLineRenderer>();
         lineRenderer.ClearPath();
         GameObject.Find("Map").GetComponent<MapController>().DrawPath(graph.nodes, path);
         Debug.Log("Distance: " + distance);
     }
 
+    public void FlipNodes()
+    {
+        if(nodeA == 0 || nodeB == 0) { return; }
+        var temp_loc = circleBInstance.transform.position;
+        circleBInstance.transform.position = circleAInstance.transform.position;
+        circleAInstance.transform.position = temp_loc;
+        var temp_node = nodeA;
+        nodeA = nodeB;
+        nodeB = temp_node;
+    }
 }
