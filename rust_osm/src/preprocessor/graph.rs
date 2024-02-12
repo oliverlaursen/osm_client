@@ -9,8 +9,8 @@ use serde::Serialize;
 
 #[derive(Serialize)]
 pub struct FullGraph {
-    graph: HashMap<NodeId, Vec<Edge>>,
-    nodes: HashMap<NodeId, (f32,f32)>,
+    pub graph: HashMap<NodeId, Vec<Edge>>,
+    pub nodes: HashMap<NodeId, (f32,f32)>,
 }
 
 impl FullGraph {

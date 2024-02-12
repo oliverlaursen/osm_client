@@ -1,10 +1,14 @@
 use crate::preprocessor::coord::Coord;
 
-use std::{collections::{HashMap, HashSet}, io::Write};
+use crate::{azimuthal_equidistant_projection, FullGraph};
 use osmpbfreader::{NodeId, WayId};
 use rayon::iter::{FromParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use serde::Serialize;
-use crate::{azimuthal_equidistant_projection, FullGraph};
+use std::ops::Add;
+use std::{
+    collections::{HashMap, HashSet},
+    io::Write,
+};
 
 #[derive(Debug, Clone, Serialize)]
 pub struct Node {
@@ -70,10 +74,7 @@ impl Preprocessor {
             .any(|(k, v)| (k == "highway" && !blacklist.contains(v.as_str())))
     }
 
-    pub fn get_roads_and_nodes(
-        &mut self,
-        filename: &str,
-    ) {
+    pub fn get_roads_and_nodes(&mut self, filename: &str) {
         let r = std::fs::File::open(&std::path::Path::new(filename)).unwrap();
         let mut pbf = osmpbfreader::OsmPbfReader::new(r);
         let mut roads: Vec<Road> = Vec::new();
@@ -82,7 +83,7 @@ impl Preprocessor {
         for obj in pbf.par_iter().map(Result::unwrap) {
             match obj {
                 osmpbfreader::OsmObj::Way(way) => {
-                    if !self.is_valid_highway(&blacklist,&way.tags) {
+                    if !self.is_valid_highway(&blacklist, &way.tags) {
                         continue;
                     }
                     nodes_to_keep.extend(&way.nodes);
@@ -113,7 +114,7 @@ impl Preprocessor {
         self.roads = roads;
     }
 
-    pub fn get_nodes(filename: &str, nodes_to_keep: &HashSet<NodeId>) -> Vec<Node>{
+    pub fn get_nodes(filename: &str, nodes_to_keep: &HashSet<NodeId>) -> Vec<Node> {
         let mut nodes: Vec<Node> = Vec::new();
         let r = std::fs::File::open(&std::path::Path::new(filename)).unwrap();
         let mut pbf = osmpbfreader::OsmPbfReader::new(r);
@@ -157,9 +158,22 @@ impl Preprocessor {
     }
 
     pub fn write_full_graph(graph: FullGraph, filename: &str) {
+        /*
+           Format:
+           nodeId x y neighbour cost neighbour cost \n
+        */
+        let mut output = String::new();
+        graph.nodes.iter().for_each(|(node_id, (x,y))|{ 
+            let edges = &graph.graph[node_id];
+            let mut node_string = format!("{} {} {}", node_id.0, x, y); //nodeId x y
+            for edge in edges {
+                node_string.push_str(&format!(" {} {}", edge.node.0, edge.cost));
+            }
+            output.push_str(&(node_string + "\n"));
+        }); 
+        
         let mut file = std::fs::File::create(filename).unwrap();
-        let serialized = serde_json::to_string(&graph).unwrap();
-        file.write_all(serialized.as_bytes()).unwrap();
+        file.write_all(output.as_bytes()).unwrap();
     }
 
     pub fn project_nodes_to_2d(&self) -> HashMap<NodeId, (f32, f32)> {
@@ -170,12 +184,12 @@ impl Preprocessor {
             center_point.0 / self.nodes.len() as f64,
             center_point.1 / self.nodes.len() as f64,
         );
-        
+
         let projected_points = self
             .nodes
             .par_iter()
             .map(|(nodeid, node)| {
-                let (x,y) = azimuthal_equidistant_projection(node.coord, center_point);
+                let (x, y) = azimuthal_equidistant_projection(node.coord, center_point);
                 (*nodeid, (x as f32, y as f32))
             })
             .collect();

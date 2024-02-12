@@ -8,6 +8,7 @@ using System;
 using System.Linq;
 
 using System.IO;
+using System.Globalization;
 
 public class MapController : MonoBehaviour
 {
@@ -80,69 +81,33 @@ public class MapController : MonoBehaviour
 
     public static Graph DeserializeGraph(string mapFile)
     {
-        var jsonString = File.ReadAllText(mapFile);
+        /**
+           Format:
+           amountOfNodes
+           nodeId x y neighbour cost neighbour cost
+           long float float long int long int
+        */
         var graph = new Graph()
         {
             graph = new Dictionary<long, Edge[]>(),
             nodes = new Dictionary<long, float[]>(), // Assuming structure, adjust as needed
         };
-
-        var reader = new JsonTextReader(new StringReader(jsonString));
-
-        // STEP 1: Process the graph
-
-        reader.Read();
-        reader.Read(); // Skip {"graph":
-        reader.Read(); // StartObject
-        reader.Read(); // Should be PropertyName node
-        while (reader.Value != null)
-        {
-            // Process graph
-
-            var node_id = Convert.ToInt64(reader.Value);
+        var lines = File.ReadAllLines(mapFile);
+        foreach(var line in lines){
+            var elements = line.Split(" ");
+            var id = long.Parse(elements[0]);
+            var x = float.Parse(elements[1], NumberStyles.Float, CultureInfo.InvariantCulture);
+            var y = float.Parse(elements[2], NumberStyles.Float, CultureInfo.InvariantCulture);
+            graph.nodes.Add(id, new float[] { x, y });
             var edges = new List<Edge>();
-            reader.Read(); // Should be StartArray
-            reader.Read(); // Should be StartObject
-
-            while (reader.TokenType != JsonToken.EndArray)
+            for (int j = 3; j < elements.Length; j += 2)
             {
-                reader.Read(); // Should be PropertyName node
-                reader.Read(); // Should be node id
-                var edge = new Edge();
-                edge.node = Convert.ToInt64(reader.Value.ToString());
-                reader.Read(); // Should be PropertyName cost
-                reader.Read(); // Should be cost value
-                edge.cost = (int)(long)reader.Value;
-                edges.Add(edge);
-                reader.Read(); // Should be EndObject
-                reader.Read(); // Can be EndArray or StartObject
+                var neighbour = long.Parse(elements[j]);
+                var cost = int.Parse(elements[j + 1]);
+                edges.Add(new Edge() { node = neighbour, cost = cost });
             }
-            graph.graph[node_id] = edges.ToArray();
-            reader.Read(); // Should be EndArray or EndObject if done with graph
+            graph.graph.Add(id, edges.ToArray());
         }
-
-        // STEP 2: Process the nodes
-        reader.Read(); // Should be PropertyName nodes
-        reader.Read(); // Should be StartObject
-        reader.Read(); // Should be nodeid
-        while (reader.TokenType != JsonToken.EndObject)
-        {
-            var node_id = Convert.ToInt64(reader.Value);
-            reader.Read(); // Should be StartArray
-            reader.Read(); // Should be x value
-            var lon = Convert.ToDouble(reader.Value);
-            reader.Read(); // Should be y value
-            var lat = Convert.ToDouble(reader.Value);
-            graph.nodes[node_id] = new float[] { (float)lon, (float)lat };
-            reader.Read(); // Should be EndArray
-            reader.Read(); // Should be nodeid or EndObject
-        }
-
-
-
-        UnityEngine.Debug.Log("Nodes: " + graph.graph.Count);
-        UnityEngine.Debug.Log("Node locations: " + graph.nodes.Count);
-
         return graph;
     }
 
@@ -153,14 +118,14 @@ public class MapController : MonoBehaviour
         {
             var startNode = element.Key;
             var startPos = nodes[startNode];
-            var startCoord = new Vector3(startPos[0], startPos[1],0);
+            var startCoord = new Vector3(startPos[0], startPos[1], 0);
             var edges = element.Value;
             var amountOfEdges = edges.Count();
             for (int i = 0; i < amountOfEdges; i++)
             {
                 var endNode = edges[i].node;
                 var endPos = nodes[endNode];
-                var endCoord = new Vector3(endPos[0], endPos[1],0);
+                var endCoord = new Vector3(endPos[0], endPos[1], 0);
                 meshGenerator.AddLine(startCoord, endCoord, Color.white);
             }
         }
@@ -198,7 +163,7 @@ public class MapController : MonoBehaviour
         Camera.main.GetComponent<CameraControl>().maxOrthoSize = height / 2;
         Camera.main.orthographicSize = height / 2;
         this.graph = graph;
-        DrawAllEdges(graph.nodes,graph.graph);
+        DrawAllEdges(graph.nodes, graph.graph);
         UnityEngine.Debug.Log("Draw time: " + time.ElapsedMilliseconds + "ms");
         time.Stop();
     }
