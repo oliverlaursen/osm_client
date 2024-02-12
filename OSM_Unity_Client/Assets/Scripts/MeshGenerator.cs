@@ -30,9 +30,6 @@ public class MeshGenerator : MonoBehaviour
         // Add indices for the line
         indices.Add(startIndex);
         indices.Add(startIndex + 1);
-
-        // Update the mesh
-        UpdateMesh();
     }
 
     public void AddLineStrip(List<Vector3> points, Color color)

@@ -41,5 +41,4 @@ public class Graph
 {
     public Dictionary<long,Edge[]> graph {get; set;}
     public Dictionary<long, float[]> nodes {get; set;}
-    public Dictionary<long, long[]> ways {get; set;}
 }

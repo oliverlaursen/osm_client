@@ -40,11 +40,11 @@ fn azimuthal_equidistant_projection(coord: Coord, center: (f64, f64)) -> (f64, f
 fn main() {
     let time = std::time::Instant::now();
     let mut preprocessor = Preprocessor::new();
-    preprocessor.get_roads_and_nodes("src/test_data/denmark.osm.pbf");
+    preprocessor.get_roads_and_nodes("src/test_data/andorra.osm.testpbf");
     preprocessor.filter_nodes();
     println!("Time to get roads and nodes: {:?}", time.elapsed());
     let full_graph = FullGraph::build_full_graph(&preprocessor);
     let time = std::time::Instant::now();
-    Preprocessor::write_full_graph(full_graph, "../OSM_UNITY_CLIENT/Assets/Maps/denmark.json");
+    Preprocessor::write_full_graph(full_graph, "../OSM_UNITY_CLIENT/Assets/Maps/andorra.json");
     println!("Time to write to disk: {:?}", time.elapsed());
 }

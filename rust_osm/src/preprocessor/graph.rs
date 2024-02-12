@@ -11,15 +11,13 @@ use serde::Serialize;
 pub struct FullGraph {
     graph: HashMap<NodeId, Vec<Edge>>,
     nodes: HashMap<NodeId, (f64, f64)>,
-    ways: HashMap<WayId, Vec<NodeId>>,
 }
 
 impl FullGraph {
-    pub fn new(graph: HashMap<NodeId, Vec<Edge>>, nodes: HashMap<NodeId, (f64, f64)>, ways: HashMap<WayId, Vec<NodeId>>) -> Self {
+    pub fn new(graph: HashMap<NodeId, Vec<Edge>>, nodes: HashMap<NodeId, (f64, f64)>) -> Self {
         FullGraph {
             graph,
             nodes,
-            ways,
         }
     }
 
@@ -37,12 +35,7 @@ impl FullGraph {
         let graph = FullGraph::build_graph(&preprocessor.nodes, &roads);
         println!("Time to build graph: {:?}", time.elapsed());
 
-        let roads = roads
-            .par_iter()
-            .map(|(wayid, road)| (wayid.clone(), road.node_refs.clone()))
-            .collect();
-
-        FullGraph::new(graph, projected_points, roads)
+        FullGraph::new(graph, projected_points)
     }
 
     pub fn build_graph(

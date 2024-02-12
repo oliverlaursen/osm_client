@@ -85,7 +85,6 @@ public class MapController : MonoBehaviour
         {
             graph = new Dictionary<long, Edge[]>(),
             nodes = new Dictionary<long, float[]>(), // Assuming structure, adjust as needed
-            ways = new Dictionary<long, long[]>()    // Assuming structure, adjust as needed
         };
 
         var reader = new JsonTextReader(new StringReader(jsonString));
@@ -99,7 +98,7 @@ public class MapController : MonoBehaviour
         while (reader.Value != null)
         {
             // Process graph
-            
+
             var node_id = Convert.ToInt64(reader.Value);
             var edges = new List<Edge>();
             reader.Read(); // Should be StartArray
@@ -139,40 +138,31 @@ public class MapController : MonoBehaviour
             reader.Read(); // Should be nodeid or EndObject
         }
 
-        // STEP 3: Process the ways
-        reader.Read(); // Should be PropertyName ways
-        reader.Read(); // Should be StartObject
-        reader.Read(); // Should be wayid
-        while (reader.TokenType != JsonToken.EndObject)
-        {
-            var way_id = Convert.ToInt64(reader.Value);
-            reader.Read(); // Should be StartArray
-            reader.Read(); // Should be nodeid
-            var nodes = new List<long>();
-            while (reader.TokenType != JsonToken.EndArray)
-            {
-                nodes.Add(Convert.ToInt64(reader.Value));
-                reader.Read(); // Should be nodeid or EndArray
-            }
-            graph.ways[way_id] = nodes.ToArray();
-            reader.Read(); // Should be wayid or EndObject
-        }
 
 
         UnityEngine.Debug.Log("Nodes: " + graph.graph.Count);
         UnityEngine.Debug.Log("Node locations: " + graph.nodes.Count);
-        UnityEngine.Debug.Log("Ways: " + graph.ways.Count);
 
         return graph;
     }
 
-    public void DrawAllWays(Dictionary<long, float[]> nodes, Dictionary<long, long[]> ways)
+    public void DrawAllEdges(Dictionary<long, float[]> nodes, Dictionary<long, Edge[]> graph)
     {
         var meshGenerator = GetComponent<MeshGenerator>();
-        foreach (var way in ways.Values)
+        foreach (var element in graph)
         {
-            var positions = Array.ConvertAll(way, node => new Vector3(nodes[node][0], nodes[node][1], 0)).ToList();
-            meshGenerator.AddLineStrip(positions, Color.white);
+            var startNode = element.Key;
+            var startPos = nodes[startNode];
+            var startCoord = new Vector3(startPos[0], startPos[1],0);
+            var edges = element.Value;
+            var amountOfEdges = edges.Count();
+            for (int i = 0; i < amountOfEdges; i++)
+            {
+                var endNode = edges[i].node;
+                var endPos = nodes[endNode];
+                var endCoord = new Vector3(endPos[0], endPos[1],0);
+                meshGenerator.AddLine(startCoord, endCoord, Color.white);
+            }
         }
         meshGenerator.UpdateMesh();
     }
@@ -208,7 +198,7 @@ public class MapController : MonoBehaviour
         Camera.main.GetComponent<CameraControl>().maxOrthoSize = height / 2;
         Camera.main.orthographicSize = height / 2;
         this.graph = graph;
-        DrawAllWays(graph.nodes, graph.ways);
+        DrawAllEdges(graph.nodes,graph.graph);
         UnityEngine.Debug.Log("Draw time: " + time.ElapsedMilliseconds + "ms");
         time.Stop();
     }
