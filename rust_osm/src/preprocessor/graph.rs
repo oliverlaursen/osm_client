@@ -47,21 +47,24 @@ impl FullGraph {
          */
         let mut minimized_graph: HashMap<NodeId, Vec<Edge>> = HashMap::new();
         let mut intermediate_nodes: HashSet<NodeId> = HashSet::new();
-        let nodes_pointing_to_node: HashMap<NodeId, i16> = graph.iter().fold(
-            HashMap::new(),
-            |mut acc, (_, edges)| {
-                for edge in edges {
-                    *acc.entry(edge.node).or_insert(0) += 1;
-                }
-                acc
-            },
-        );
+        let mut nodes_pointing_to_node: HashMap<NodeId, Vec<NodeId>> = HashMap::new();
+        graph.iter().for_each(|(node_id, edges)| {
+            edges.iter().for_each(|edge| {
+                nodes_pointing_to_node
+                    .entry(edge.node)
+                    .or_insert(Vec::new())
+                    .push(*node_id);
+            });
+        });
         // Find all intermediate nodes
         for (node_id, edges) in &graph {
-            let neighbors: HashSet<NodeId> = edges.iter().map(|edge| edge.node).collect();
-            let neighbours_pointing_to = *nodes_pointing_to_node.get(node_id).unwrap_or(&0) as usize;
-            if neighbors.len() == 2 && neighbors.len() == neighbours_pointing_to
-                || neighbors.len() == 1 && neighbours_pointing_to == 1{
+            let mut neighbors: HashSet<NodeId> = edges.iter().map(|edge| edge.node).collect();
+            let outoing = neighbors.len();
+            let incoming = nodes_pointing_to_node.get(node_id).unwrap_or(&Vec::new()).len();
+            if incoming > 0 {
+                nodes_pointing_to_node.get(node_id).unwrap().iter().for_each(|x| { neighbors.insert(*x); });
+            }
+            if neighbors.len() == 2 && incoming == outoing {
                 intermediate_nodes.insert(*node_id);
             }
         }
