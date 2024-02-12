@@ -43,8 +43,7 @@ fn main() {
     preprocessor.get_roads_and_nodes("src/test_data/denmark.osm.pbf");
     preprocessor.filter_nodes();
     println!("Time to get roads and nodes: {:?}", time.elapsed());
-    let full_graph = FullGraph::build_full_graph(&preprocessor);
-    let time = std::time::Instant::now();
+    let full_graph = FullGraph::build_full_graph(&mut preprocessor);
     Preprocessor::write_full_graph(full_graph, "../OSM_UNITY_CLIENT/Assets/Maps/denmark.json");
-    println!("Time to write to disk: {:?}", time.elapsed());
+    println!("Total time: {:?}", time.elapsed());
 }
