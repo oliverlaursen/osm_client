@@ -47,13 +47,21 @@ impl FullGraph {
          */
         let mut minimized_graph: HashMap<NodeId, Vec<Edge>> = HashMap::new();
         let mut intermediate_nodes: HashSet<NodeId> = HashSet::new();
-
-        
-
+        let nodes_pointing_to_node: HashMap<NodeId, i16> = graph.iter().fold(
+            HashMap::new(),
+            |mut acc, (_, edges)| {
+                for edge in edges {
+                    *acc.entry(edge.node).or_insert(0) += 1;
+                }
+                acc
+            },
+        );
         // Find all intermediate nodes
         for (node_id, edges) in &graph {
             let neighbors: HashSet<NodeId> = edges.iter().map(|edge| edge.node).collect();
-            if neighbors.len() == 2 {
+            let neighbours_pointing_to = *nodes_pointing_to_node.get(node_id).unwrap_or(&0) as usize;
+            if neighbors.len() == 2 && neighbors.len() == neighbours_pointing_to
+                || neighbors.len() == 1 && neighbours_pointing_to == 1{
                 intermediate_nodes.insert(*node_id);
             }
         }
