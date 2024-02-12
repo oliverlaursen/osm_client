@@ -162,7 +162,7 @@ impl Preprocessor {
         file.write_all(serialized.as_bytes()).unwrap();
     }
 
-    pub fn project_nodes_to_2d(&self) -> HashMap<NodeId, (f64, f64)> {
+    pub fn project_nodes_to_2d(&self) -> HashMap<NodeId, (f32, f32)> {
         let center_point = self.nodes.iter().fold((0.0, 0.0), |acc, (_, node)| {
             (acc.0 + node.coord.lat, acc.1 + node.coord.lon)
         });
@@ -175,8 +175,8 @@ impl Preprocessor {
             .nodes
             .par_iter()
             .map(|(nodeid, node)| {
-                let projected = azimuthal_equidistant_projection(node.coord, center_point);
-                (*nodeid, projected)
+                let (x,y) = azimuthal_equidistant_projection(node.coord, center_point);
+                (*nodeid, (x as f32, y as f32))
             })
             .collect();
         projected_points

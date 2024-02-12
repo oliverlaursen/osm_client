@@ -10,11 +10,11 @@ use serde::Serialize;
 #[derive(Serialize)]
 pub struct FullGraph {
     graph: HashMap<NodeId, Vec<Edge>>,
-    nodes: HashMap<NodeId, (f64, f64)>,
+    nodes: HashMap<NodeId, (f32,f32)>,
 }
 
 impl FullGraph {
-    pub fn new(graph: HashMap<NodeId, Vec<Edge>>, nodes: HashMap<NodeId, (f64, f64)>) -> Self {
+    pub fn new(graph: HashMap<NodeId, Vec<Edge>>, nodes: HashMap<NodeId, (f32,f32)>) -> Self {
         FullGraph {
             graph,
             nodes,
@@ -23,7 +23,7 @@ impl FullGraph {
 
     pub fn build_full_graph(preprocessor: &Preprocessor) -> FullGraph {
         let time = std::time::Instant::now();
-        let projected_points: HashMap<NodeId, (f64, f64)> = preprocessor.project_nodes_to_2d();
+        let projected_points: HashMap<NodeId, (f32,f32)> = preprocessor.project_nodes_to_2d();
         println!("Time to project nodes: {:?}", time.elapsed());
         let time = std::time::Instant::now();
         let roads: HashMap<WayId, Road> = preprocessor

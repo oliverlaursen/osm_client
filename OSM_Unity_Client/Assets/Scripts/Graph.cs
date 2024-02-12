@@ -5,8 +5,8 @@ using UnityEngine.PlayerLoop;
 
 public class Coord
 {
-    public double lon;
-    public double lat;
+    public float lon;
+    public float lat;
 
     public double distance(Coord other)
     {
