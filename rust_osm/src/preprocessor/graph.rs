@@ -21,6 +21,15 @@ impl FullGraph {
     }
 
     pub fn build_full_graph(preprocessor: &mut Preprocessor) -> FullGraph {
+        let graph = FullGraph::graph_from_preprocessor(preprocessor);
+        let (graph, removed_nodes) = FullGraph::minimize_graph(graph);
+        preprocessor.remove_nodes(removed_nodes);
+        let projected_points: HashMap<NodeId, (f32, f32)> = preprocessor.project_nodes_to_2d();
+
+        FullGraph::new(graph, projected_points)
+    }
+
+    pub fn graph_from_preprocessor(preprocessor: &mut Preprocessor) -> HashMap<NodeId, Vec<Edge>>{
         let roads: HashMap<WayId, Road> = preprocessor
             .roads
             .par_iter()
@@ -28,11 +37,7 @@ impl FullGraph {
             .collect();
 
         let graph = FullGraph::build_graph(&preprocessor.nodes, &roads);
-        let (graph, removed_nodes) = FullGraph::minimize_graph(graph);
-        preprocessor.remove_nodes(removed_nodes);
-        let projected_points: HashMap<NodeId, (f32, f32)> = preprocessor.project_nodes_to_2d();
-
-        FullGraph::new(graph, projected_points)
+        graph
     }
 
     pub fn minimize_graph(
@@ -151,4 +156,22 @@ impl FullGraph {
 
         graph
     }
+}
+
+// TESTS
+fn initialize(filename: &str) -> Preprocessor {
+    let mut preprocessor = Preprocessor::new();
+    preprocessor.get_roads_and_nodes(filename);
+    preprocessor.filter_nodes();
+    preprocessor
+}
+
+#[test]
+fn can_go_both_ways_after_minimization() {
+    let mut preprocessor = initialize("src/test_data/minimize_correctly.osm.testpbf");
+    let graph = FullGraph::graph_from_preprocessor(&mut preprocessor);
+    let (minimized_graph, _) = FullGraph::minimize_graph(graph);
+
+    assert_eq!(NodeId(8), minimized_graph.get(&NodeId(10)).unwrap()[0].node);
+    assert_eq!(NodeId(10), minimized_graph.get(&NodeId(8)).unwrap()[0].node);
 }
