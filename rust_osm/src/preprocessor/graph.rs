@@ -46,7 +46,6 @@ impl FullGraph {
 
     fn remove_intermediary_with_two_neighbors(
         graph: HashMap<NodeId, Vec<Edge>>,
-<<<<<<< HEAD
         mut minimized_graph: HashMap<NodeId, Vec<Edge>>,
         node: &NodeId,
         neighbors: &HashSet<NodeId>,
@@ -106,7 +105,6 @@ impl FullGraph {
     ) -> HashMap<NodeId, Vec<Edge>> {
         let succ_id = outgoing.iter().next().unwrap();
 
-        let successor = graph.get(succ_id).unwrap();
         let node_val = graph.get(node).unwrap();
 
         let mut succ_cost = 0;
@@ -160,9 +158,6 @@ impl FullGraph {
     }
 
     pub fn minimize_graph(graph: HashMap<NodeId, Vec<Edge>>) -> HashMap<NodeId, Vec<Edge>> {
-=======
-    ) -> (HashMap<NodeId, Vec<Edge>>, HashSet<NodeId>) {
->>>>>>> ba5cabd02d2e4393712e3dcefdbd8126fbab9acc
         let mut minimized_graph: HashMap<NodeId, Vec<Edge>> = HashMap::new();
         let mut intermediate_nodes: HashSet<NodeId> = HashSet::new();
         let mut nodes_pointing_to_node: HashMap<NodeId, Vec<NodeId>> = HashMap::new();
@@ -176,7 +171,6 @@ impl FullGraph {
                     .push(*node_id);
             });
         });
-<<<<<<< HEAD
 
         // Find all intermediate nodes
         for (index, (node_id, edges)) in graph.clone().iter().enumerate() {
@@ -209,101 +203,6 @@ impl FullGraph {
             } else {
                 if(!minimized_graph.contains_key(node_id)){
                     minimized_graph.insert(*node_id, edges.clone());
-=======
-        // Making unique neighbours collection from nodes_pointing_to_node and graph
-        let mut neighbours: HashMap<NodeId, HashSet<NodeId>> = HashMap::new();
-        for (node_id, edges) in &graph {
-            let mut neighbours_set: HashSet<NodeId> = HashSet::new();
-            for edge in edges {
-                neighbours_set.insert(edge.node);
-            }
-            if let Some(nodes) = nodes_pointing_to_node.get(node_id) {
-                for node in nodes {
-                    neighbours_set.insert(*node);
-                }
-            }
-            neighbours.insert(*node_id, neighbours_set);
-        }
-
-        fn is_end_node(neighbours: HashSet<NodeId>) -> bool {
-            neighbours.len() == 1
-        }
-        fn is_intermediate_node(
-            neighbours: HashSet<NodeId>,
-            incoming: usize,
-            outgoing: usize,
-        ) -> bool {
-            neighbours.len() == 2 && incoming == outgoing
-        }
-
-        // Identify intermediate nodes
-        for (node_id, edges) in &graph {
-            let incoming = nodes_pointing_to_node
-                .get(node_id)
-                .unwrap_or(&Vec::new())
-                .len();
-            let outgoing = edges.len();
-            let neighbours = neighbours.get(node_id).unwrap();
-            if is_intermediate_node(neighbours.clone(), incoming, outgoing) {
-                intermediate_nodes.insert(*node_id);
-            }
-        }
-
-        // Function to recursively find the next non-intermediate node and accumulate weight
-        fn find_next_node(
-            current_node: NodeId,
-            graph: &HashMap<NodeId, Vec<Edge>>,
-            intermediate_nodes: &HashSet<NodeId>,
-            accumulated_weight: u32,
-        ) -> (NodeId, u32) {
-            if intermediate_nodes.contains(&current_node) {
-                let edge = &graph[&current_node][0]; // Assuming single outgoing edge for intermediates
-                find_next_node(
-                    edge.node,
-                    graph,
-                    intermediate_nodes,
-                    accumulated_weight + edge.cost,
-                )
-            } else {
-                (current_node, accumulated_weight)
-            }
-        }
-
-        // Adjusting the graph by skipping intermediate nodes
-        for (node_id, edges) in &graph {
-            println!("startnode: {:?}", node_id);
-            if !intermediate_nodes.contains(node_id) {
-                let mut minimized_edges: Vec<Edge> = Vec::new();
-                for edge in edges {
-                    if !intermediate_nodes.contains(&edge.node) {
-                        minimized_edges.push(*edge);
-                    } else {
-                        // Use DFS to find the end node and total cost of the sequence of intermediate nodes
-                        let mut stack = vec![(edge.node, edge.cost)];
-                        let mut visited = HashSet::new();
-                        let mut total_cost = 0;
-                        let mut end_node = edge.node;
-                        while let Some((node, cost)) = stack.pop() {
-                            if !visited.contains(&node) {
-                                visited.insert(node);
-                                total_cost += cost;
-                                for edge in &graph[&node] {
-                                    if intermediate_nodes.contains(&edge.node) {
-                                        println!("Intermediate node: {:?}", edge.node);
-                                        stack.push((edge.node, edge.cost));
-                                    } else {
-                                        println!("End node: {:?}", edge.node);
-                                        end_node = edge.node;
-                                    }
-                                }
-                            }
-                        }
-                        minimized_edges.push(Edge {
-                            node: end_node,
-                            cost: total_cost,
-                        });
-                    }
->>>>>>> ba5cabd02d2e4393712e3dcefdbd8126fbab9acc
                 }
                 //node is not intermediate
             }
