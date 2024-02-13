@@ -22,8 +22,8 @@ impl FullGraph {
 
     pub fn build_full_graph(preprocessor: &mut Preprocessor) -> FullGraph {
         let graph = FullGraph::graph_from_preprocessor(preprocessor);
-        let (graph, removed_nodes) = FullGraph::minimize_graph(graph);
-        preprocessor.remove_nodes(removed_nodes);
+        //let (graph, removed_nodes) = FullGraph::minimize_graph(graph);
+        //preprocessor.remove_nodes(removed_nodes);
         let projected_points: HashMap<NodeId, (f32, f32)> = preprocessor.project_nodes_to_2d();
 
         FullGraph::new(graph, projected_points)
@@ -167,11 +167,28 @@ fn initialize(filename: &str) -> Preprocessor {
 }
 
 #[test]
-fn can_go_both_ways_after_minimization() {
+fn can_build_full_graph() { // builds a graph with two nodes and one edge
+    let mut preprocessor = initialize("src/test_data/minimal_twoway.osm.testpbf");
+    let graph = FullGraph::build_full_graph(&mut preprocessor);
+    println!("{:?}", graph.graph);
+    assert_eq!(graph.graph.len(), 2);
+    assert_eq!(graph.nodes.len(), 2);
+}
+
+#[test]
+fn can_minimize_graph() { // //removes one intermediate node
+    let mut preprocessor = initialize("src/test_data/minimize_correctly.osm.testpbf");
+    let graph = FullGraph::graph_from_preprocessor(&mut preprocessor);
+    let (minimized_graph, _) = FullGraph::minimize_graph(graph);
+    assert_eq!(minimized_graph.len(), 2);
+}
+
+#[test]
+fn can_go_both_ways_after_minimization() { // checks if the graph is still two-way after minimization
     let mut preprocessor = initialize("src/test_data/minimize_correctly.osm.testpbf");
     let graph = FullGraph::graph_from_preprocessor(&mut preprocessor);
     let (minimized_graph, _) = FullGraph::minimize_graph(graph);
 
-    assert_eq!(NodeId(8), minimized_graph.get(&NodeId(10)).unwrap()[0].node);
-    assert_eq!(NodeId(10), minimized_graph.get(&NodeId(8)).unwrap()[0].node);
+    assert_eq!(NodeId(8), minimized_graph.get(&NodeId(10)).unwrap()[0].node); // node 8 has an edge to node 10
+    assert_eq!(NodeId(10), minimized_graph.get(&NodeId(8)).unwrap()[0].node); // node 10 has an edge to node 8
 }
