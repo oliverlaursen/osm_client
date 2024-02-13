@@ -1,31 +1,26 @@
-use crate::preprocessor::preprocessor::*;
 use crate::preprocessor::edge::*;
+use crate::preprocessor::preprocessor::*;
 
-use std::collections::HashMap;
 use osmpbfreader::{NodeId, WayId};
+use rayon::iter::FromParallelIterator;
 use rayon::iter::IntoParallelRefIterator;
 use rayon::iter::ParallelIterator;
 use serde::Serialize;
+use std::collections::HashMap;
+use std::collections::HashSet;
 
 #[derive(Serialize)]
 pub struct FullGraph {
     pub graph: HashMap<NodeId, Vec<Edge>>,
-    pub nodes: HashMap<NodeId, (f32,f32)>,
+    pub nodes: HashMap<NodeId, (f32, f32)>,
 }
 
 impl FullGraph {
-    pub fn new(graph: HashMap<NodeId, Vec<Edge>>, nodes: HashMap<NodeId, (f32,f32)>) -> Self {
-        FullGraph {
-            graph,
-            nodes,
-        }
+    pub fn new(graph: HashMap<NodeId, Vec<Edge>>, nodes: HashMap<NodeId, (f32, f32)>) -> Self {
+        FullGraph { graph, nodes }
     }
 
-    pub fn build_full_graph(preprocessor: &Preprocessor) -> FullGraph {
-        let time = std::time::Instant::now();
-        let projected_points: HashMap<NodeId, (f32,f32)> = preprocessor.project_nodes_to_2d();
-        println!("Time to project nodes: {:?}", time.elapsed());
-        let time = std::time::Instant::now();
+    pub fn build_full_graph(preprocessor: &mut Preprocessor) -> FullGraph {
         let roads: HashMap<WayId, Road> = preprocessor
             .roads
             .par_iter()
@@ -33,9 +28,84 @@ impl FullGraph {
             .collect();
 
         let graph = FullGraph::build_graph(&preprocessor.nodes, &roads);
-        println!("Time to build graph: {:?}", time.elapsed());
+        let (graph, removed_nodes) = FullGraph::minimize_graph(graph);
+        preprocessor.remove_nodes(removed_nodes);
+        let projected_points: HashMap<NodeId, (f32, f32)> = preprocessor.project_nodes_to_2d();
 
         FullGraph::new(graph, projected_points)
+    }
+
+    pub fn minimize_graph(
+        graph: HashMap<NodeId, Vec<Edge>>,
+    ) -> (HashMap<NodeId, Vec<Edge>>, HashSet<NodeId>) {
+        /*
+         * Minimize the graph by removing intermediate edges
+         * If a node has one edge only and only one edge points to it,
+         * it is considered intermediate
+         *
+         * Also this incoming and outgoing edge can be two-way roads
+         */
+        let mut minimized_graph: HashMap<NodeId, Vec<Edge>> = HashMap::new();
+        let mut intermediate_nodes: HashSet<NodeId> = HashSet::new();
+        let mut nodes_pointing_to_node: HashMap<NodeId, Vec<NodeId>> = HashMap::new();
+        graph.iter().for_each(|(node_id, edges)| {
+            edges.iter().for_each(|edge| {
+                nodes_pointing_to_node
+                    .entry(edge.node)
+                    .or_insert(Vec::new())
+                    .push(*node_id);
+            });
+        });
+        // Find all intermediate nodes
+        for (node_id, edges) in &graph {
+            let mut neighbors: HashSet<NodeId> = edges.iter().map(|edge| edge.node).collect();
+            let outoing = neighbors.clone();
+            let incoming = HashSet::from_iter(nodes_pointing_to_node.get(node_id).unwrap_or(&Vec::new()).clone());
+            if incoming.len() > 0 {
+                nodes_pointing_to_node.get(node_id).unwrap().iter().for_each(|&x| { neighbors.insert(x); });
+            }
+            if neighbors.len() == 2 && incoming == outoing {
+                intermediate_nodes.insert(*node_id);
+            }
+        }
+
+        // Build the minimized graph
+        for (node_id, edges) in &graph {
+            if !intermediate_nodes.contains(node_id) {
+                let mut minimized_edges = Vec::new();
+                for edge in edges {
+                    if !intermediate_nodes.contains(&edge.node) {
+                        minimized_edges.push(*edge);
+                    } else {
+                        // Use DFS to find the end node and total cost of the sequence of intermediate nodes
+                        let mut stack = vec![(edge.node, edge.cost)];
+                        let mut visited = HashSet::new();
+                        let mut total_cost = 0;
+                        let mut end_node = edge.node;
+                        while let Some((node, cost)) = stack.pop() {
+                            if !visited.contains(&node) {
+                                visited.insert(node);
+                                total_cost += cost;
+                                for edge in &graph[&node] {
+                                    if intermediate_nodes.contains(&edge.node) {
+                                        stack.push((edge.node, edge.cost));
+                                    } else {
+                                        end_node = edge.node;
+                                    }
+                                }
+                            }
+                        }
+                        minimized_edges.push(Edge {
+                            node: end_node,
+                            cost: total_cost,
+                        });
+                    }
+                }
+                minimized_graph.insert(*node_id, minimized_edges);
+            }
+        }
+
+        (minimized_graph, intermediate_nodes)
     }
 
     pub fn build_graph(
@@ -78,9 +148,7 @@ impl FullGraph {
             }
             graph.insert(node.0, edges);
         }
-    
+
         graph
     }
-
 }
-

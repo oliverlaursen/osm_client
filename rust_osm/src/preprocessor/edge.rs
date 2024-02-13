@@ -2,7 +2,7 @@ use std::cmp::Ordering;
 use osmpbfreader::NodeId;
 use serde::Serialize;
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Copy, Hash)]
 pub struct Edge {
     pub node: NodeId,
     pub cost: u32, // This could be distance, time, etc.

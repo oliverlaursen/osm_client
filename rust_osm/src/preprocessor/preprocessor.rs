@@ -195,6 +195,12 @@ impl Preprocessor {
             .collect();
         projected_points
     }
+
+    pub fn remove_nodes(&mut self, new_nodes: HashSet<NodeId>) {
+        for node_id in new_nodes {
+            self.nodes.remove(&node_id);
+        }
+    }
 }
 
 //TESTS
