@@ -175,11 +175,11 @@ impl FullGraph {
         // For each road, add the next node to the graph
         for node in roads_associated_with_node {
             let mut edges: Vec<Edge> = Vec::new();
-            for road_id in node.1 {
+            for road_id in node.1.iter() {
                 let road = roads.get(&road_id).unwrap();
                 let index = road.node_refs.iter().position(|x| *x == node.0).unwrap();
-                if index != 0 {
-                    let next_node = road.node_refs[index - 1];
+                if index != road.node_refs.len() -1 {
+                    let next_node = road.node_refs[index + 1];
                     let distance = nodes[&node.0].coord.distance_to(nodes[&next_node].coord) as u32;
                     edges.push(Edge {
                         node: next_node,
@@ -187,8 +187,8 @@ impl FullGraph {
                     });
                 }
                 // Handle two way roads
-                if index != road.node_refs.len() - 1 && road.direction == CarDirection::TWOWAY {
-                    let next_node = road.node_refs[index + 1];
+                if index != 0 && road.direction == CarDirection::TWOWAY {
+                    let next_node = road.node_refs[index - 1];
                     let distance = nodes[&node.0].coord.distance_to(nodes[&next_node].coord) as u32;
                     edges.push(Edge {
                         node: next_node,
