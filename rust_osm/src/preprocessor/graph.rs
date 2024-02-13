@@ -6,6 +6,7 @@ use rayon::iter::FromParallelIterator;
 use rayon::iter::IntoParallelRefIterator;
 use rayon::iter::ParallelIterator;
 use serde::Serialize;
+use std::clone;
 use std::collections::HashMap;
 use std::collections::HashSet;
 
@@ -21,6 +22,15 @@ impl FullGraph {
     }
 
     pub fn build_full_graph(preprocessor: &mut Preprocessor) -> FullGraph {
+        let graph = FullGraph::graph_from_preprocessor(preprocessor);
+        let (graph, removed_nodes) = FullGraph::minimize_graph(graph);
+        preprocessor.remove_nodes(removed_nodes);
+        let projected_points: HashMap<NodeId, (f32, f32)> = preprocessor.project_nodes_to_2d();
+
+        FullGraph::new(graph, projected_points)
+    }
+
+    pub fn graph_from_preprocessor(preprocessor: &mut Preprocessor) -> HashMap<NodeId, Vec<Edge>>{
         let roads: HashMap<WayId, Road> = preprocessor
             .roads
             .par_iter()
@@ -28,11 +38,7 @@ impl FullGraph {
             .collect();
 
         let graph = FullGraph::build_graph(&preprocessor.nodes, &roads);
-        //let (graph, removed_nodes) = FullGraph::minimize_graph(graph);
-        //preprocessor.remove_nodes(removed_nodes);
-        let projected_points: HashMap<NodeId, (f32, f32)> = preprocessor.project_nodes_to_2d();
-
-        FullGraph::new(graph, projected_points)
+        graph
     }
 
     pub fn minimize_graph(
@@ -112,21 +118,37 @@ impl FullGraph {
 
         // Adjusting the graph by skipping intermediate nodes
         for (node_id, edges) in &graph {
+            println!("startnode: {:?}", node_id);
             if !intermediate_nodes.contains(node_id) {
                 let mut minimized_edges: Vec<Edge> = Vec::new();
                 for edge in edges {
-                    if intermediate_nodes.contains(&edge.node) {
-                        let (next_node, total_cost) =
-                            find_next_node(edge.node, &graph, &intermediate_nodes, edge.cost);
-                        if next_node != *node_id {
-                            // Avoid self-loops
-                            minimized_edges.push(Edge {
-                                node: next_node,
-                                cost: total_cost,
-                            });
-                        }
-                    } else {
+                    if !intermediate_nodes.contains(&edge.node) {
                         minimized_edges.push(*edge);
+                    } else {
+                        // Use DFS to find the end node and total cost of the sequence of intermediate nodes
+                        let mut stack = vec![(edge.node, edge.cost)];
+                        let mut visited = HashSet::new();
+                        let mut total_cost = 0;
+                        let mut end_node = edge.node;
+                        while let Some((node, cost)) = stack.pop() {
+                            if !visited.contains(&node) {
+                                visited.insert(node);
+                                total_cost += cost;
+                                for edge in &graph[&node] {
+                                    if intermediate_nodes.contains(&edge.node) {
+                                        println!("Intermediate node: {:?}", edge.node);
+                                        stack.push((edge.node, edge.cost));
+                                    } else {
+                                        println!("End node: {:?}", edge.node);
+                                        end_node = edge.node;
+                                    }
+                                }
+                            }
+                        }
+                        minimized_edges.push(Edge {
+                            node: end_node,
+                            cost: total_cost,
+                        });
                     }
                 }
                 minimized_graph.insert(*node_id, minimized_edges);
@@ -179,4 +201,39 @@ impl FullGraph {
 
         graph
     }
+}
+
+// TESTS
+fn initialize(filename: &str) -> Preprocessor {
+    let mut preprocessor = Preprocessor::new();
+    preprocessor.get_roads_and_nodes(filename);
+    preprocessor.filter_nodes();
+    preprocessor
+}
+
+#[test]
+fn can_build_full_graph() { // builds a graph with two nodes and one edge
+    let mut preprocessor = initialize("src/test_data/minimal_twoway.osm.testpbf");
+    let graph = FullGraph::build_full_graph(&mut preprocessor);
+    println!("{:?}", graph.graph);
+    assert_eq!(graph.graph.len(), 2);
+    assert_eq!(graph.nodes.len(), 2);
+}
+
+#[test]
+fn can_minimize_graph() { // //removes one intermediate node
+    let mut preprocessor = initialize("src/test_data/minimize_correctly.osm.testpbf");
+    let graph = FullGraph::graph_from_preprocessor(&mut preprocessor);
+    let (minimized_graph, _) = FullGraph::minimize_graph(graph);
+    assert_eq!(minimized_graph.len(), 2);
+}
+
+#[test]
+fn can_go_both_ways_after_minimization() { // checks if the graph is still two-way after minimization
+    let mut preprocessor = initialize("src/test_data/minimize_correctly.osm.testpbf");
+    let graph = FullGraph::graph_from_preprocessor(&mut preprocessor);
+    let (minimized_graph, _) = FullGraph::minimize_graph(graph);
+
+    assert_eq!(NodeId(8), minimized_graph.get(&NodeId(10)).unwrap()[0].node); // node 8 has an edge to node 10
+    assert_eq!(NodeId(10), minimized_graph.get(&NodeId(8)).unwrap()[0].node); // node 10 has an edge to node 8
 }
