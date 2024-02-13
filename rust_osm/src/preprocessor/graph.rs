@@ -59,10 +59,10 @@ impl FullGraph {
         // Find all intermediate nodes
         for (node_id, edges) in &graph {
             let mut neighbors: HashSet<NodeId> = edges.iter().map(|edge| edge.node).collect();
-            let outoing = neighbors.len();
-            let incoming = nodes_pointing_to_node.get(node_id).unwrap_or(&Vec::new()).len();
-            if incoming > 0 {
-                nodes_pointing_to_node.get(node_id).unwrap().iter().for_each(|x| { neighbors.insert(*x); });
+            let outoing = neighbors.clone();
+            let incoming = HashSet::from_iter(nodes_pointing_to_node.get(node_id).unwrap_or(&Vec::new()).clone());
+            if incoming.len() > 0 {
+                nodes_pointing_to_node.get(node_id).unwrap().iter().for_each(|&x| { neighbors.insert(x); });
             }
             if neighbors.len() == 2 && incoming == outoing {
                 intermediate_nodes.insert(*node_id);
