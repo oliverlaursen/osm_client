@@ -1,3 +1,4 @@
+use crate::preprocessor::edge;
 use crate::preprocessor::edge::*;
 use crate::preprocessor::preprocessor::*;
 
@@ -9,6 +10,8 @@ use serde::Serialize;
 use std::clone;
 use std::collections::HashMap;
 use std::collections::HashSet;
+use std::hash::Hash;
+use std::ops::Index;
 
 #[derive(Serialize)]
 pub struct FullGraph {
@@ -23,14 +26,14 @@ impl FullGraph {
 
     pub fn build_full_graph(preprocessor: &mut Preprocessor) -> FullGraph {
         let graph = FullGraph::graph_from_preprocessor(preprocessor);
-        let (graph, removed_nodes) = FullGraph::minimize_graph(graph);
-        preprocessor.remove_nodes(removed_nodes);
+        let graph = FullGraph::minimize_graph(graph);
+        //preprocessor.remove_nodes(removed_nodes);
         let projected_points: HashMap<NodeId, (f32, f32)> = preprocessor.project_nodes_to_2d();
 
         FullGraph::new(graph, projected_points)
     }
 
-    pub fn graph_from_preprocessor(preprocessor: &mut Preprocessor) -> HashMap<NodeId, Vec<Edge>>{
+    pub fn graph_from_preprocessor(preprocessor: &mut Preprocessor) -> HashMap<NodeId, Vec<Edge>> {
         let roads: HashMap<WayId, Road> = preprocessor
             .roads
             .par_iter()
@@ -41,16 +44,121 @@ impl FullGraph {
         graph
     }
 
-    pub fn minimize_graph(
+    fn remove_intermediary_with_two_neighbors(
         graph: HashMap<NodeId, Vec<Edge>>,
-    ) -> (HashMap<NodeId, Vec<Edge>>, HashSet<NodeId>) {
-        /*
-         * Minimize the graph by removing intermediate edges
-         * If a node has one edge only and only one edge points to it,
-         * it is considered intermediate
-         *
-         * Also this incoming and outgoing edge can be two-way roads
-         */
+        mut minimized_graph: HashMap<NodeId, Vec<Edge>>,
+        node: &NodeId,
+        neighbors: &HashSet<NodeId>,
+    ) -> HashMap<NodeId, Vec<Edge>> {
+        let neighbor1 = neighbors.iter().next().unwrap();
+        let neighbor2 = neighbors.iter().nth(1).unwrap();
+        let edges = graph.get(node).unwrap().clone();
+
+        let mut cost = 0;
+        for edge in &edges {
+            cost += edge.cost;
+        }
+
+        if (neighbors.len() == 1) {
+            let successor = edges[0];
+            let predecessor_id = if (*neighbor1 == successor.node) {
+                neighbor2
+            } else {
+                neighbor1
+            };
+            let predecessor = Edge {
+                node: *predecessor_id,
+                cost: cost,
+            };
+            FullGraph::insert_in_graph_or_update_edges(
+                &mut minimized_graph,
+                predecessor.node,
+                predecessor,
+            );
+        } else {
+            let new_edge1 = Edge {
+                node: *neighbor1,
+                cost,
+            };
+
+            let new_edge2 = Edge {
+                node: *neighbor2,
+                cost,
+            };
+            FullGraph::insert_in_graph_or_update_edges(&mut minimized_graph, *neighbor1, new_edge2);
+            FullGraph::insert_in_graph_or_update_edges(&mut minimized_graph, *neighbor2, new_edge1);
+        }
+        FullGraph::remove_node_from_edges(&mut minimized_graph, *neighbor1, *node);
+        FullGraph::remove_node_from_edges(&mut minimized_graph, *neighbor2, *node);
+
+        minimized_graph.remove(node);
+
+        minimized_graph
+    }
+
+    fn remove_intermediary_with_more_than_two_neighbors(
+        graph: HashMap<NodeId, Vec<Edge>>,
+        mut minimized_graph: HashMap<NodeId, Vec<Edge>>,
+        node: &NodeId,
+        outgoing: &HashSet<NodeId>,
+        incoming: HashSet<NodeId>,
+    ) -> HashMap<NodeId, Vec<Edge>> {
+        let succ_id = outgoing.iter().next().unwrap();
+
+        let successor = graph.get(succ_id).unwrap();
+        let node_val = graph.get(node).unwrap();
+
+        let mut succ_cost = 0;
+        for edge in node_val {
+            if(edge.node == *succ_id) {
+                succ_cost = edge.cost;
+            }
+        }
+
+        //nodes_pointing_to_node.get(&node_id).unwrap().iter().for_each(|&x| { neighbors.insert(x); });
+        for id in incoming {
+            let mut edges = graph.get(&id).expect("could not get node");
+            for edge in edges {
+                let mut new_cost = 0;
+                if (edge.node == *node) {
+                    new_cost = edge.cost + succ_cost;
+                }
+                let new_edge = Edge::new(*succ_id, new_cost);
+                FullGraph::insert_in_graph_or_update_edges(&mut minimized_graph, id, new_edge);
+                FullGraph::remove_node_from_edges(&mut minimized_graph, id, *node);
+            }
+            //let new_cost = new_edge.cost;
+        }
+        minimized_graph.remove(node);
+        minimized_graph
+    }
+
+    fn insert_in_graph_or_update_edges(
+        graph: &mut HashMap<NodeId, Vec<Edge>>,
+        node: NodeId,
+        edge: Edge,
+    ) {
+        if (node == edge.node) {
+            return;
+        }
+        if !graph.contains_key(&node) {
+            graph.insert(node, vec![edge]);
+        } else {
+            graph.get_mut(&node).unwrap().push(edge);
+        }
+    }
+
+    fn remove_node_from_edges(
+        graph: &mut HashMap<NodeId, Vec<Edge>>,
+        node: NodeId,
+        node_to_remove: NodeId,
+    ) {
+        if(graph.contains_key(&node)){
+            graph.get_mut(&node).unwrap().retain(|x| x.node != node_to_remove);
+        }
+    }
+
+    pub fn minimize_graph(graph: HashMap<NodeId, Vec<Edge>>) -> HashMap<NodeId, Vec<Edge>> {
         let mut minimized_graph: HashMap<NodeId, Vec<Edge>> = HashMap::new();
         let mut intermediate_nodes: HashSet<NodeId> = HashSet::new();
         let mut nodes_pointing_to_node: HashMap<NodeId, Vec<NodeId>> = HashMap::new();
@@ -62,59 +170,43 @@ impl FullGraph {
                     .push(*node_id);
             });
         });
+
         // Find all intermediate nodes
-        for (node_id, edges) in &graph {
+        for (index, (node_id, edges)) in graph.clone().iter().enumerate() {
             let mut neighbors: HashSet<NodeId> = edges.iter().map(|edge| edge.node).collect();
-            let outoing = neighbors.clone();
-            let incoming = HashSet::from_iter(nodes_pointing_to_node.get(node_id).unwrap_or(&Vec::new()).clone());
-            if incoming.len() > 0 {
-                nodes_pointing_to_node.get(node_id).unwrap().iter().for_each(|&x| { neighbors.insert(x); });
-            }
-            if neighbors.len() == 2 && incoming == outoing {
-                intermediate_nodes.insert(*node_id);
-            }
-        }
+            let outgoing = neighbors.clone();
+            let incoming = HashSet::from_iter(
+                nodes_pointing_to_node
+                    .get(&node_id)
+                    .unwrap_or(&Vec::new())
+                    .clone(),
+            );
 
-        // Build the minimized graph
-        for (node_id, edges) in &graph {
-            println!("startnode: {:?}", node_id);
-            if !intermediate_nodes.contains(node_id) {
-                let mut minimized_edges = Vec::new();
-                for edge in edges {
-                    if !intermediate_nodes.contains(&edge.node) {
-                        minimized_edges.push(*edge);
-                    } else {
-                        // Use DFS to find the end node and total cost of the sequence of intermediate nodes
-                        let mut stack = vec![(edge.node, edge.cost)];
-                        let mut visited = HashSet::new();
-                        let mut total_cost = 0;
-                        let mut end_node = edge.node;
-                        while let Some((node, cost)) = stack.pop() {
-                            if !visited.contains(&node) {
-                                visited.insert(node);
-                                total_cost += cost;
-                                for edge in &graph[&node] {
-                                    if intermediate_nodes.contains(&edge.node) {
-                                        println!("Intermediate node: {:?}", edge.node);
-                                        stack.push((edge.node, edge.cost));
-                                    } else {
-                                        println!("End node: {:?}", edge.node);
-                                        end_node = edge.node;
-                                    }
-                                }
-                            }
-                        }
-                        minimized_edges.push(Edge {
-                            node: end_node,
-                            cost: total_cost,
-                        });
-                    }
+            if neighbors.len() == 2 && incoming == outgoing {
+                minimized_graph = FullGraph::remove_intermediary_with_two_neighbors(
+                    graph.clone(),
+                    minimized_graph.clone(),
+                    &node_id,
+                    &neighbors,
+                );
+                //intermediate_nodes.insert(*node_id);
+            } else if incoming.len() >= 2 && outgoing.len() == 1 {
+                minimized_graph = FullGraph::remove_intermediary_with_more_than_two_neighbors(
+                    graph.clone(),
+                    minimized_graph.clone(),
+                    &node_id,
+                    &outgoing,
+                    incoming,
+                );
+                //nodes_pointing_to_node.get(&node_id).unwrap().iter().for_each(|&x| { neighbors.insert(x); });
+            } else {
+                if(!minimized_graph.contains_key(node_id)){
+                    minimized_graph.insert(*node_id, edges.clone());
                 }
-                minimized_graph.insert(*node_id, minimized_edges);
+                //node is not intermediate
             }
         }
-
-        (minimized_graph, intermediate_nodes)
+        minimized_graph
     }
 
     pub fn build_graph(
@@ -171,28 +263,34 @@ fn initialize(filename: &str) -> Preprocessor {
 }
 
 #[test]
-fn can_build_full_graph() { // builds a graph with two nodes and one edge
+fn can_build_full_graph() {
+    // builds a graph with two nodes and one edge
     let mut preprocessor = initialize("src/test_data/minimal_twoway.osm.testpbf");
     let graph = FullGraph::build_full_graph(&mut preprocessor);
-    println!("{:?}", graph.graph);
     assert_eq!(graph.graph.len(), 2);
     assert_eq!(graph.nodes.len(), 2);
 }
 
 #[test]
-fn can_minimize_graph() { // //removes one intermediate node
+fn can_minimize_graph() {
+    // //removes one intermediate node
     let mut preprocessor = initialize("src/test_data/minimize_correctly.osm.testpbf");
     let graph = FullGraph::graph_from_preprocessor(&mut preprocessor);
-    let (minimized_graph, _) = FullGraph::minimize_graph(graph);
+    let (minimized_graph) = FullGraph::minimize_graph(graph);
     assert_eq!(minimized_graph.len(), 2);
 }
 
 #[test]
-fn can_go_both_ways_after_minimization() { // checks if the graph is still two-way after minimization
+fn can_go_both_ways_after_minimization() {
+    // checks if the graph is still two-way after minimization
     let mut preprocessor = initialize("src/test_data/minimize_correctly.osm.testpbf");
-    let graph = FullGraph::graph_from_preprocessor(&mut preprocessor);
-    let (minimized_graph, _) = FullGraph::minimize_graph(graph);
-
-    assert_eq!(NodeId(8), minimized_graph.get(&NodeId(10)).unwrap()[0].node); // node 8 has an edge to node 10
-    assert_eq!(NodeId(10), minimized_graph.get(&NodeId(8)).unwrap()[0].node); // node 10 has an edge to node 8
+    let full_graph = FullGraph::build_full_graph(&mut preprocessor);
+    assert_eq!(
+        NodeId(8),
+        full_graph.graph.get(&NodeId(10)).unwrap()[0].node
+    ); // node 8 has an edge to node 10
+    assert_eq!(
+        NodeId(10),
+        full_graph.graph.get(&NodeId(8)).unwrap()[0].node
+    ); // node 10 has an edge to node 8
 }

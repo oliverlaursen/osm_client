@@ -162,9 +162,14 @@ impl Preprocessor {
            Format:
            nodeId x y neighbour cost neighbour cost \n
         */
+        println!("Writing to file: {}, {}", filename, graph.nodes.len());
         let mut output = String::new();
         graph.nodes.iter().for_each(|(node_id, (x,y))|{ 
-            let edges = &graph.graph[node_id];
+            let edges_option = graph.graph.get(node_id);
+            let edges = match edges_option {
+                Some(edges) => edges,
+                None => return
+            };
             let mut node_string = format!("{} {} {}", node_id.0, x, y); //nodeId x y
             for edge in edges {
                 node_string.push_str(&format!(" {} {}", edge.node.0, edge.cost));
