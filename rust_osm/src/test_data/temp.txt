@@ -1,0 +1,33 @@
+ <node id="1078624633" visible="true" version="2" changeset="49736379" timestamp="2017-06-22T06:14:19Z" user="Hjart" uid="207581" lat="56.0273084" lon="10.2632998"/>
+ <node id="1078624509" visible="true" version="1" changeset="6837655" timestamp="2011-01-02T12:09:38Z" user="MichaelVL" uid="328556" lat="56.0281485" lon="10.2642185"/>
+ <node id="1330913829" visible="true" version="2" changeset="49736379" timestamp="2017-06-22T06:14:20Z" user="Hjart" uid="207581" lat="56.0272559" lon="10.2635466"/>
+ <node id="1078624559" visible="true" version="1" changeset="6837655" timestamp="2011-01-02T12:09:41Z" user="MichaelVL" uid="328556" lat="56.0277198" lon="10.2638153"/>
+
+
+// 1078624633
+// 1078624509
+// 1330913829
+
+<nd ref="260438634"/>
+  <nd ref="1078624498"/>
+  <nd ref="3633803420"/>
+  <nd ref="1078624547"/>
+  <nd ref="1330913827"/>
+  <nd ref="4929954482"/>
+  <nd ref="1078624509"/>
+  <nd ref="1078624559"/>
+  <nd ref="1078624633"/>
+
+
+  <?xml version='1.0' encoding='UTF-8'?>
+<osm version='0.6' upload='true' generator='JOSM'>
+  <node id="1078624633" visible="true" version="2" changeset="49736379" timestamp="2017-06-22T06:14:19Z" user="Hjart" uid="207581" lat="56.0273084" lon="10.2632998"/>
+  <node id="1078624509" visible="true" version="1" changeset="6837655" timestamp="2011-01-02T12:09:38Z" user="MichaelVL" uid="328556" lat="56.0281485" lon="10.2642185"/>
+  <node id="1078624559" visible="true" version="1" changeset="6837655" timestamp="2011-01-02T12:09:41Z" user="MichaelVL" uid="328556" lat="56.0277198" lon="10.2638153"/>
+  <way id='21' action='modify' timestamp='1970-01-01T00:00:01Z' visible='true' version='1' changeset='1'>
+    <nd ref='1078624633' />
+    <nd ref='1078624509' />
+    <nd ref='1078624559' />
+    <tag k='highway' v='residential' />
+  </way>
+</osm>
