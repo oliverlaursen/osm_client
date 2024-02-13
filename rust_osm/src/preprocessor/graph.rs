@@ -6,6 +6,7 @@ use rayon::iter::FromParallelIterator;
 use rayon::iter::IntoParallelRefIterator;
 use rayon::iter::ParallelIterator;
 use serde::Serialize;
+use std::clone;
 use std::collections::HashMap;
 use std::collections::HashSet;
 
@@ -22,8 +23,8 @@ impl FullGraph {
 
     pub fn build_full_graph(preprocessor: &mut Preprocessor) -> FullGraph {
         let graph = FullGraph::graph_from_preprocessor(preprocessor);
-        //let (graph, removed_nodes) = FullGraph::minimize_graph(graph);
-        //preprocessor.remove_nodes(removed_nodes);
+        let (graph, removed_nodes) = FullGraph::minimize_graph(graph);
+        preprocessor.remove_nodes(removed_nodes);
         let projected_points: HashMap<NodeId, (f32, f32)> = preprocessor.project_nodes_to_2d();
 
         FullGraph::new(graph, projected_points)
@@ -76,6 +77,7 @@ impl FullGraph {
 
         // Build the minimized graph
         for (node_id, edges) in &graph {
+            println!("startnode: {:?}", node_id);
             if !intermediate_nodes.contains(node_id) {
                 let mut minimized_edges = Vec::new();
                 for edge in edges {
@@ -93,8 +95,10 @@ impl FullGraph {
                                 total_cost += cost;
                                 for edge in &graph[&node] {
                                     if intermediate_nodes.contains(&edge.node) {
+                                        println!("Intermediate node: {:?}", edge.node);
                                         stack.push((edge.node, edge.cost));
                                     } else {
+                                        println!("End node: {:?}", edge.node);
                                         end_node = edge.node;
                                     }
                                 }
