@@ -40,7 +40,6 @@ pub struct Preprocessor {
 fn create_blacklist() -> HashSet<&'static str> {
     let blacklist: HashSet<&str> = HashSet::from_iter([
         "pedestrian",
-        "unclassified",
         "footway",
         "steps",
         "path",

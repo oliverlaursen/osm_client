@@ -7,11 +7,9 @@ use rayon::iter::FromParallelIterator;
 use rayon::iter::IntoParallelRefIterator;
 use rayon::iter::ParallelIterator;
 use serde::Serialize;
-use std::clone;
 use std::collections::HashMap;
 use std::collections::HashSet;
-use std::hash::Hash;
-use std::ops::Index;
+
 
 #[derive(Serialize)]
 pub struct FullGraph {
@@ -28,7 +26,6 @@ impl FullGraph {
         let graph = FullGraph::graph_from_preprocessor(preprocessor);
         let node_ids = preprocessor.node_ids.clone();
         let graph = FullGraph::minimize_graph(graph, node_ids);
-        //preprocessor.remove_nodes(removed_nodes);
         let projected_points: HashMap<NodeId, (f32, f32)> = preprocessor.project_nodes_to_2d();
 
         FullGraph::new(graph, projected_points)
