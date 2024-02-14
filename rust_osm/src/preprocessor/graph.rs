@@ -48,6 +48,7 @@ impl FullGraph {
     pub fn minimize_graph(graph: HashMap<NodeId, Vec<Edge>>, node_ids: Vec<NodeId>) -> HashMap<NodeId, Vec<Edge>> {
         let mut minimized_graph: HashMap<NodeId, Vec<Edge>> = graph.clone();
         let mut nodes_pointing_to_node: HashMap<NodeId, Vec<NodeId>> = HashMap::new();
+        let mut intermediate_nodes: Vec<NodeId> = Vec::new();
 
         // Populate nodes_pointing_to_node
         graph.iter().for_each(|(node_id, edges)| {
@@ -59,8 +60,24 @@ impl FullGraph {
             });
         });
 
-        // Find all intermediate nodes
         for node_id in node_ids {
+            let edges = minimized_graph.get_mut(&node_id).unwrap();
+            let mut neighbors: HashSet<NodeId> = edges.iter().map(|edge| edge.node).collect();
+            let outgoing = neighbors.clone();
+            let incoming = 
+                nodes_pointing_to_node
+                    .get(&node_id)
+                    .unwrap_or(&Vec::new())
+                    .clone();
+            neighbors.extend(incoming.iter());
+
+            if neighbors.len() == 2 && incoming.len() == outgoing.len() {
+                intermediate_nodes.push(node_id);
+            }
+        }
+
+        // Find all intermediate nodes
+        for node_id in intermediate_nodes {
             let edges = minimized_graph.get_mut(&node_id).unwrap();
             let mut neighbors: HashSet<NodeId> = edges.iter().map(|edge| edge.node).collect();
             let outgoing = neighbors.clone();
