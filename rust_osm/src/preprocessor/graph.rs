@@ -86,7 +86,27 @@ impl FullGraph {
                     minimized_graph.insert(pred, pred_edges.to_vec());
                     nodes_pointing_to_node.get_mut(&succ).unwrap().retain(|x| *x != node_id);
                     nodes_pointing_to_node.get_mut(&succ).unwrap().push(pred);
-                }   
+                }   else {
+                    let succ = edges[0].node;
+                    let pred = edges[1].node;
+                    let cost = edges[0].cost + edges[1].cost;
+                    let new_edge_from_pred = Edge::new(succ, cost);
+                    let new_edge_from_succ = Edge::new(pred, cost);
+                    let mut pred_edges = minimized_graph.get_mut(&pred).unwrap().clone();
+                    pred_edges.retain(|x| x.node != node_id);
+                    pred_edges.push(new_edge_from_pred);
+                    let mut succ_edges = minimized_graph.get_mut(&succ).unwrap().clone();
+                    succ_edges.retain(|x| x.node != node_id);
+                    succ_edges.push(new_edge_from_succ);
+                    minimized_graph.remove(&node_id);
+                    minimized_graph.insert(pred, pred_edges.to_vec());
+                    minimized_graph.insert(succ, succ_edges.to_vec());
+                    nodes_pointing_to_node.get_mut(&pred).unwrap().retain(|x| *x != node_id);
+                    nodes_pointing_to_node.get_mut(&pred).unwrap().push(succ);
+                    nodes_pointing_to_node.get_mut(&succ).unwrap().retain(|x| *x != node_id);
+                    nodes_pointing_to_node.get_mut(&succ).unwrap().push(pred);
+
+                }
             }
         }
         minimized_graph
@@ -218,4 +238,18 @@ fn one_way_roads_with_cross(){
     let minimized_graph = FullGraph::minimize_graph(graph);
     assert_eq!(minimized_graph.len(), 4);
 
+}
+
+#[test]
+fn two_way_roads_simple(){
+    let mut graph: HashMap<NodeId, Vec<Edge>> = HashMap::new();
+    graph.insert(NodeId(1), vec![Edge::new(NodeId(2), 1)]);
+    graph.insert(NodeId(2), vec![Edge::new(NodeId(1), 1), Edge::new(NodeId(3), 1)]);
+    graph.insert(NodeId(3), vec![Edge::new(NodeId(2), 1)]);
+    let minimized_graph = FullGraph::minimize_graph(graph);
+    assert_eq!(minimized_graph.len(), 2);
+    assert_eq!(minimized_graph.get(&NodeId(1)).unwrap()[0].node, NodeId(3));
+    assert_eq!(minimized_graph.get(&NodeId(1)).unwrap()[0].cost, 2);
+    assert_eq!(minimized_graph.get(&NodeId(3)).unwrap()[0].node, NodeId(1));
+    assert_eq!(minimized_graph.get(&NodeId(3)).unwrap()[0].cost, 2);
 }
