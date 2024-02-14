@@ -26,7 +26,8 @@ impl FullGraph {
 
     pub fn build_full_graph(preprocessor: &mut Preprocessor) -> FullGraph {
         let graph = FullGraph::graph_from_preprocessor(preprocessor);
-        let graph = FullGraph::minimize_graph(graph);
+        let node_ids = preprocessor.node_ids.clone();
+        let graph = FullGraph::minimize_graph(graph, node_ids);
         //preprocessor.remove_nodes(removed_nodes);
         let projected_points: HashMap<NodeId, (f32, f32)> = preprocessor.project_nodes_to_2d();
 
@@ -44,7 +45,7 @@ impl FullGraph {
         graph
     }
 
-    pub fn minimize_graph(graph: HashMap<NodeId, Vec<Edge>>) -> HashMap<NodeId, Vec<Edge>> {
+    pub fn minimize_graph(graph: HashMap<NodeId, Vec<Edge>>, node_ids: Vec<NodeId>) -> HashMap<NodeId, Vec<Edge>> {
         let mut minimized_graph: HashMap<NodeId, Vec<Edge>> = graph.clone();
         let mut nodes_pointing_to_node: HashMap<NodeId, Vec<NodeId>> = HashMap::new();
 
@@ -59,7 +60,7 @@ impl FullGraph {
         });
 
         // Find all intermediate nodes
-        for (node_id, _) in graph.clone() {
+        for node_id in node_ids {
             let edges = minimized_graph.get_mut(&node_id).unwrap();
             let mut neighbors: HashSet<NodeId> = edges.iter().map(|edge| edge.node).collect();
             let outgoing = neighbors.clone();
@@ -188,7 +189,7 @@ fn can_minimize_graph() {
     // //removes one intermediate node
     let mut preprocessor = initialize("src/test_data/minimize_correctly.osm.testpbf");
     let graph = FullGraph::graph_from_preprocessor(&mut preprocessor);
-    let (minimized_graph) = FullGraph::minimize_graph(graph);
+    let (minimized_graph) = FullGraph::minimize_graph(graph, preprocessor.node_ids);
     assert_eq!(minimized_graph.len(), 2);
 }
 
@@ -197,7 +198,11 @@ fn one_way_roads_minimization() {
     let mut graph: HashMap<NodeId, Vec<Edge>> = HashMap::new();
     graph.insert(NodeId(1), vec![Edge::new(NodeId(2), 1)]);
     graph.insert(NodeId(2), vec![Edge::new(NodeId(3), 1)]);
-    let minimized_graph = FullGraph::minimize_graph(graph);
+    let mut node_ids = Vec::new();
+    for node in graph.keys() {
+        node_ids.push(*node);
+    }
+    let minimized_graph = FullGraph::minimize_graph(graph, node_ids);
     assert_eq!(minimized_graph.len(), 1);
     assert_eq!(minimized_graph.get(&NodeId(1)).unwrap()[0].node, NodeId(3));
     assert_eq!(minimized_graph.get(&NodeId(1)).unwrap()[0].cost, 2);
@@ -210,7 +215,11 @@ fn one_way_roads_minimization_long() {
     graph.insert(NodeId(2), vec![Edge::new(NodeId(3), 1)]);
     graph.insert(NodeId(3), vec![Edge::new(NodeId(4), 1)]);
     graph.insert(NodeId(4), vec![Edge::new(NodeId(5), 1)]);
-    let minimized_graph = FullGraph::minimize_graph(graph);
+    let mut node_ids = Vec::new();
+    for node in graph.keys() {
+        node_ids.push(*node);
+    }
+    let minimized_graph = FullGraph::minimize_graph(graph, node_ids);
     assert_eq!(minimized_graph.len(), 1);
     assert_eq!(minimized_graph.get(&NodeId(1)).unwrap()[0].node, NodeId(5));
     assert_eq!(minimized_graph.get(&NodeId(1)).unwrap()[0].cost, 4);
@@ -227,7 +236,12 @@ fn one_way_roads_with_cross() {
     graph.insert(NodeId(6), vec![Edge::new(NodeId(4), 1)]);
     graph.insert(NodeId(7), vec![Edge::new(NodeId(6), 1)]);
 
-    let minimized_graph = FullGraph::minimize_graph(graph);
+    let mut node_ids = Vec::new();
+    for node in graph.keys() {
+        node_ids.push(*node);
+    }
+
+    let minimized_graph = FullGraph::minimize_graph(graph, node_ids);
     assert_eq!(minimized_graph.len(), 4);
 }
 
@@ -240,7 +254,12 @@ fn two_way_roads_simple() {
         vec![Edge::new(NodeId(1), 1), Edge::new(NodeId(3), 1)],
     );
     graph.insert(NodeId(3), vec![Edge::new(NodeId(2), 1)]);
-    let minimized_graph = FullGraph::minimize_graph(graph);
+
+    let mut node_ids = Vec::new();
+    for node in graph.keys() {
+        node_ids.push(*node);
+    }
+    let minimized_graph = FullGraph::minimize_graph(graph, node_ids);
     assert_eq!(minimized_graph.len(), 2);
     assert_eq!(minimized_graph.get(&NodeId(1)).unwrap()[0].node, NodeId(3));
     assert_eq!(minimized_graph.get(&NodeId(1)).unwrap()[0].cost, 2);

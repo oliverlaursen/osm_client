@@ -34,6 +34,7 @@ pub struct Preprocessor {
     pub nodes_to_keep: HashSet<NodeId>,
     pub nodes: HashMap<NodeId, Node>,
     pub roads: Vec<Road>,
+    pub node_ids: Vec<NodeId>,
 }
 
 fn create_blacklist() -> HashSet<&'static str> {
@@ -104,7 +105,7 @@ impl Preprocessor {
         }
         let nodes_to_keep_hashset = HashSet::from_par_iter(nodes_to_keep);
 
-        let nodes = Self::get_nodes(filename, &nodes_to_keep_hashset);
+        let nodes = self.get_nodes(filename, &nodes_to_keep_hashset);
         let nodes_hashmap: HashMap<NodeId, Node> = nodes
             .par_iter()
             .map(|node| (node.id, node.clone()))
@@ -114,7 +115,7 @@ impl Preprocessor {
         self.roads = roads;
     }
 
-    pub fn get_nodes(filename: &str, nodes_to_keep: &HashSet<NodeId>) -> Vec<Node> {
+    pub fn get_nodes(&mut self, filename: &str, nodes_to_keep: &HashSet<NodeId>) -> Vec<Node> {
         let mut nodes: Vec<Node> = Vec::new();
         let r = std::fs::File::open(&std::path::Path::new(filename)).unwrap();
         let mut pbf = osmpbfreader::OsmPbfReader::new(r);
@@ -124,6 +125,7 @@ impl Preprocessor {
                     if !nodes_to_keep.contains(&node.id) {
                         continue;
                     }
+                    self.node_ids.push(node.id);
                     nodes.push(Node {
                         id: node.id,
                         coord: Coord {
@@ -154,6 +156,7 @@ impl Preprocessor {
             nodes_to_keep: HashSet::new(),
             nodes: HashMap::new(),
             roads: Vec::new(),
+            node_ids: Vec::new(),
         }
     }
 
