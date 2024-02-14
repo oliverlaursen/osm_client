@@ -43,7 +43,8 @@ fn main() {
     preprocessor.get_roads_and_nodes("src/test_data/denmark.osm.pbf");
     preprocessor.filter_nodes();
     println!("Time to get roads and nodes: {:?}", time.elapsed());
-    let full_graph = FullGraph::build_full_graph(&mut preprocessor);
-    Preprocessor::write_full_graph(full_graph, "../OSM_Unity_Client/Assets/Maps/denmark.json");
+    let graph = preprocessor.build_graph();
+    let projected_points = preprocessor.project_nodes_to_2d();
+    preprocessor.write_graph(projected_points, graph, "denmark.graph");
     println!("Total time: {:?}", time.elapsed());
 }

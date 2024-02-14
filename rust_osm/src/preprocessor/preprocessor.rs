@@ -1,14 +1,15 @@
 use crate::preprocessor::coord::Coord;
 
-use crate::{azimuthal_equidistant_projection, FullGraph};
+use crate::{azimuthal_equidistant_projection, Graph};
 use osmpbfreader::{NodeId, WayId};
 use rayon::iter::{FromParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use serde::Serialize;
-use std::ops::Add;
 use std::{
     collections::{HashMap, HashSet},
     io::Write,
 };
+
+use super::edge::Edge;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct Node {
@@ -75,6 +76,33 @@ impl Preprocessor {
             .any(|(k, v)| (k == "highway" && !blacklist.contains(v.as_str())))
     }
 
+    pub fn build_graph(&mut self) -> HashMap<NodeId, Vec<Edge>>{
+        let graph = Graph::build_graph(&self.nodes, &self.roads);
+        let node_ids = self.node_ids.clone();
+        let graph = Graph::minimize_graph(graph, node_ids);
+        graph
+    }
+
+    pub fn write_graph(&self, projected_points:HashMap<NodeId,(f32,f32)>, graph:HashMap<NodeId, Vec<Edge>>, filename: &str) {
+        /*
+           Format:
+           nodeId x y neighbour cost neighbour cost \n
+        */
+        let filename = "../OSM_Unity_Client/Assets/Maps/".to_owned() + filename;
+        let mut output = String::new();
+        graph.iter().for_each(|(node_id, edges)|{ 
+            let (x, y) = projected_points.get(node_id).unwrap();
+            let mut node_string = format!("{} {} {}", node_id.0, x, y); //nodeId x y
+            for edge in edges {
+                node_string.push_str(&format!(" {} {}", edge.node.0, edge.cost));
+            }
+            output.push_str(&(node_string + "\n"));
+        }); 
+        
+        let mut file = std::fs::File::create(filename).unwrap();
+        file.write_all(output.as_bytes()).unwrap();
+    }
+
     pub fn get_roads_and_nodes(&mut self, filename: &str) {
         let r = std::fs::File::open(&std::path::Path::new(filename)).unwrap();
         let mut pbf = osmpbfreader::OsmPbfReader::new(r);
@@ -137,7 +165,7 @@ impl Preprocessor {
                 _ => return nodes, // Can return early since nodes are at the start of the file
             }
         }
-        return nodes;
+        nodes
     }
 
     pub fn filter_nodes(&mut self) {
@@ -160,26 +188,6 @@ impl Preprocessor {
         }
     }
 
-    pub fn write_full_graph(graph: FullGraph, filename: &str) {
-        /*
-           Format:
-           nodeId x y neighbour cost neighbour cost \n
-        */
-        println!("Writing to file: {}, {}", filename, graph.nodes.len());
-        let mut output = String::new();
-        graph.graph.iter().for_each(|(node_id, edges)|{ 
-            let (x, y) = graph.nodes.get(node_id).unwrap();
-            let mut node_string = format!("{} {} {}", node_id.0, x, y); //nodeId x y
-            for edge in edges {
-                node_string.push_str(&format!(" {} {}", edge.node.0, edge.cost));
-            }
-            output.push_str(&(node_string + "\n"));
-        }); 
-        
-        let mut file = std::fs::File::create(filename).unwrap();
-        file.write_all(output.as_bytes()).unwrap();
-    }
-
     pub fn project_nodes_to_2d(&self) -> HashMap<NodeId, (f32, f32)> {
         let center_point = self.nodes.iter().fold((0.0, 0.0), |acc, (_, node)| {
             (acc.0 + node.coord.lat, acc.1 + node.coord.lon)
@@ -198,12 +206,6 @@ impl Preprocessor {
             })
             .collect();
         projected_points
-    }
-
-    pub fn remove_nodes(&mut self, new_nodes: HashSet<NodeId>) {
-        for node_id in new_nodes {
-            self.nodes.remove(&node_id);
-        }
     }
 }
 
