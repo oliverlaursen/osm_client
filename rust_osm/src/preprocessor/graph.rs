@@ -60,6 +60,7 @@ impl FullGraph {
             });
         });
 
+        // Find all intermediate nodes
         for node_id in node_ids {
             let edges = minimized_graph.get_mut(&node_id).unwrap();
             let mut neighbors: HashSet<NodeId> = edges.iter().map(|edge| edge.node).collect();
@@ -76,20 +77,11 @@ impl FullGraph {
             }
         }
 
-        // Find all intermediate nodes
+        // Fix all intermediate nodes
         for node_id in intermediate_nodes {
             let edges = minimized_graph.get_mut(&node_id).unwrap();
-            let mut neighbors: HashSet<NodeId> = edges.iter().map(|edge| edge.node).collect();
-            let outgoing = neighbors.clone();
-            let incoming = 
-                nodes_pointing_to_node
-                    .get(&node_id)
-                    .unwrap_or(&Vec::new())
-                    .clone();
-            neighbors.extend(incoming.iter());
-
-            if neighbors.len() == 2 && incoming.len() == outgoing.len() {
-                let two_way = incoming.len() == 2;
+             {
+                let two_way = edges.len() == 2;
                 if !two_way {
                     let pred = nodes_pointing_to_node.get(&node_id).unwrap()[0];
                     let succ = edges[0].node;
@@ -113,6 +105,11 @@ impl FullGraph {
 
                 }
             }
+        }
+        // Remove loops
+        
+        for (node, edges) in minimized_graph.iter_mut() {
+            edges.retain(|x| x.node != *node);
         }
         minimized_graph
     }
@@ -277,4 +274,36 @@ fn two_way_roads_simple() {
     assert_eq!(minimized_graph.get(&NodeId(1)).unwrap()[0].cost, 2);
     assert_eq!(minimized_graph.get(&NodeId(3)).unwrap()[0].node, NodeId(1));
     assert_eq!(minimized_graph.get(&NodeId(3)).unwrap()[0].cost, 2);
+}
+
+#[test]
+fn one_way_cycle(){
+    let mut graph: HashMap<NodeId, Vec<Edge>> = HashMap::new();
+    let node_ids = vec![NodeId(1), NodeId(2), NodeId(3), NodeId(4), NodeId(5)];
+    graph.insert(NodeId(1), vec![Edge::new(NodeId(2), 1)]);
+    graph.insert(NodeId(2), vec![Edge::new(NodeId(1), 1),Edge::new(NodeId(3), 1)]);
+    graph.insert(NodeId(3), vec![Edge::new(NodeId(4), 1)]);
+    graph.insert(NodeId(4), vec![Edge::new(NodeId(5), 1)]);
+    graph.insert(NodeId(5), vec![Edge::new(NodeId(2), 1)]);
+    let minimized_graph = FullGraph::minimize_graph(graph,node_ids);
+    println!("{:?}", minimized_graph);
+}
+
+#[test]
+fn advanced_one_way_cycle(){
+    let mut graph: HashMap<NodeId, Vec<Edge>> = HashMap::new();
+    let node_ids = vec![NodeId(1), NodeId(2), NodeId(3), NodeId(4), NodeId(5), NodeId(6), NodeId(7), NodeId(8), NodeId(9), NodeId(10), NodeId(11)];
+    graph.insert(NodeId(1), vec![Edge::new(NodeId(2), 1),Edge::new(NodeId(10), 1)]);
+    graph.insert(NodeId(2), vec![Edge::new(NodeId(3), 1)]);
+    graph.insert(NodeId(3), vec![Edge::new(NodeId(4), 1)]);
+    graph.insert(NodeId(4), vec![Edge::new(NodeId(5), 1)]);
+    graph.insert(NodeId(5), vec![Edge::new(NodeId(6), 1), Edge::new(NodeId(11), 1)]);
+    graph.insert(NodeId(6), vec![Edge::new(NodeId(7), 1)]);
+    graph.insert(NodeId(7), vec![Edge::new(NodeId(8), 1)]);
+    graph.insert(NodeId(8), vec![Edge::new(NodeId(9), 1)]);
+    graph.insert(NodeId(9), vec![Edge::new(NodeId(1), 1)]);
+    graph.insert(NodeId(10), Vec::new());
+    graph.insert(NodeId(11), Vec::new());
+    let minimized_graph = FullGraph::minimize_graph(graph,node_ids);
+    println!("{:?}", minimized_graph);
 }

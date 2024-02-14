@@ -40,6 +40,7 @@ pub struct Preprocessor {
 fn create_blacklist() -> HashSet<&'static str> {
     let blacklist: HashSet<&str> = HashSet::from_iter([
         "pedestrian",
+        "unclassified",
         "footway",
         "steps",
         "path",
@@ -167,12 +168,8 @@ impl Preprocessor {
         */
         println!("Writing to file: {}, {}", filename, graph.nodes.len());
         let mut output = String::new();
-        graph.nodes.iter().for_each(|(node_id, (x,y))|{ 
-            let edges_option = graph.graph.get(node_id);
-            let edges = match edges_option {
-                Some(edges) => edges,
-                None => return
-            };
+        graph.graph.iter().for_each(|(node_id, edges)|{ 
+            let (x, y) = graph.nodes.get(node_id).unwrap();
             let mut node_string = format!("{} {} {}", node_id.0, x, y); //nodeId x y
             for edge in edges {
                 node_string.push_str(&format!(" {} {}", edge.node.0, edge.cost));
