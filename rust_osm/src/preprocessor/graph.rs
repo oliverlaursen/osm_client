@@ -64,10 +64,11 @@ impl FullGraph {
             let edges = minimized_graph.get_mut(&node_id).unwrap();
             let mut neighbors: HashSet<NodeId> = edges.iter().map(|edge| edge.node).collect();
             let outgoing = neighbors.clone();
-            let incoming = nodes_pointing_to_node
-                .get(&node_id)
-                .unwrap_or(&Vec::new())
-                .clone();
+            let incoming = 
+                nodes_pointing_to_node
+                    .get(&node_id)
+                    .unwrap_or(&Vec::new())
+                    .clone();
             neighbors.extend(incoming.iter());
 
             if neighbors.len() == 2 && incoming.len() == outgoing.len() {
@@ -75,19 +76,12 @@ impl FullGraph {
                 if !two_way {
                     let pred = nodes_pointing_to_node.get(&node_id).unwrap()[0];
                     let succ = edges[0].node;
-                    let cost = edges[0].cost
-                        + minimized_graph
-                            .get(&pred)
-                            .unwrap()
-                            .iter()
-                            .find(|x| x.node == node_id)
-                            .unwrap()
-                            .cost;
+                    let cost = edges[0].cost + minimized_graph.get(&pred).unwrap().iter().find(|x| x.node == node_id).unwrap().cost;
                     let new_edge = Edge::new(succ, cost);
-                    minimized_graph = FullGraph::update_edges_and_remove_node(pred, node_id, minimized_graph, new_edge);
-                    nodes_pointing_to_node = FullGraph::update_nodes_pointing_to_node_edge(succ, node_id, &mut nodes_pointing_to_node);
+                    minimized_graph = FullGraph::update_edges_and_remove_node(pred, node_id, minimized_graph, new_edge); 
+                    nodes_pointing_to_node.get_mut(&succ).unwrap().retain(|x| *x != node_id);
                     nodes_pointing_to_node.get_mut(&succ).unwrap().push(pred);
-                } else {
+                }   else {
                     let succ = edges[0].node;
                     let pred = edges[1].node;
                     let cost = edges[0].cost + edges[1].cost;
@@ -95,10 +89,11 @@ impl FullGraph {
                     let new_edge_from_succ = Edge::new(pred, cost);
                     minimized_graph = FullGraph::update_edges_and_remove_node(pred, node_id, minimized_graph, new_edge_from_pred);
                     minimized_graph = FullGraph::update_edges_and_remove_node(succ, node_id, minimized_graph, new_edge_from_succ);
-                    nodes_pointing_to_node = FullGraph::update_nodes_pointing_to_node_edge(pred, node_id, &mut nodes_pointing_to_node);
-                    nodes_pointing_to_node = FullGraph::update_nodes_pointing_to_node_edge(succ, node_id, &mut nodes_pointing_to_node);
+                    nodes_pointing_to_node.get_mut(&pred).unwrap().retain(|x| *x != node_id);
                     nodes_pointing_to_node.get_mut(&pred).unwrap().push(succ);
+                    nodes_pointing_to_node.get_mut(&succ).unwrap().retain(|x| *x != node_id);
                     nodes_pointing_to_node.get_mut(&succ).unwrap().push(pred);
+
                 }
             }
         }
