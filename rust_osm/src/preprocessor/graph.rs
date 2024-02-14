@@ -81,7 +81,8 @@ impl FullGraph {
         for node_id in intermediate_nodes {
             let edges = minimized_graph.get_mut(&node_id).unwrap();
              {
-                let two_way = edges.len() == 2;
+                let outgoing: HashSet<NodeId> = edges.iter().map(|edge| edge.node).collect();
+                let two_way = outgoing.len() == 2;
                 if !two_way {
                     let pred = nodes_pointing_to_node.get(&node_id).unwrap()[0];
                     let succ = edges[0].node;
