@@ -86,36 +86,22 @@ public class MapController : MonoBehaviour
            Format:
            nodeId x y neighbour cost neighbour cost
            long float float long int long int
-        */
-        var stopwatch = new Stopwatch();
-        stopwatch.Start();
-        var reader = new StreamReader(mapFile);
-        var lineLength = File.ReadLines(mapFile).Count();
-        stopwatch.Stop();
-        UnityEngine.Debug.Log("Reading lines took " + stopwatch.ElapsedMilliseconds);
-        var graph = new (long, Edge[])[lineLength];
-        var nodes = new (long, float[])[lineLength];
-        string line = "";
-        int i = 0;
-        while ((line = reader.ReadLine()) != null) 
+        */        
+        var input = File.ReadAllBytes(mapFile);
+        var deserialized = MessagePack.MessagePackSerializer.Deserialize<GraphReadFormat>(input);
+        var nodes = new Dictionary<long, float[]>();
+        var graph = new Dictionary<long, Edge[]>();
+        foreach (var node in deserialized.nodes)
         {
-            var elements = line.Split(" ");
-            var id = long.Parse(elements[0]);
-            var x = float.Parse(elements[1], NumberStyles.Float, CultureInfo.InvariantCulture);
-            var y = float.Parse(elements[2], NumberStyles.Float, CultureInfo.InvariantCulture);
-            nodes[i] = (id, new float[] { x, y });
-            var edges = new Edge[(elements.Length - 3) / 2];
-            for (int j = 0; (j * 2) + 3 < elements.Length; j++)
+            nodes[node.id] = new float[] {node.x, node.y};
+            var edges = new List<Edge>();
+            for (int i = 0; i < node.neighbours.Length; i++)
             {
-                var neighbour = long.Parse(elements[(j * 2) + 3]);
-                var cost = int.Parse(elements[(j * 2) + 4]);
-                edges[j] = new Edge { node = neighbour, cost = cost };
+                edges.Add(new Edge {node = node.neighbours[i].Item1, cost = node.neighbours[i].Item2});
             }
-            graph[i] = (id, edges.ToArray());
-            i++;
+            graph[node.id] = edges.ToArray();
         }
-        var final_graph = new Graph { nodes = nodes.ToDictionary(x => x.Item1, x => x.Item2), graph = graph.ToDictionary(x => x.Item1, x => x.Item2) };
-        return final_graph;
+        return new Graph {nodes = nodes, graph = graph};
     }
 
     public void DrawAllEdges(Dictionary<long, float[]> nodes, Dictionary<long, Edge[]> graph)

@@ -9,6 +9,7 @@ use std::{
     collections::{HashMap, HashSet},
     io::Write,
 };
+use rmp_serde::Serializer;
 
 use super::edge::Edge;
 
@@ -37,6 +38,19 @@ pub struct Preprocessor {
     pub nodes: HashMap<NodeId, Node>,
     pub roads: Vec<Road>,
     pub node_ids: Vec<NodeId>,
+}
+
+#[derive(Serialize)]
+pub struct GraphWriteFormat {
+    pub nodes: Vec<NodeWriteFormat>,
+}
+
+#[derive(Serialize)]
+pub struct NodeWriteFormat {
+    pub node_id: NodeId,
+    pub x: f32,
+    pub y: f32,
+    pub neighbours: Vec<(NodeId, u32)>,
 }
 
 fn create_blacklist() -> HashSet<&'static str> {
@@ -74,10 +88,11 @@ fn create_blacklist() -> HashSet<&'static str> {
 impl Preprocessor {
     pub fn is_valid_highway(&self, blacklist: &HashSet<&str>, tags: &osmpbfreader::Tags) -> bool {
         tags.iter()
-            .any(|(k, v)| (k == "highway" && !blacklist.contains(v.as_str()))) && !tags.contains_key("area")
+            .any(|(k, v)| (k == "highway" && !blacklist.contains(v.as_str())))
+            && !tags.contains_key("area")
     }
 
-    pub fn build_graph(&mut self) -> HashMap<NodeId, Vec<Edge>>{
+    pub fn build_graph(&mut self) -> HashMap<NodeId, Vec<Edge>> {
         let time = std::time::Instant::now();
         let mut graph = Graph::build_graph(&self.nodes, &self.roads);
         println!("Time to build graph: {:?}", time.elapsed());
@@ -89,24 +104,35 @@ impl Preprocessor {
         graph
     }
 
-    pub fn write_graph(&self, projected_points:HashMap<NodeId,(f32,f32)>, graph:HashMap<NodeId, Vec<Edge>>, filename: &str) {
+    pub fn write_graph(
+        &self,
+        projected_points: HashMap<NodeId, (f32, f32)>,
+        graph: HashMap<NodeId, Vec<Edge>>,
+        filename: &str,
+    ) {
         /*
            Format:
            nodeId x y neighbour cost neighbour cost \n
         */
         let filename = "../OSM_Unity_Client/Assets/Maps/".to_owned() + filename;
-        let mut output = String::new();
-        graph.iter().for_each(|(node_id, edges)|{ 
-            let (x, y) = projected_points.get(node_id).unwrap();
-            let mut node_string = format!("{} {} {}", node_id.0, x, y); //nodeId x y
-            for edge in edges {
-                node_string.push_str(&format!(" {} {}", edge.node.0, edge.cost));
-            }
-            output.push_str(&(node_string + "\n"));
-        }); 
-        
-        let mut file = std::fs::File::create(filename).unwrap();
-        file.write_all(output.as_bytes()).unwrap();
+        let result = GraphWriteFormat {
+            nodes: graph
+                .iter()
+                .map(|(node_id, edges)| {
+                    let (x, y) = projected_points.get(node_id).unwrap();
+                    let neighbours = edges.iter().map(|edge| (edge.node, edge.cost)).collect();
+                    NodeWriteFormat {
+                        node_id: *node_id,
+                        x: *x,
+                        y: *y,
+                        neighbours: neighbours,
+                    }
+                })
+                .collect(),
+        };
+        let mut buf = Vec::new();
+        result.serialize(&mut Serializer::new(&mut buf)).unwrap();
+        std::fs::write(filename, buf).unwrap();
     }
 
     pub fn get_roads_and_nodes(&mut self, filename: &str) {

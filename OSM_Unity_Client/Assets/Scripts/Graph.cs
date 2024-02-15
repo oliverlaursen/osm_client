@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.PlayerLoop;
+using MessagePack;
 
 public class Coord
 {
@@ -41,4 +42,22 @@ public class Graph
 {
     public Dictionary<long,Edge[]> graph {get; set;}
     public Dictionary<long, float[]> nodes {get; set;}
+}
+
+[MessagePackObject]
+public class GraphReadFormat {
+    [Key(0)]
+    public NodeReadFormat[] nodes {get; set;}
+}
+
+[MessagePackObject]
+public class NodeReadFormat {
+    [Key(0)]
+    public long id {get; set;}
+    [Key(1)]
+    public float x {get; set;}
+    [Key(2)]
+    public float y {get; set;}
+    [Key(3)]
+    public (long, int)[] neighbours {get; set;}
 }
