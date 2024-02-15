@@ -3,6 +3,7 @@ use crate::preprocessor::coord::Coord;
 use crate::{azimuthal_equidistant_projection, Graph};
 use osmpbfreader::{NodeId, WayId};
 use rayon::iter::{FromParallelIterator, IntoParallelRefIterator, ParallelIterator};
+use rayon::slice::ParallelSliceMut;
 use serde::Serialize;
 use std::{
     collections::{HashMap, HashSet},
@@ -73,13 +74,18 @@ fn create_blacklist() -> HashSet<&'static str> {
 impl Preprocessor {
     pub fn is_valid_highway(&self, blacklist: &HashSet<&str>, tags: &osmpbfreader::Tags) -> bool {
         tags.iter()
-            .any(|(k, v)| (k == "highway" && !blacklist.contains(v.as_str())))
+            .any(|(k, v)| (k == "highway" && !blacklist.contains(v.as_str()))) && !tags.contains_key("area")
     }
 
     pub fn build_graph(&mut self) -> HashMap<NodeId, Vec<Edge>>{
-        let graph = Graph::build_graph(&self.nodes, &self.roads);
-        let node_ids = self.node_ids.clone();
-        let graph = Graph::minimize_graph(graph, node_ids);
+        let time = std::time::Instant::now();
+        let mut graph = Graph::build_graph(&self.nodes, &self.roads);
+        println!("Time to build graph: {:?}", time.elapsed());
+        let time = std::time::Instant::now();
+        let mut node_ids = self.node_ids.clone();
+        node_ids.par_sort_unstable();
+        Graph::minimize_graph(&mut graph, node_ids);
+        println!("Time to minimize graph: {:?}", time.elapsed());
         graph
     }
 

@@ -45,6 +45,8 @@ fn main() {
     println!("Time to get roads and nodes: {:?}", time.elapsed());
     let graph = preprocessor.build_graph();
     let projected_points = preprocessor.project_nodes_to_2d();
+    let time2 = std::time::Instant::now();
     preprocessor.write_graph(projected_points, graph, "denmark.graph");
+    println!("Time to write graph: {:?}", time2.elapsed());
     println!("Total time: {:?}", time.elapsed());
 }
