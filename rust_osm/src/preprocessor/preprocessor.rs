@@ -37,7 +37,6 @@ pub struct Preprocessor {
     pub nodes_to_keep: HashSet<NodeId>,
     pub nodes: HashMap<NodeId, Node>,
     pub roads: Vec<Road>,
-    pub node_ids: Vec<NodeId>,
 }
 
 #[derive(Serialize)]
@@ -95,11 +94,10 @@ impl Preprocessor {
     pub fn build_graph(&mut self) -> HashMap<NodeId, Vec<Edge>> {
         let time = std::time::Instant::now();
         let mut graph = Graph::build_graph(&self.nodes, &self.roads);
+        self.roads.clear(); // Clear the roads since we don't need them anymore
         println!("Time to build graph: {:?}", time.elapsed());
         let time = std::time::Instant::now();
-        let mut node_ids = self.node_ids.clone();
-        node_ids.par_sort_unstable();
-        Graph::minimize_graph(&mut graph, node_ids);
+        Graph::minimize_graph(&mut graph);
         println!("Time to minimize graph: {:?}", time.elapsed());
         graph
     }
@@ -185,7 +183,6 @@ impl Preprocessor {
                     if !nodes_to_keep.contains(&node.id) {
                         continue;
                     }
-                    self.node_ids.push(node.id);
                     nodes.push(Node {
                         id: node.id,
                         coord: Coord {
@@ -205,10 +202,11 @@ impl Preprocessor {
         let nodes = self
             .nodes
             .par_iter() // Use a parallel iterator
-            .map(|(nodeid, node)| (*nodeid, node.clone())) // Dereference the tuple elements before cloning
+            .map(|(nodeid, node)| (*nodeid, node.clone())) 
             .filter(|(nodeid, _)| self.nodes_to_keep.contains(nodeid))
             .collect();
         self.nodes = nodes;
+        self.nodes_to_keep.clear(); // Clear the nodes_to_keep set since we don't need it anymore
     }
 
     pub fn new() -> Self {
@@ -216,7 +214,6 @@ impl Preprocessor {
             nodes_to_keep: HashSet::new(),
             nodes: HashMap::new(),
             roads: Vec::new(),
-            node_ids: Vec::new(),
         }
     }
 
@@ -278,13 +275,3 @@ fn one_node_is_dropped() {
     assert_eq!(2, preprocessor.nodes.len());
 }
 
-#[test]
-fn all_nodes_to_keep_are_kept() {
-    //checks that all nodes in nodes kept is also in nodes to keep.
-    let preprocessor = initialize("src/test_data/minimal.osm.testpbf");
-    let nodes_to_keep = &preprocessor.nodes_to_keep;
-    let nodes_kept = &preprocessor.nodes;
-    for node in nodes_kept {
-        assert_eq!(true, nodes_to_keep.contains(node.0));
-    }
-}

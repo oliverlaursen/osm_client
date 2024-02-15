@@ -6,6 +6,9 @@
 // more details.
 mod preprocessor;
 
+use rayon::iter::IntoParallelRefIterator;
+use rayon::iter::ParallelIterator;
+
 use crate::preprocessor::preprocessor::*;
 use crate::preprocessor::coord::*;
 use crate::preprocessor::graph::*;

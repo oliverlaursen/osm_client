@@ -10,10 +10,10 @@ use std::collections::HashSet;
 pub struct Graph;
 
 impl Graph {
-    pub fn minimize_graph(graph: &mut HashMap<NodeId, Vec<Edge>>, node_ids: Vec<NodeId>)  {
+    pub fn minimize_graph(graph: &mut HashMap<NodeId, Vec<Edge>>)  {
         let mut nodes_pointing_to_node: HashMap<NodeId, Vec<NodeId>> = HashMap::new();
         let mut intermediate_nodes: Vec<NodeId> = Vec::new();
-
+        let mut node_ids = Vec::new();
         // Populate nodes_pointing_to_node
         graph.iter().for_each(|(node_id, edges)| {
             edges.iter().for_each(|edge| {
@@ -22,10 +22,11 @@ impl Graph {
                     .or_insert_with(Vec::new)
                     .push(*node_id);
             });
+            node_ids.push(*node_id);
         });
 
         // Find all intermediate nodes
-        for node_id in node_ids {
+        for node_id in &node_ids {
             let edges = graph.get_mut(&node_id).unwrap();
             let mut neighbors: HashSet<NodeId> = edges.iter().map(|edge| edge.node).collect();
             let outgoing = neighbors.clone();
@@ -37,9 +38,10 @@ impl Graph {
             neighbors.extend(incoming.iter());
 
             if neighbors.len() == 2 && incoming.len() == outgoing.len() {
-                intermediate_nodes.push(node_id);
+                intermediate_nodes.push(*node_id);
             }
         }
+        drop(node_ids);
 
         // Fix all intermediate nodes
         for node_id in &intermediate_nodes {
@@ -177,7 +179,7 @@ fn one_way_roads_minimization() {
     for node in graph.keys() {
         node_ids.push(*node);
     }
-    Graph::minimize_graph(&mut graph, node_ids);
+    Graph::minimize_graph(&mut graph);
     assert_eq!(graph.len(), 1);
     assert_eq!(graph.get(&NodeId(1)).unwrap()[0].node, NodeId(3));
     assert_eq!(graph.get(&NodeId(1)).unwrap()[0].cost, 2);
@@ -194,7 +196,7 @@ fn one_way_roads_minimization_long() {
     for node in graph.keys() {
         node_ids.push(*node);
     }
-    Graph::minimize_graph(&mut graph, node_ids);
+    Graph::minimize_graph(&mut graph);
     assert_eq!(graph.len(), 1);
     assert_eq!(graph.get(&NodeId(1)).unwrap()[0].node, NodeId(5));
     assert_eq!(graph.get(&NodeId(1)).unwrap()[0].cost, 4);
@@ -216,7 +218,7 @@ fn one_way_roads_with_cross() {
         node_ids.push(*node);
     }
 
-    Graph::minimize_graph(&mut graph, node_ids);
+    Graph::minimize_graph(&mut graph);
     assert_eq!(graph.len(), 4);
 }
 
@@ -234,7 +236,7 @@ fn two_way_roads_simple() {
     for node in graph.keys() {
         node_ids.push(*node);
     }
-    Graph::minimize_graph(&mut graph, node_ids);
+    Graph::minimize_graph(&mut graph);
     assert_eq!(graph.len(), 2);
     assert_eq!(graph.get(&NodeId(1)).unwrap()[0].node, NodeId(3));
     assert_eq!(graph.get(&NodeId(1)).unwrap()[0].cost, 2);
@@ -251,7 +253,7 @@ fn one_way_cycle(){
     graph.insert(NodeId(3), vec![Edge::new(NodeId(4), 1)]);
     graph.insert(NodeId(4), vec![Edge::new(NodeId(5), 1)]);
     graph.insert(NodeId(5), vec![Edge::new(NodeId(2), 1)]);
-    Graph::minimize_graph(&mut graph,node_ids);
+    Graph::minimize_graph(&mut graph);
     println!("{:?}", graph);
 }
 
@@ -270,6 +272,6 @@ fn advanced_one_way_cycle(){
     graph.insert(NodeId(9), vec![Edge::new(NodeId(1), 1)]);
     graph.insert(NodeId(10), Vec::new());
     graph.insert(NodeId(11), Vec::new());
-    Graph::minimize_graph(&mut graph,node_ids);
+    Graph::minimize_graph(&mut graph);
     println!("{:?}", graph);
 }
