@@ -6,9 +6,6 @@
 // more details.
 mod preprocessor;
 
-use rayon::iter::IntoParallelRefIterator;
-use rayon::iter::ParallelIterator;
-
 use crate::preprocessor::preprocessor::*;
 use crate::preprocessor::coord::*;
 use crate::preprocessor::graph::*;
@@ -43,13 +40,13 @@ fn azimuthal_equidistant_projection(coord: Coord, center: (f64, f64)) -> (f64, f
 fn main() {
     let time = std::time::Instant::now();
     let mut preprocessor = Preprocessor::new();
-    preprocessor.get_roads_and_nodes("src/test_data/denmark.osm.pbf");
+    preprocessor.get_roads_and_nodes("src/test_data/andorra.osm.testpbf");
     preprocessor.filter_nodes();
     println!("Time to get roads and nodes: {:?}", time.elapsed());
     let graph = preprocessor.build_graph();
     let projected_points = preprocessor.project_nodes_to_2d();
     let time2 = std::time::Instant::now();
-    preprocessor.write_graph(projected_points, graph, "denmark.graph");
+    preprocessor.write_graph(projected_points, graph, "andorra.graph");
     println!("Time to write graph: {:?}", time2.elapsed());
     println!("Total time: {:?}", time.elapsed());
 }

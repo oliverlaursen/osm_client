@@ -3,12 +3,9 @@ use crate::preprocessor::coord::Coord;
 use crate::{azimuthal_equidistant_projection, Graph};
 use osmpbfreader::{NodeId, WayId};
 use rayon::iter::{FromParallelIterator, IntoParallelRefIterator, ParallelIterator};
-use rayon::slice::ParallelSliceMut;
 use serde::Serialize;
-use std::{
-    collections::{HashMap, HashSet},
-    io::Write,
-};
+use std::collections::{HashMap, HashSet};
+
 use rmp_serde::Serializer;
 
 use super::edge::Edge;
@@ -26,10 +23,10 @@ pub struct Road {
     pub direction: CarDirection,
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum CarDirection {
-    FORWARD,
-    TWOWAY,
+    Forward,
+    Twoway,
 }
 
 #[derive(Clone)]
@@ -94,7 +91,7 @@ impl Preprocessor {
     pub fn build_graph(&mut self) -> HashMap<NodeId, Vec<Edge>> {
         let time = std::time::Instant::now();
         let mut graph = Graph::build_graph(&self.nodes, &self.roads);
-        self.roads.clear(); // Clear the roads since we don't need them anymore
+        self.roads = Vec::new(); // Clear the roads since we don't need them anymore
         println!("Time to build graph: {:?}", time.elapsed());
         let time = std::time::Instant::now();
         Graph::minimize_graph(&mut graph);
@@ -123,7 +120,7 @@ impl Preprocessor {
                         node_id: *node_id,
                         x: *x,
                         y: *y,
-                        neighbours: neighbours,
+                        neighbours,
                     }
                 })
                 .collect(),
@@ -149,11 +146,11 @@ impl Preprocessor {
                     roads.push(Road {
                         id: way.id,
                         node_refs: way.nodes,
-                        direction: way.tags.get("oneway").map_or(CarDirection::TWOWAY, |v| {
+                        direction: way.tags.get("oneway").map_or(CarDirection::Twoway, |v| {
                             if v == "yes" {
-                                CarDirection::FORWARD
+                                CarDirection::Forward
                             } else {
-                                CarDirection::TWOWAY
+                                CarDirection::Twoway
                             }
                         }),
                     })
@@ -206,7 +203,7 @@ impl Preprocessor {
             .filter(|(nodeid, _)| self.nodes_to_keep.contains(nodeid))
             .collect();
         self.nodes = nodes;
-        self.nodes_to_keep.clear(); // Clear the nodes_to_keep set since we don't need it anymore
+        self.nodes_to_keep = HashSet::new(); // Clear the nodes_to_keep set since we don't need it anymore
     }
 
     pub fn new() -> Self {
@@ -258,7 +255,7 @@ fn test_real_all() {
 fn road_is_oneway() {
     //checks if road is a oneway road
     let preprocessor = initialize("src/test_data/minimal.osm.testpbf");
-    assert_eq!(CarDirection::FORWARD, preprocessor.roads[0].direction);
+    assert_eq!(CarDirection::Forward, preprocessor.roads[0].direction);
 }
 
 #[test]

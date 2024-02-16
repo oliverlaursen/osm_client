@@ -10,7 +10,7 @@ use std::collections::HashSet;
 pub struct Graph;
 
 impl Graph {
-    pub fn minimize_graph(graph: &mut HashMap<NodeId, Vec<Edge>>)  {
+    pub fn minimize_graph(graph: &mut HashMap<NodeId, Vec<Edge>>) {
         let mut nodes_pointing_to_node: HashMap<NodeId, Vec<NodeId>> = HashMap::new();
         let mut intermediate_nodes: Vec<NodeId> = Vec::new();
         let mut node_ids = Vec::new();
@@ -27,14 +27,14 @@ impl Graph {
 
         // Find all intermediate nodes
         for node_id in &node_ids {
-            let edges = graph.get_mut(&node_id).unwrap();
+            let edges = graph.get_mut(node_id).unwrap();
             let mut neighbors: HashSet<NodeId> = edges.iter().map(|edge| edge.node).collect();
             let outgoing = neighbors.clone();
             let incoming = 
-                nodes_pointing_to_node
-                    .get(&node_id)
-                    .unwrap_or(&Vec::new())
-                    .clone();
+            nodes_pointing_to_node
+                .get(node_id)
+                .unwrap_or(&Vec::new())
+                .clone();
             neighbors.extend(incoming.iter());
 
             if neighbors.len() == 2 && incoming.len() == outgoing.len() {
@@ -45,19 +45,31 @@ impl Graph {
 
         // Fix all intermediate nodes
         for node_id in &intermediate_nodes {
-            let edges = graph.get_mut(&node_id).unwrap();
-             {
+            let edges = graph.get_mut(node_id).unwrap();
+            {
                 let node_id = *node_id;
                 let outgoing: HashSet<NodeId> = edges.iter().map(|edge| edge.node).collect();
                 let two_way = outgoing.len() == 2;
                 if !two_way {
                     let pred = nodes_pointing_to_node.get(&node_id).unwrap()[0];
                     let succ = edges[0].node;
-                    let cost = edges[0].cost + graph.get(&pred).unwrap().iter().find(|x| x.node == node_id).unwrap().cost;
+                    let cost = edges[0].cost
+                        + graph
+                            .get(&pred)
+                            .unwrap()
+                            .iter()
+                            .find(|x| x.node == node_id)
+                            .unwrap()
+                            .cost;
                     let new_edge = Edge::new(succ, cost);
-                    Graph::update_edges_and_remove_node(pred, node_id, graph, new_edge); 
-                    Graph::update_nodes_pointing_to_node_edge(&succ, &mut nodes_pointing_to_node, &pred, node_id)
-                }   else {
+                    Graph::update_edges_and_remove_node(pred, node_id, graph, new_edge);
+                    Graph::update_nodes_pointing_to_node_edge(
+                        &succ,
+                        &mut nodes_pointing_to_node,
+                        &pred,
+                        node_id,
+                    )
+                } else {
                     let succ = edges[0].node;
                     let pred = edges[1].node;
                     let cost = edges[0].cost + edges[1].cost;
@@ -65,34 +77,52 @@ impl Graph {
                     let new_edge_from_succ = Edge::new(pred, cost);
                     Graph::update_edges_and_remove_node(pred, node_id, graph, new_edge_from_pred);
                     Graph::update_edges_and_remove_node(succ, node_id, graph, new_edge_from_succ);
-                    Graph::update_nodes_pointing_to_node_edge(&pred, &mut nodes_pointing_to_node, &succ, node_id);
-                    Graph::update_nodes_pointing_to_node_edge(&succ, &mut nodes_pointing_to_node, &pred, node_id);
+                    Graph::update_nodes_pointing_to_node_edge(
+                        &pred,
+                        &mut nodes_pointing_to_node,
+                        &succ,
+                        node_id,
+                    );
+                    Graph::update_nodes_pointing_to_node_edge(
+                        &succ,
+                        &mut nodes_pointing_to_node,
+                        &pred,
+                        node_id,
+                    );
                 }
             }
         }
         // Remove loops
-        
         for (node, edges) in graph.iter_mut() {
             edges.retain(|x| x.node != *node);
         }
     }
 
-    fn update_edges_and_remove_node(pred: NodeId, node: NodeId, graph: &mut HashMap<NodeId, Vec<Edge>>, new_edge: Edge) {
-        let mut pred_edges = graph.get_mut(&pred).expect(format!("Could not get edges from {:?}",&pred).as_str()).clone();
+    fn update_edges_and_remove_node(
+        pred: NodeId,
+        node: NodeId,
+        graph: &mut HashMap<NodeId, Vec<Edge>>,
+        new_edge: Edge,
+    ) {
+        let mut pred_edges = graph
+            .get_mut(&pred)
+            .unwrap_or_else(|| panic!("Could not get edges from {:?}",&pred))
+            .clone();
         pred_edges.retain(|x| x.node != node);
         pred_edges.push(new_edge);
         graph.remove(&node);
         graph.insert(pred, pred_edges.to_vec());
-        
     }
 
-    fn update_nodes_pointing_to_node_edge(from: &NodeId, nodes_pointing_to_node: &mut HashMap<NodeId, Vec<NodeId>>, to: &NodeId, intermediate:NodeId) -> (){
-        let edges = nodes_pointing_to_node
-                        .get_mut(&from)
-                        .unwrap();
+    fn update_nodes_pointing_to_node_edge(
+        from: &NodeId,
+        nodes_pointing_to_node: &mut HashMap<NodeId, Vec<NodeId>>,
+        to: &NodeId,
+        intermediate: NodeId,
+    ) {
+        let edges = nodes_pointing_to_node.get_mut(from).unwrap();
         edges.retain(|x| *x != intermediate);
         edges.push(*to);
-        
     }
 
     pub fn build_graph(
@@ -101,7 +131,7 @@ impl Graph {
     ) -> HashMap<NodeId, Vec<Edge>> {
         let roads: HashMap<WayId, Road> = roads
             .par_iter()
-            .map(|road| (road.id.clone(), road.clone()))
+            .map(|road| (road.id, road.clone()))
             .collect();
         let mut graph: HashMap<NodeId, Vec<Edge>> = HashMap::new();
         let mut roads_associated_with_node: HashMap<NodeId, Vec<WayId>> = HashMap::new();
@@ -117,7 +147,7 @@ impl Graph {
         for node in roads_associated_with_node {
             let mut edges: Vec<Edge> = Vec::new();
             for road_id in node.1.iter() {
-                let road = roads.get(&road_id).unwrap();
+                let road = roads.get(road_id).unwrap();
                 let index = road.node_refs.iter().position(|x| *x == node.0).unwrap();
                 if index != road.node_refs.len() - 1 {
                     let next_node = road.node_refs[index + 1];
@@ -128,7 +158,7 @@ impl Graph {
                     });
                 }
                 // Handle two way roads
-                if index != 0 && road.direction == CarDirection::TWOWAY {
+                if index != 0 && road.direction == CarDirection::Twoway {
                     let next_node = road.node_refs[index - 1];
                     let distance = nodes[&node.0].coord.distance_to(nodes[&next_node].coord) as u32;
                     edges.push(Edge {
@@ -245,11 +275,14 @@ fn two_way_roads_simple() {
 }
 
 #[test]
-fn one_way_cycle(){
+fn one_way_cycle() {
     let mut graph: HashMap<NodeId, Vec<Edge>> = HashMap::new();
-    let node_ids = vec![NodeId(1), NodeId(2), NodeId(3), NodeId(4), NodeId(5)];
+    let _node_ids = vec![NodeId(1), NodeId(2), NodeId(3), NodeId(4), NodeId(5)];
     graph.insert(NodeId(1), vec![Edge::new(NodeId(2), 1)]);
-    graph.insert(NodeId(2), vec![Edge::new(NodeId(1), 1),Edge::new(NodeId(3), 1)]);
+    graph.insert(
+        NodeId(2),
+        vec![Edge::new(NodeId(1), 1), Edge::new(NodeId(3), 1)],
+    );
     graph.insert(NodeId(3), vec![Edge::new(NodeId(4), 1)]);
     graph.insert(NodeId(4), vec![Edge::new(NodeId(5), 1)]);
     graph.insert(NodeId(5), vec![Edge::new(NodeId(2), 1)]);
@@ -258,14 +291,32 @@ fn one_way_cycle(){
 }
 
 #[test]
-fn advanced_one_way_cycle(){
+fn advanced_one_way_cycle() {
     let mut graph: HashMap<NodeId, Vec<Edge>> = HashMap::new();
-    let node_ids = vec![NodeId(1), NodeId(2), NodeId(3), NodeId(4), NodeId(5), NodeId(6), NodeId(7), NodeId(8), NodeId(9), NodeId(10), NodeId(11)];
-    graph.insert(NodeId(1), vec![Edge::new(NodeId(2), 1),Edge::new(NodeId(10), 1)]);
+    let _node_ids = vec![
+        NodeId(1),
+        NodeId(2),
+        NodeId(3),
+        NodeId(4),
+        NodeId(5),
+        NodeId(6),
+        NodeId(7),
+        NodeId(8),
+        NodeId(9),
+        NodeId(10),
+        NodeId(11),
+    ];
+    graph.insert(
+        NodeId(1),
+        vec![Edge::new(NodeId(2), 1), Edge::new(NodeId(10), 1)],
+    );
     graph.insert(NodeId(2), vec![Edge::new(NodeId(3), 1)]);
     graph.insert(NodeId(3), vec![Edge::new(NodeId(4), 1)]);
     graph.insert(NodeId(4), vec![Edge::new(NodeId(5), 1)]);
-    graph.insert(NodeId(5), vec![Edge::new(NodeId(6), 1), Edge::new(NodeId(11), 1)]);
+    graph.insert(
+        NodeId(5),
+        vec![Edge::new(NodeId(6), 1), Edge::new(NodeId(11), 1)],
+    );
     graph.insert(NodeId(6), vec![Edge::new(NodeId(7), 1)]);
     graph.insert(NodeId(7), vec![Edge::new(NodeId(8), 1)]);
     graph.insert(NodeId(8), vec![Edge::new(NodeId(9), 1)]);
