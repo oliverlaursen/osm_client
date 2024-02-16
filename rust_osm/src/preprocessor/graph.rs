@@ -6,32 +6,21 @@ use rayon::iter::IntoParallelRefIterator;
 use rayon::iter::ParallelIterator;
 use std::collections::HashMap;
 use std::collections::HashSet;
+use std::f32::consts::E;
 
 pub struct Graph;
 
 impl Graph {
-    pub fn minimize_graph(graph: &mut HashMap<NodeId, Vec<Edge>>) {
-        let mut nodes_pointing_to_node: HashMap<NodeId, Vec<NodeId>> = HashMap::new();
+    pub fn find_intermediate_nodes(
+        graph: &HashMap<NodeId, Vec<Edge>>,
+        nodes_pointing_to_node: &HashMap<NodeId, Vec<NodeId>>,
+    ) -> Vec<NodeId> {
         let mut intermediate_nodes: Vec<NodeId> = Vec::new();
-        let mut node_ids = Vec::new();
-        // Populate nodes_pointing_to_node
-        graph.iter().for_each(|(node_id, edges)| {
-            edges.iter().for_each(|edge| {
-                nodes_pointing_to_node
-                    .entry(edge.node)
-                    .or_insert_with(Vec::new)
-                    .push(*node_id);
-            });
-            node_ids.push(*node_id);
-        });
-
-        // Find all intermediate nodes
-        for node_id in &node_ids {
-            let edges = graph.get_mut(node_id).unwrap();
+        for (node_id, _) in graph.iter() {
+            let edges = graph.get(node_id).unwrap();
             let mut neighbors: HashSet<NodeId> = edges.iter().map(|edge| edge.node).collect();
             let outgoing = neighbors.clone();
-            let incoming = 
-            nodes_pointing_to_node
+            let incoming = nodes_pointing_to_node
                 .get(node_id)
                 .unwrap_or(&Vec::new())
                 .clone();
@@ -41,11 +30,31 @@ impl Graph {
                 intermediate_nodes.push(*node_id);
             }
         }
-        drop(node_ids);
+        intermediate_nodes
+    }
 
-        // Fix all intermediate nodes
+    pub fn find_nodes_pointing_to_node(
+        graph: &HashMap<NodeId, Vec<Edge>>,
+    ) -> HashMap<NodeId, Vec<NodeId>> {
+        let mut nodes_pointing_to_node: HashMap<NodeId, Vec<NodeId>> = HashMap::new();
+        graph.iter().for_each(|(node_id, edges)| {
+            edges.iter().for_each(|edge| {
+                nodes_pointing_to_node
+                    .entry(edge.node)
+                    .or_insert_with(Vec::new)
+                    .push(*node_id);
+            });
+        });
+        nodes_pointing_to_node
+    }
+
+    pub fn fix_intermediate_nodes(
+        graph: &mut HashMap<NodeId, Vec<Edge>>,
+        nodes_pointing_to_node: &mut HashMap<NodeId, Vec<NodeId>>,
+        intermediate_nodes: Vec<NodeId>,
+    ) {
         for node_id in &intermediate_nodes {
-            let edges = graph.get_mut(node_id).unwrap();
+            let edges = graph.get(node_id).unwrap();
             {
                 let node_id = *node_id;
                 let outgoing: HashSet<NodeId> = edges.iter().map(|edge| edge.node).collect();
@@ -65,7 +74,7 @@ impl Graph {
                     Graph::update_edges_and_remove_node(pred, node_id, graph, new_edge);
                     Graph::update_nodes_pointing_to_node_edge(
                         &succ,
-                        &mut nodes_pointing_to_node,
+                        nodes_pointing_to_node,
                         &pred,
                         node_id,
                     )
@@ -79,22 +88,35 @@ impl Graph {
                     Graph::update_edges_and_remove_node(succ, node_id, graph, new_edge_from_succ);
                     Graph::update_nodes_pointing_to_node_edge(
                         &pred,
-                        &mut nodes_pointing_to_node,
+                        nodes_pointing_to_node,
                         &succ,
                         node_id,
                     );
                     Graph::update_nodes_pointing_to_node_edge(
                         &succ,
-                        &mut nodes_pointing_to_node,
+                        nodes_pointing_to_node,
                         &pred,
                         node_id,
                     );
                 }
             }
         }
-        // Remove loops
+        // Remove loops and duplicate edges
         for (node, edges) in graph.iter_mut() {
             edges.retain(|x| x.node != *node);
+            edges.sort_by(|a, b| a.node.0.cmp(&b.node.0));
+            edges.dedup_by(|a, b| a.node == b.node);
+        }
+    }
+
+    pub fn minimize_graph(graph: &mut HashMap<NodeId, Vec<Edge>>) {
+        let mut nodes_pointing_to_node = Self::find_nodes_pointing_to_node(graph);
+        let mut intermediate_nodes = Self::find_intermediate_nodes(graph, &nodes_pointing_to_node);
+
+        while !intermediate_nodes.is_empty() {
+            Self::fix_intermediate_nodes(graph, &mut nodes_pointing_to_node, intermediate_nodes.clone());
+            nodes_pointing_to_node = Self::find_nodes_pointing_to_node(graph);
+            intermediate_nodes = Self::find_intermediate_nodes(graph, &nodes_pointing_to_node);
         }
     }
 
@@ -106,7 +128,7 @@ impl Graph {
     ) {
         let mut pred_edges = graph
             .get_mut(&pred)
-            .unwrap_or_else(|| panic!("Could not get edges from {:?}",&pred))
+            .unwrap_or_else(|| panic!("Could not get edges from {:?}", &pred))
             .clone();
         pred_edges.retain(|x| x.node != node);
         pred_edges.push(new_edge);
@@ -293,19 +315,6 @@ fn one_way_cycle() {
 #[test]
 fn advanced_one_way_cycle() {
     let mut graph: HashMap<NodeId, Vec<Edge>> = HashMap::new();
-    let _node_ids = vec![
-        NodeId(1),
-        NodeId(2),
-        NodeId(3),
-        NodeId(4),
-        NodeId(5),
-        NodeId(6),
-        NodeId(7),
-        NodeId(8),
-        NodeId(9),
-        NodeId(10),
-        NodeId(11),
-    ];
     graph.insert(
         NodeId(1),
         vec![Edge::new(NodeId(2), 1), Edge::new(NodeId(10), 1)],
@@ -325,4 +334,24 @@ fn advanced_one_way_cycle() {
     graph.insert(NodeId(11), Vec::new());
     Graph::minimize_graph(&mut graph);
     println!("{:?}", graph);
+}
+
+#[test]
+fn two_time_minimize() {
+    let mut graph: HashMap<NodeId, Vec<Edge>> = HashMap::new();
+    graph.insert(NodeId(1), vec![Edge::new(NodeId(2), 1)]);
+    graph.insert(
+        NodeId(2),
+        vec![Edge::new(NodeId(3), 1), Edge::new(NodeId(6), 1)],
+    );
+    graph.insert(NodeId(3), vec![Edge::new(NodeId(4), 1)]);
+    graph.insert(NodeId(4), vec![Edge::new(NodeId(5), 1)]);
+    graph.insert(NodeId(5), vec![Edge::new(NodeId(2), 1)]);
+    Graph::minimize_graph(&mut graph);
+    assert_eq!(graph.len(), 2);
+    assert!(graph.get(&NodeId(1)).unwrap()[0] == Edge::new(NodeId(2), 1));
+    assert!(graph.get(&NodeId(2)).unwrap()[0] == Edge::new(NodeId(6), 1));
+    Graph::minimize_graph(&mut graph);
+    assert_eq!(graph.len(), 1);
+    assert!(graph.get(&NodeId(1)).unwrap()[0] == Edge::new(NodeId(6), 2));
 }
