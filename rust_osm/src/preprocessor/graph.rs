@@ -275,46 +275,26 @@ impl Graph {
         nodes: &HashMap<NodeId, Node>,
         roads: &Vec<Road>,
     ) -> HashMap<NodeId, Vec<Edge>> {
-        let roads: HashMap<WayId, Road> = roads
-            .par_iter()
-            .map(|road| (road.id, road.clone()))
-            .collect();
         let mut graph: HashMap<NodeId, Vec<Edge>> = HashMap::new();
-        let mut roads_associated_with_node: HashMap<NodeId, Vec<WayId>> = HashMap::new();
-        for road in &roads {
-            for node in &road.1.node_refs {
-                roads_associated_with_node
-                    .entry(*node)
-                    .or_insert(Vec::new())
-                    .push(*road.0);
-            }
+        for node in nodes.values() {
+            graph.insert(node.id, Vec::new());
         }
-        
-        // For each road, add the next node to the graph
-        for node in roads_associated_with_node {
-            let mut edges: Vec<Edge> = Vec::new();
-            for road_id in node.1.iter() {
-                let road = roads.get(road_id).unwrap();
-                let index = road.node_refs.iter().position(|x| *x == node.0).unwrap();
-                if index != road.node_refs.len() - 1 {
-                    let next_node = road.node_refs[index + 1];
-                    let distance = nodes[&node.0].coord.distance_to(nodes[&next_node].coord) as u32;
-                    edges.push(Edge {
-                        node: next_node,
-                        cost: distance,
-                    });
-                }
-                // Handle two way roads
-                if index != 0 && road.direction == CarDirection::Twoway {
-                    let next_node = road.node_refs[index - 1];
-                    let distance = nodes[&node.0].coord.distance_to(nodes[&next_node].coord) as u32;
-                    edges.push(Edge {
-                        node: next_node,
-                        cost: distance,
-                    });
+        for road in roads {
+            for n_i in 0..&road.node_refs.len() - 1 {
+                let node = road.node_refs[n_i];
+                let next_node = road.node_refs[n_i + 1];
+                let distance = nodes[&node].coord.distance_to(nodes[&next_node].coord) as u32;
+                let edge = Edge::new(next_node, distance);
+                graph
+                    .get_mut(&node).unwrap()
+                    .push(edge);
+                if road.direction == CarDirection::Twoway {
+                    let edge = Edge::new(node, distance);
+                    graph
+                        .get_mut(&next_node).unwrap()
+                        .push(edge);
                 }
             }
-            graph.insert(node.0, edges);
         }
         
         graph

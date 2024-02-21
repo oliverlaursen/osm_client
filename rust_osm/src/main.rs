@@ -40,7 +40,7 @@ fn azimuthal_equidistant_projection(coord: Coord, center: (f64, f64)) -> (f64, f
 fn main() {
     let time = std::time::Instant::now();
     let mut preprocessor = Preprocessor::new();
-    preprocessor.get_roads_and_nodes("src/test_data/problem_cycle.osm.pbf");
+    preprocessor.get_roads_and_nodes("src/test_data/andorra.osm.testpbf");
     preprocessor.filter_nodes();
     println!("Time to get roads and nodes: {:?}", time.elapsed());
     let graph = preprocessor.build_graph();
