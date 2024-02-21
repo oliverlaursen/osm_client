@@ -1,14 +1,9 @@
-use crate::preprocessor::edge;
 use crate::preprocessor::edge::*;
 use crate::preprocessor::preprocessor::*;
 
-use osmpbfreader::{NodeId, WayId};
-use rayon::iter::IntoParallelRefIterator;
-use rayon::iter::ParallelIterator;
-use std::borrow::BorrowMut;
+use osmpbfreader::NodeId;
 use std::collections::HashMap;
 use std::collections::HashSet;
-use std::f32::consts::E;
 
 pub struct Graph;
 
@@ -82,7 +77,8 @@ impl Graph {
             } else {
                 let succ = edges[0].node;
                 let pred = edges[1].node;
-                let cost = edges[0].cost + edges[1].cost;
+                let edge_from_pred = graph.get(&pred).unwrap().iter().find(|x| x.node == node_id);
+                let cost = edges[0].cost + edge_from_pred.unwrap().cost;
                 let new_edge_from_pred = Edge::new(succ, cost);
                 let new_edge_from_succ = Edge::new(pred, cost);
                 Graph::update_edges_and_remove_node(pred, node_id, graph, new_edge_from_pred);
@@ -196,7 +192,6 @@ impl Graph {
         let mut intermediate_nodes = Self::find_intermediate_nodes(graph, &nodes_pointing_to_node);
 
         while !intermediate_nodes.is_empty() {
-
             Self::fix_intermediate_nodes(
                 graph,
                 &mut nodes_pointing_to_node,
@@ -209,29 +204,40 @@ impl Graph {
             nodes_pointing_to_node = Self::find_nodes_pointing_to_node(graph);
             let (mut end_nodes, mut start_nodes, mut two_way_end_nodes, mut dead_nodes) =
                 Self::find_end_nodes(graph, &nodes_pointing_to_node);
-            while !end_nodes.is_empty()
+            fn can_remove_ends(end_nodes: &Vec<NodeId>, start_nodes: &Vec<NodeId>,two_way_end_nodes: &Vec<NodeId>,dead_nodes: &Vec<NodeId>) -> bool {
+                !end_nodes.is_empty()
                 || !start_nodes.is_empty()
                 || !two_way_end_nodes.is_empty()
                 || !dead_nodes.is_empty()
-            {
-                Self::fix_end_nodes(
-                    graph,
-                    &mut nodes_pointing_to_node,
-                    &start_nodes,
-                    &end_nodes,
-                    &two_way_end_nodes,
-                    &dead_nodes,
-                );
-                nodes_pointing_to_node = Self::find_nodes_pointing_to_node(graph);
-                (end_nodes, start_nodes, two_way_end_nodes, dead_nodes) =
-                    Self::find_end_nodes(graph, &nodes_pointing_to_node);
             }
-            intermediate_nodes = Self::find_intermediate_nodes(graph, &nodes_pointing_to_node);
-            Self::fix_intermediate_nodes(
-                graph,
-                &mut nodes_pointing_to_node,
-                intermediate_nodes.clone(),
-            );
+            while can_remove_ends(&end_nodes,&start_nodes,&two_way_end_nodes,&dead_nodes) || !intermediate_nodes.is_empty() {
+                while can_remove_ends(&end_nodes,&start_nodes,&two_way_end_nodes,&dead_nodes) {
+                    Self::fix_end_nodes(
+                        graph,
+                        &mut nodes_pointing_to_node,
+                        &start_nodes,
+                        &end_nodes,
+                        &two_way_end_nodes,
+                        &dead_nodes,
+                    );
+                    nodes_pointing_to_node = Self::find_nodes_pointing_to_node(graph);
+                    (end_nodes, start_nodes, two_way_end_nodes, dead_nodes) =
+                        Self::find_end_nodes(graph, &nodes_pointing_to_node);
+                }
+                intermediate_nodes = Self::find_intermediate_nodes(graph, &nodes_pointing_to_node);
+                while !intermediate_nodes.is_empty() {
+                    Self::fix_intermediate_nodes(
+                        graph,
+                        &mut nodes_pointing_to_node,
+                        intermediate_nodes.clone(),
+                    );
+                    nodes_pointing_to_node = Self::find_nodes_pointing_to_node(graph);
+                    intermediate_nodes =
+                        Self::find_intermediate_nodes(graph, &nodes_pointing_to_node);
+                }
+                (end_nodes, start_nodes, two_way_end_nodes, dead_nodes) =
+                        Self::find_end_nodes(graph, &nodes_pointing_to_node);
+            }
         }
     }
 
@@ -285,18 +291,14 @@ impl Graph {
                 let next_node = road.node_refs[n_i + 1];
                 let distance = nodes[&node].coord.distance_to(nodes[&next_node].coord) as u32;
                 let edge = Edge::new(next_node, distance);
-                graph
-                    .get_mut(&node).unwrap()
-                    .push(edge);
+                graph.get_mut(&node).unwrap().push(edge);
                 if road.direction == CarDirection::Twoway {
                     let edge = Edge::new(node, distance);
-                    graph
-                        .get_mut(&next_node).unwrap()
-                        .push(edge);
+                    graph.get_mut(&next_node).unwrap().push(edge);
                 }
             }
         }
-        
+
         graph
     }
 }
@@ -498,7 +500,10 @@ fn two_way_cycle() {
 fn problematic_two_way_cycle() {
     let mut graph: HashMap<NodeId, Vec<Edge>> = HashMap::new();
     graph.insert(NodeId(0), vec![Edge::new(NodeId(1), 1)]);
-    graph.insert(NodeId(1), vec![Edge::new(NodeId(2), 1), Edge::new(NodeId(0), 1)]);
+    graph.insert(
+        NodeId(1),
+        vec![Edge::new(NodeId(2), 1), Edge::new(NodeId(0), 1)],
+    );
     graph.insert(
         NodeId(2),
         vec![
