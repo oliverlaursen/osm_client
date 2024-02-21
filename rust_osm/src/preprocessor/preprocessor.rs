@@ -1,7 +1,7 @@
 use crate::preprocessor::coord::Coord;
 
 use crate::{azimuthal_equidistant_projection, Graph};
-use osmpbfreader::{NodeId, WayId};
+use osmpbfreader::NodeId;
 use rayon::iter::{FromParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use serde::Serialize;
 use std::collections::{HashMap, HashSet};
@@ -18,7 +18,6 @@ pub struct Node {
 
 #[derive(Debug, Clone)]
 pub struct Road {
-    pub id: WayId,
     pub node_refs: Vec<NodeId>,
     pub direction: CarDirection,
 }
@@ -144,7 +143,6 @@ impl Preprocessor {
                     }
                     nodes_to_keep.extend(&way.nodes);
                     roads.push(Road {
-                        id: way.id,
                         node_refs: way.nodes,
                         direction: way.tags.get("oneway").map_or(CarDirection::Twoway, |v| {
                             if v == "yes" {

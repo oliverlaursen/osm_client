@@ -76,9 +76,9 @@ impl Graph {
                 )
             } else {
                 let succ = edges[0].node;
-                let pred = edges[1].node;
+                let pred = edges.get(1).map(|x| x.node).unwrap();
                 let edge_from_pred = graph.get(&pred).unwrap().iter().find(|x| x.node == node_id);
-                let cost = edges[0].cost + edge_from_pred.unwrap().cost;
+                let cost = edges[0].cost + edge_from_pred.or(edges.get(1)).unwrap().cost;
                 let new_edge_from_pred = Edge::new(succ, cost);
                 let new_edge_from_succ = Edge::new(pred, cost);
                 Graph::update_edges_and_remove_node(pred, node_id, graph, new_edge_from_pred);
@@ -297,6 +297,11 @@ impl Graph {
                     graph.get_mut(&next_node).unwrap().push(edge);
                 }
             }
+        }
+        // Remove duplicate edges
+        for (_, edges) in graph.iter_mut() {
+            edges.sort_by(|a, b| a.node.0.cmp(&b.node.0));
+            edges.dedup_by(|a, b| a.node == b.node);
         }
 
         graph
