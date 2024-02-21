@@ -94,7 +94,7 @@ impl Preprocessor {
         self.roads = Vec::new(); // Clear the roads since we don't need them anymore
         println!("Time to build graph: {:?}", time.elapsed());
         let time = std::time::Instant::now();
-        Graph::minimize_graph(&mut graph);
+        Graph::minimize_graph(&mut graph, false);
         println!("Time to minimize graph: {:?}", time.elapsed());
         graph
     }

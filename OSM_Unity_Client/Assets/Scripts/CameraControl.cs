@@ -58,7 +58,17 @@ public class CameraControl : MonoBehaviour
                     Destroy(circleBInstance);
                     circleBInstance = Instantiate(circleB, new Vector3(nodeCoords[0], nodeCoords[1], 0), Quaternion.identity);
                 }
-                Debug.Log(closestNode);
+                var node_print = "Node: " + closestNode;
+                // Print node edges
+                var graph = GameObject.Find("Map").GetComponent<MapController>().graph.graph;
+                var edges = graph[closestNode];
+                foreach (var edge in edges)
+                {
+                    var endNode = edge.node;
+                    var edge_print = "Edge: " + endNode;
+                    node_print += "\n" + edge_print;
+                }
+                Debug.Log(node_print);
             }
 
             if (Input.GetMouseButtonDown(0))
