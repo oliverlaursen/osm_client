@@ -14,7 +14,8 @@ using System.Threading.Tasks;
 public class MapController : MonoBehaviour
 {
     public Graph graph;
-    public string mapFileName = "andorra.json";
+    public string mapFileName = "andorra.graph";
+    public GameObject mapText;
 
     private long[] ReconstructPath(Dictionary<long, long> previous, long start, long end)
     {
@@ -146,6 +147,7 @@ public class MapController : MonoBehaviour
 
     void Start()
     {
+        mapText.GetComponent<TMPro.TMP_Text>().text = mapFileName;
         var time = new Stopwatch();
         time.Start();
         var graph = DeserializeGraph("Assets/Maps/" + mapFileName);

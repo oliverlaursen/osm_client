@@ -165,22 +165,17 @@ impl Graph {
 
         for node in two_way_end_nodes {
             let pred_edges = nodes_pointing_to_node.get(&node).unwrap();
-            if pred_edges.len() == 0 {
-                graph.remove(&node);
-            } else {
+            if !pred_edges.is_empty() {
                 let edges = graph.get_mut(&pred_edges[0]);
-                match edges {
-                    Some(edges) => {
-                        nodes_pointing_to_node
-                            .get_mut(&edges[0].node)
-                            .unwrap()
-                            .retain(|x| *x != *node);
-                        edges.retain(|x| x.node != *node);
-                    }
-                    None => {}
+                if let Some(edges) = edges {
+                    nodes_pointing_to_node
+                        .get_mut(&edges[0].node)
+                        .unwrap()
+                        .retain(|x| *x != *node);
+                    edges.retain(|x| x.node != *node);
                 }
-                graph.remove(&node);
             }
+            graph.remove(&node);
         }
         for node in dead_nodes {
             graph.remove(&node);
@@ -204,14 +199,21 @@ impl Graph {
             nodes_pointing_to_node = Self::find_nodes_pointing_to_node(graph);
             let (mut end_nodes, mut start_nodes, mut two_way_end_nodes, mut dead_nodes) =
                 Self::find_end_nodes(graph, &nodes_pointing_to_node);
-            fn can_remove_ends(end_nodes: &Vec<NodeId>, start_nodes: &Vec<NodeId>,two_way_end_nodes: &Vec<NodeId>,dead_nodes: &Vec<NodeId>) -> bool {
+            fn can_remove_ends(
+                end_nodes: &Vec<NodeId>,
+                start_nodes: &Vec<NodeId>,
+                two_way_end_nodes: &Vec<NodeId>,
+                dead_nodes: &Vec<NodeId>,
+            ) -> bool {
                 !end_nodes.is_empty()
-                || !start_nodes.is_empty()
-                || !two_way_end_nodes.is_empty()
-                || !dead_nodes.is_empty()
+                    || !start_nodes.is_empty()
+                    || !two_way_end_nodes.is_empty()
+                    || !dead_nodes.is_empty()
             }
-            while can_remove_ends(&end_nodes,&start_nodes,&two_way_end_nodes,&dead_nodes) || !intermediate_nodes.is_empty() {
-                while can_remove_ends(&end_nodes,&start_nodes,&two_way_end_nodes,&dead_nodes) {
+            while can_remove_ends(&end_nodes, &start_nodes, &two_way_end_nodes, &dead_nodes)
+                || !intermediate_nodes.is_empty()
+            {
+                while can_remove_ends(&end_nodes, &start_nodes, &two_way_end_nodes, &dead_nodes) {
                     Self::fix_end_nodes(
                         graph,
                         &mut nodes_pointing_to_node,
@@ -236,7 +238,7 @@ impl Graph {
                         Self::find_intermediate_nodes(graph, &nodes_pointing_to_node);
                 }
                 (end_nodes, start_nodes, two_way_end_nodes, dead_nodes) =
-                        Self::find_end_nodes(graph, &nodes_pointing_to_node);
+                    Self::find_end_nodes(graph, &nodes_pointing_to_node);
             }
         }
     }
@@ -286,9 +288,9 @@ impl Graph {
             graph.insert(node.id, Vec::new());
         }
         for road in roads {
-            for n_i in 0..&road.node_refs.len() - 1 {
-                let node = road.node_refs[n_i];
-                let next_node = road.node_refs[n_i + 1];
+            for win in road.node_refs.windows(2) {
+                let node = win[0];
+                let next_node = win[1];
                 let distance = nodes[&node].coord.distance_to(nodes[&next_node].coord) as u32;
                 let edge = Edge::new(next_node, distance);
                 graph.get_mut(&node).unwrap().push(edge);
@@ -319,19 +321,21 @@ fn initialize(filename: &str) -> Preprocessor {
 #[test]
 fn can_build_full_graph() {
     // builds a graph with two nodes and one edge
+    // should minimize to 0
     let mut preprocessor = initialize("src/test_data/minimal_twoway.osm.testpbf");
     let graph = preprocessor.build_graph();
-    assert_eq!(graph.len(), 2);
+    assert_eq!(graph.len(), 0);
     assert_eq!(preprocessor.nodes.len(), 2);
 }
 
 #[test]
 fn can_minimize_graph() {
     // //removes one intermediate node
+    // and all ends
     let mut preprocessor = initialize("src/test_data/minimize_correctly.osm.testpbf");
     let graph = preprocessor.build_graph();
     println!("{:?}", graph);
-    assert_eq!(graph.len(), 2);
+    assert_eq!(graph.len(), 0);
 }
 
 #[test]

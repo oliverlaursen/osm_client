@@ -1,6 +1,6 @@
-use std::cmp::Ordering;
 use osmpbfreader::NodeId;
 use serde::Serialize;
+use std::cmp::Ordering;
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Copy, Hash)]
 pub struct Edge {

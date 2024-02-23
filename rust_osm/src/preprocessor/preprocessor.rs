@@ -49,7 +49,7 @@ pub struct NodeWriteFormat {
 }
 
 fn create_blacklist() -> HashSet<&'static str> {
-    let blacklist: HashSet<&str> = HashSet::from_iter([
+    HashSet::from_iter([
         "pedestrian",
         "footway",
         "steps",
@@ -76,8 +76,7 @@ fn create_blacklist() -> HashSet<&'static str> {
         "crossing",
         "proposed",
         "track",
-    ]);
-    blacklist
+    ])
 }
 
 impl Preprocessor {
@@ -142,15 +141,15 @@ impl Preprocessor {
                         continue;
                     }
                     nodes_to_keep.extend(&way.nodes);
+                    let oneway = way.tags.get("oneway").map_or(false, |v| v == "yes");
+                    let roundabout = way.tags.values().any(|v| v == "roundabout");
                     roads.push(Road {
                         node_refs: way.nodes,
-                        direction: way.tags.get("oneway").map_or(CarDirection::Twoway, |v| {
-                            if v == "yes" {
-                                CarDirection::Forward
-                            } else {
-                                CarDirection::Twoway
-                            }
-                        }),
+                        direction: if oneway || roundabout {
+                            CarDirection::Forward
+                        } else {
+                            CarDirection::Twoway
+                        },
                     })
                 }
                 _ => continue,
@@ -174,10 +173,7 @@ impl Preprocessor {
         let mut pbf = osmpbfreader::OsmPbfReader::new(r);
         for obj in pbf.par_iter().map(Result::unwrap) {
             match obj {
-                osmpbfreader::OsmObj::Node(node) => {
-                    if !nodes_to_keep.contains(&node.id) {
-                        continue;
-                    }
+                osmpbfreader::OsmObj::Node(node) if nodes_to_keep.contains(&node.id) => {
                     nodes.push(Node {
                         id: node.id,
                         coord: Coord {
@@ -186,7 +182,8 @@ impl Preprocessor {
                         },
                     })
                 }
-                _ => return nodes, // Can return early since nodes are at the start of the file
+                osmpbfreader::OsmObj::Node(_) => continue,
+                _ => break, // Can return early since nodes are at the start of the file
             }
         }
         nodes
@@ -194,13 +191,12 @@ impl Preprocessor {
 
     pub fn filter_nodes(&mut self) {
         // Filter out nodes that are not in nodes_to_keep
-        let nodes = self
+        self.nodes = self
             .nodes
             .par_iter() // Use a parallel iterator
-            .map(|(nodeid, node)| (*nodeid, node.clone())) 
+            .map(|(nodeid, node)| (*nodeid, node.clone()))
             .filter(|(nodeid, _)| self.nodes_to_keep.contains(nodeid))
             .collect();
-        self.nodes = nodes;
         self.nodes_to_keep = HashSet::new(); // Clear the nodes_to_keep set since we don't need it anymore
     }
 
@@ -269,4 +265,3 @@ fn one_node_is_dropped() {
     let preprocessor = initialize("src/test_data/one_node_is_dropped.osm.testpbf");
     assert_eq!(2, preprocessor.nodes.len());
 }
-
