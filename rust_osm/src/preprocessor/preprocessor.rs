@@ -5,6 +5,8 @@ use osmpbfreader::NodeId;
 use rayon::iter::{FromParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use serde::Serialize;
 use std::collections::{HashMap, HashSet};
+use std::fs::OpenOptions;
+use std::io::{BufRead, BufWriter, Write};
 
 use rmp_serde::Serializer;
 
@@ -86,12 +88,61 @@ impl Preprocessor {
             && !tags.contains_key("area")
     }
 
+    pub fn build_graph_interwrites(&mut self) -> HashMap<NodeId, Vec<Edge>> {
+        let time = std::time::Instant::now();
+        // Write node distances to file
+        let filename = "node_distances_temp.txt";
+        let file = OpenOptions::new()
+            .write(true)
+            .create(true)
+            .open(filename)
+            .unwrap();
+        let mut stream = BufWriter::new(file);
+        for road in &self.roads {
+            for i in 0..road.node_refs.len() - 1 {
+                let node1 = &self.nodes[&road.node_refs[i]];
+                let node2 = &self.nodes[&road.node_refs[i + 1]];
+                let distance = node1.coord.distance_to(node2.coord) as u32;
+                let line = format!(
+                    "{} {} {} {}\n",
+                    road.node_refs[i].0,
+                    road.node_refs[i + 1].0,
+                    distance,
+                    road.direction.clone() as u8
+                );
+                let _ = stream.write(line.as_bytes());
+            }
+        }
+        self.roads = Vec::new(); // Clear the roads since we don't need them anymore
+        // Write node coordinates to file
+        let coordinates_filename = "node_coordinates_temp.txt";
+        let file = OpenOptions::new()
+            .write(true)
+            .create(true)
+            .open(coordinates_filename)
+            .unwrap();
+        let mut stream = BufWriter::new(file);
+        for (nodeid, node) in &self.nodes {
+            let line = format!("{} {} {}\n", nodeid.0, node.coord.lat, node.coord.lon);
+            let _ = stream.write(line.as_bytes());
+        }
+        self.nodes = HashMap::new(); // Clear the nodes since we don't need them anymore
+        let mut graph = Graph::build_graph_interwrites(filename);
+        println!("Time to build graph: {:?}", time.elapsed());
+        let time = std::time::Instant::now();
+        Graph::minimize_graph(&mut graph, true);
+        println!("Time to minimize graph: {:?}", time.elapsed());
+        graph
+    }
+
     pub fn build_graph(&mut self) -> HashMap<NodeId, Vec<Edge>> {
         let time = std::time::Instant::now();
         let mut graph = Graph::build_graph(&self.nodes, &self.roads);
         self.roads = Vec::new(); // Clear the roads since we don't need them anymore
         println!("Time to build graph: {:?}", time.elapsed());
         let time = std::time::Instant::now();
+        println!("Length of graph: {}", graph.len());
+
         Graph::minimize_graph(&mut graph, true);
         println!("Time to minimize graph: {:?}", time.elapsed());
         graph
@@ -208,17 +259,35 @@ impl Preprocessor {
         }
     }
 
-    pub fn project_nodes_to_2d(&self) -> HashMap<NodeId, (f32, f32)> {
-        let center_point = self.nodes.iter().fold((0.0, 0.0), |acc, (_, node)| {
+    pub fn project_nodes_to_2d_interwrites(filename: &str) -> HashMap<NodeId, (f32, f32)> {
+        // Read nodes from file
+        let mut nodes: HashMap<NodeId, Node> = HashMap::new();
+        let file = std::fs::File::open(filename).unwrap();
+        let reader = std::io::BufReader::new(file);
+        for line in reader.lines() {
+            let line = line.unwrap();
+            let mut iter = line.split_whitespace();
+            let id = iter.next().unwrap().parse::<i64>().unwrap();
+            let lat = iter.next().unwrap().parse::<f64>().unwrap();
+            let lon = iter.next().unwrap().parse::<f64>().unwrap();
+            nodes.insert(
+                NodeId(id),
+                Node {
+                    id: NodeId(id),
+                    coord: Coord { lat, lon },
+                },
+            );
+        }
+
+        let center_point = nodes.iter().fold((0.0, 0.0), |acc, (_, node)| {
             (acc.0 + node.coord.lat, acc.1 + node.coord.lon)
         });
         let center_point = (
-            center_point.0 / self.nodes.len() as f64,
-            center_point.1 / self.nodes.len() as f64,
+            center_point.0 / nodes.len() as f64,
+            center_point.1 / nodes.len() as f64,
         );
 
-        let projected_points = self
-            .nodes
+        let projected_points = nodes
             .par_iter()
             .map(|(nodeid, node)| {
                 let (x, y) = azimuthal_equidistant_projection(node.coord, center_point);

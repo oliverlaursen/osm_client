@@ -5,3 +5,4 @@ rust_osm/target
 *.json
 *.graph
 OSM_Unity_Client/Assets/TextMesh Pro
+*.temp

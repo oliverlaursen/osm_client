@@ -4,6 +4,7 @@ use crate::preprocessor::preprocessor::*;
 use osmpbfreader::NodeId;
 use std::collections::HashMap;
 use std::collections::HashSet;
+use std::io::BufRead;
 
 pub struct Graph;
 
@@ -277,6 +278,35 @@ impl Graph {
         edges.retain(|x| *x != intermediate && *x != *to);
         edges.push(*to);
         nodes_pointing_to_node.insert(*from, edges);
+    }
+
+    pub fn build_graph_interwrites(filename: &str) -> HashMap<NodeId, Vec<Edge>> {
+        let mut graph: HashMap<NodeId, Vec<Edge>> = HashMap::new();
+        // Read line by line and build the graph
+        let file = std::fs::File::open(filename).unwrap();
+        let reader = std::io::BufReader::new(file);
+        for line in reader.lines() {
+            let line = line.unwrap();
+            let mut iter = line.split_whitespace();
+            let from = NodeId(iter.next().unwrap().parse().unwrap());
+            let to = NodeId(iter.next().unwrap().parse().unwrap());
+            let cost = iter.next().unwrap().parse().unwrap();
+            let edge_from = Edge::new(to, cost);
+            let direction: u8 = iter.next().unwrap().parse().unwrap();
+            graph.entry(to).or_insert(Vec::new());
+            graph.entry(from).or_insert(Vec::new()).push(edge_from);
+            if direction == 1 {
+                let edge_to = Edge::new(from, cost);
+                graph.entry(to).or_insert(Vec::new()).push(edge_to);
+            }
+        }
+        // Remove duplicate edges
+        for (_, edges) in graph.iter_mut() {
+            edges.sort_by(|a, b| a.node.0.cmp(&b.node.0));
+            edges.dedup_by(|a, b| a.node == b.node);
+        }
+
+        graph
     }
 
     pub fn build_graph(
