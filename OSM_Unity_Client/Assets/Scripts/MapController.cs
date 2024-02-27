@@ -162,4 +162,62 @@ public class MapController : MonoBehaviour
         UnityEngine.Debug.Log("Draw time: " + time.ElapsedMilliseconds + "ms");
         time.Stop();
     }
+
+    public (float, long[]) AStar(Graph graph, long start, long end)
+    {
+        var nodes = graph.nodes;
+        var edges = graph.graph;
+        var visited = new HashSet<long>();
+        var distances = new Dictionary<long, float>();
+        var previous = new Dictionary<long, long>();
+        var queue = new SortedSet<(float, long)>();
+
+        foreach (var node in nodes.Keys)
+        {
+            distances[node] = float.MaxValue;
+            previous[node] = -1;
+        }
+
+        distances[start] = 0;
+        queue.Add((0, start));
+
+        while (queue.Count > 0)
+        {
+            var (distance, node) = queue.Min;
+            queue.Remove(queue.Min);
+            if (visited.Contains(node))
+            {
+                continue;
+            }
+            visited.Add(node);
+
+            if (node == end)
+            {
+                return (distance, ReconstructPath(previous, start, end));
+            }
+
+            foreach (var edge in edges[node])
+            {
+                var neighbor = edge.node;
+                var cost = edge.cost;
+                var heuristic = Heuristic(nodes[neighbor], nodes[end]);
+                var newDistance = distance + cost + heuristic;
+                if (newDistance < distances[neighbor])
+                {
+                    distances[neighbor] = newDistance;
+                    previous[neighbor] = node;
+                    queue.Add((newDistance, neighbor));
+                }
+            }
+        }
+
+        return (float.MaxValue, new long[0]);
+    }
+
+    private float Heuristic(float[] nodeA, float[] nodeB)
+    {
+        var dX = nodeA[0] - nodeB[0];
+        var dY = nodeA[1] - nodeB[1];
+        return Mathf.Sqrt(dX * dX + dY * dY);
+    }
 }

@@ -120,6 +120,16 @@ public class CameraControl : MonoBehaviour
         Debug.Log("Distance: " + distance);
     }
 
+    public void AstarOnSelection()
+    {
+        var graph = GameObject.Find("Map").GetComponent<MapController>().graph;
+        var (distance, path) = GameObject.Find("Map").GetComponent<MapController>().AStar(graph, nodeA, nodeB);
+        var lineRenderer = Camera.main.gameObject.GetComponent<GLLineRenderer>();
+        lineRenderer.ClearPath();
+        GameObject.Find("Map").GetComponent<MapController>().DrawPath(graph.nodes, path);
+        Debug.Log("Distance: " + distance);
+    }
+
     public void FlipNodes()
     {
         if(nodeA == 0 || nodeB == 0) { return; }
