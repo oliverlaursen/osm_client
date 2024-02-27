@@ -30,14 +30,94 @@ public class MapController : MonoBehaviour
         path.Reverse();
         return path.ToArray();
     }
+
+    public (float, long[]) AStar(Graph graph, long start, long end)
+    { 
+        UnityEngine.Debug.Log("A*");
+
+        //initialize open and closed lists
+        var openList = new SortedSet<(float, long)>();
+        var closedList = new HashSet<long>();
+
+        //initialize g and f scores 
+        //g are the costs from the start node to the current node, 
+        //f are the costs from the start node to the current node + the heuristic to the end node
+        var gScores = new Dictionary<long, float> { [start] = 0 };
+        var fScores = new Dictionary<long, float> { [start] = HeuristicCostEstimate(start, end) };
+        var cameFrom = new Dictionary<long, long>();
+
+        int nodesVisited = 0;
+
+        //add the start node to the open list
+        openList.Add((fScores[start], start));
+
+        //while the open list is not empty
+        while (openList.Count > 0)
+        {
+            nodesVisited++;
+            //get the node with the lowest f score
+            var current = openList.Min;
+            //remove it from the open list
+            openList.Remove(current);
+
+            //if the current node is the end node, return the path
+            if (current.Item2 == end)
+            {
+                UnityEngine.Debug.Log("nodes visited " + nodesVisited);
+                return (gScores[end], ReconstructPath(cameFrom, start, end));
+            }
+
+            closedList.Add(current.Item2);
+
+            // for each neighbor of the current node
+            foreach (var neighbor in graph.GetNeighbors(current.Item2))
+            {
+                //if the neighbor is in the closed list, skip it
+                if (closedList.Contains(neighbor.node))
+                {
+                    continue;
+                }
+
+                //cost from start through current node to the neighbor
+                var tentativeGScore = gScores[current.Item2] + neighbor.cost;
+
+                if (!openList.Contains((fScores.GetValueOrDefault(neighbor.node, float.MaxValue), neighbor.node)) || tentativeGScore < gScores.GetValueOrDefault(neighbor.node, float.MaxValue))
+                {
+                    cameFrom[neighbor.node] = current.Item2;
+
+                    //calculate the f and g scores
+                    gScores[neighbor.node] = tentativeGScore;
+                    fScores[neighbor.node] = gScores[neighbor.node] + HeuristicCostEstimate(neighbor.node, end);
+                    if (!openList.Contains((fScores[neighbor.node], neighbor.node)))
+                    {
+                        openList.Add((fScores[neighbor.node], neighbor.node));
+                    }
+                }
+            }
+        }
+        return (float.MaxValue, new long[0]);
+    }
+
+    private float HeuristicCostEstimate(long start, long end)
+    {
+        // Implement your heuristic here. This could be Manhattan, Euclidean, etc.
+        // For now, let's assume it's Euclidean distance.
+        var startCoords = graph.nodes[start];
+        var endCoords = graph.nodes[end];
+        return Mathf.Sqrt(Mathf.Pow(endCoords[0] - startCoords[0], 2) + Mathf.Pow(endCoords[1] - startCoords[1], 2));
+    }
+
     public (float, long[]) Dijkstra(Graph graph, long start, long end)
     {
+        UnityEngine.Debug.Log("Dijkstra");
         var nodes = graph.nodes;
         var edges = graph.graph;
         var visited = new HashSet<long>();
         var distances = new Dictionary<long, float>();
         var previous = new Dictionary<long, long>();
         var queue = new SortedSet<(float, long)>();
+
+        int nodesVisited = 0;
 
         foreach (var node in nodes.Keys)
         {
@@ -58,8 +138,11 @@ public class MapController : MonoBehaviour
             }
             visited.Add(node);
 
+            nodesVisited++;
+
             if (node == end)
             {
+                UnityEngine.Debug.Log("nodes visited " + nodesVisited);
                 return (distance, ReconstructPath(previous, start, end));
             }
 
@@ -87,22 +170,22 @@ public class MapController : MonoBehaviour
            Format:
            nodeId x y neighbour cost neighbour cost
            long float float long int long int
-        */        
+        */
         var input = File.ReadAllBytes(mapFile);
         var deserialized = MessagePack.MessagePackSerializer.Deserialize<GraphReadFormat>(input);
         var nodes = new Dictionary<long, float[]>();
         var graph = new Dictionary<long, Edge[]>();
         foreach (var node in deserialized.nodes)
         {
-            nodes[node.id] = new float[] {node.x, node.y};
+            nodes[node.id] = new float[] { node.x, node.y };
             var edges = new List<Edge>();
             for (int i = 0; i < node.neighbours.Length; i++)
             {
-                edges.Add(new Edge {node = node.neighbours[i].Item1, cost = node.neighbours[i].Item2});
+                edges.Add(new Edge { node = node.neighbours[i].Item1, cost = node.neighbours[i].Item2 });
             }
             graph[node.id] = edges.ToArray();
         }
-        return new Graph {nodes = nodes, graph = graph};
+        return new Graph { nodes = nodes, graph = graph };
     }
 
     public void DrawAllEdges(Dictionary<long, float[]> nodes, Dictionary<long, Edge[]> graph)
@@ -161,63 +244,5 @@ public class MapController : MonoBehaviour
         DrawAllEdges(graph.nodes, graph.graph);
         UnityEngine.Debug.Log("Draw time: " + time.ElapsedMilliseconds + "ms");
         time.Stop();
-    }
-
-    public (float, long[]) AStar(Graph graph, long start, long end)
-    {
-        var nodes = graph.nodes;
-        var edges = graph.graph;
-        var visited = new HashSet<long>();
-        var distances = new Dictionary<long, float>();
-        var previous = new Dictionary<long, long>();
-        var queue = new SortedSet<(float, long)>();
-
-        foreach (var node in nodes.Keys)
-        {
-            distances[node] = float.MaxValue;
-            previous[node] = -1;
-        }
-
-        distances[start] = 0;
-        queue.Add((0, start));
-
-        while (queue.Count > 0)
-        {
-            var (distance, node) = queue.Min;
-            queue.Remove(queue.Min);
-            if (visited.Contains(node))
-            {
-                continue;
-            }
-            visited.Add(node);
-
-            if (node == end)
-            {
-                return (distance, ReconstructPath(previous, start, end));
-            }
-
-            foreach (var edge in edges[node])
-            {
-                var neighbor = edge.node;
-                var cost = edge.cost;
-                var heuristic = Heuristic(nodes[neighbor], nodes[end]);
-                var newDistance = distance + cost + heuristic;
-                if (newDistance < distances[neighbor])
-                {
-                    distances[neighbor] = newDistance;
-                    previous[neighbor] = node;
-                    queue.Add((newDistance, neighbor));
-                }
-            }
-        }
-
-        return (float.MaxValue, new long[0]);
-    }
-
-    private float Heuristic(float[] nodeA, float[] nodeB)
-    {
-        var dX = nodeA[0] - nodeB[0];
-        var dY = nodeA[1] - nodeB[1];
-        return Mathf.Sqrt(dX * dX + dY * dY);
     }
 }
