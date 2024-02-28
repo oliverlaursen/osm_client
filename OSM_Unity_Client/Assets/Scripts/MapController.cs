@@ -25,6 +25,7 @@ public class MapController : MonoBehaviour
     // Check if there is a path from start to end
     if (!previous.ContainsKey(current))
     {
+        
         // Path not found, return an empty array or handle the error accordingly
         UnityEngine.Debug.Log("the end is not reachable from the start node");
         return new long[0];
@@ -53,6 +54,8 @@ public class MapController : MonoBehaviour
     public (float, long[]) AStar(Graph graph, long start, long end)
     {
         UnityEngine.Debug.Log("A*");
+        var meshGenerator = GetComponent<MeshGenerator>();
+        var nodes = graph.nodes;
 
         // For sorting by fScore
         var openList = new SortedSet<(float, long)>();
@@ -90,13 +93,23 @@ public class MapController : MonoBehaviour
             // for each neighbor of the current node
             foreach (var neighbor in graph.GetNeighbors(current.Item2))
             {
+                var g = GameObject.Find("Map").GetComponent<MapController>().graph;
+                
+                Dictionary<long, long> lol = new(){[neighbor.node] = current.Item2};
+                var path = ReconstructPath(lol, current.Item2, neighbor.node);
+                var lineRenderer = Camera.main.gameObject.GetComponent<GLLineRenderer>();
+                lineRenderer.ClearPath();
+                GameObject.Find("Map").GetComponent<MapController>().DrawPath(g.nodes, path);
+
+
+
                 //cost from start through current node to the neighbor
                 var tentativeGScore = gScores[current.Item2] + neighbor.cost;
 
                 // if neighbor is the end node, return the path
                 if (neighbor.node == end)
                 {
-                    UnityEngine.Debug.Log("the enddd");
+                    cameFrom[neighbor.node] = current.Item2;
                     UnityEngine.Debug.Log("nodes visited " + nodesVisited);
                     return (tentativeGScore, ReconstructPath(cameFrom, start, end));
                 }
@@ -180,6 +193,11 @@ public class MapController : MonoBehaviour
 
             foreach (var edge in edges[node])
             {
+                var firstCoord = new Vector3(nodes[node][0], nodes[node][1], 0);
+                var secondCoord = new Vector3(nodes[edge.node][0], nodes[edge.node][1], 0);
+
+                UnityEngine.Debug.DrawLine(firstCoord, secondCoord, Color.green, 0.0f);
+
                 var neighbor = edge.node;
                 var cost = edge.cost;
                 var newDistance = distance + cost;
@@ -194,6 +212,17 @@ public class MapController : MonoBehaviour
 
         return (float.MaxValue, new long[0]);
     }
+
+    public void DrawGreenLine(Vector3 node1, Vector3 node2)
+{
+    GL.Begin(GL.LINES);
+    GL.Color(Color.green);
+
+    GL.Vertex(node1);
+    GL.Vertex(node2);
+
+    GL.End();
+}
 
 
     public static Graph DeserializeGraph(string mapFile)
