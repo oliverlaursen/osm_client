@@ -18,18 +18,37 @@ public class MapController : MonoBehaviour
     public GameObject mapText;
 
     private long[] ReconstructPath(Dictionary<long, long> previous, long start, long end)
+{
+    var path = new List<long>();
+    var current = end;
+    
+    // Check if there is a path from start to end
+    if (!previous.ContainsKey(current))
     {
-        var path = new List<long>();
-        var current = end;
-        while (current != start)
-        {
-            path.Add(current);
-            current = previous[current];
-        }
-        path.Add(start);
-        path.Reverse();
-        return path.ToArray();
+        // Path not found, return an empty array or handle the error accordingly
+        UnityEngine.Debug.Log("the end is not reachable from the start node");
+        return new long[0];
     }
+
+    // Reconstruct the path
+    while (current != start)
+    {
+        path.Add(current);
+        
+        // Ensure the key exists before accessing it
+        if (!previous.ContainsKey(current))
+        {
+            // Handle the error or return an incomplete path
+            return new long[0];
+        }
+        
+        current = previous[current];
+    }
+    
+    path.Add(start);
+    path.Reverse();
+    return path.ToArray();
+}
 
     public (float, long[]) AStar(Graph graph, long start, long end)
     {
@@ -55,6 +74,7 @@ public class MapController : MonoBehaviour
         //testOpenList.Add(start, fScores[start]);
         openList.Add((fScores[start], start));
         openSet.Add(start);
+        cameFrom[start] = -1;
 
         //while the open list is not empty
         while (openList.Count > 0)
@@ -117,18 +137,6 @@ public class MapController : MonoBehaviour
         var startCoords = graph.nodes[start];
         var endCoords = graph.nodes[end];
         return Mathf.Sqrt(Mathf.Pow(endCoords[0] - startCoords[0], 2) + Mathf.Pow(endCoords[1] - startCoords[1], 2));
-    }
-
-    public bool containsNodeWithSmallerCost(SortedSet<(float, long)> openList, long node, float cost)
-    {
-        foreach (var element in openList)
-        {
-            if (element.Item2 == node && element.Item1 < cost)
-            {
-                return true;
-            }
-        }
-        return false;
     }
 
     public (float, long[]) Dijkstra(Graph graph, long start, long end)
