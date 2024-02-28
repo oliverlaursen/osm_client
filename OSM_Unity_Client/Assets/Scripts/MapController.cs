@@ -32,11 +32,13 @@ public class MapController : MonoBehaviour
     }
 
     public (float, long[]) AStar(Graph graph, long start, long end)
-    { 
+    {
         UnityEngine.Debug.Log("A*");
 
-        //initialize open and closed lists
+        // For sorting by fScore
         var openList = new SortedSet<(float, long)>();
+        // For quick existence checks
+        var openSet = new HashSet<long>();
         var closedList = new HashSet<long>();
 
         //initialize g and f scores 
@@ -49,7 +51,10 @@ public class MapController : MonoBehaviour
         int nodesVisited = 0;
 
         //add the start node to the open list
+        //openList.Add((fScores[start], start));
+        //testOpenList.Add(start, fScores[start]);
         openList.Add((fScores[start], start));
+        openSet.Add(start);
 
         //while the open list is not empty
         while (openList.Count > 0)
@@ -57,43 +62,50 @@ public class MapController : MonoBehaviour
             nodesVisited++;
             //get the node with the lowest f score
             var current = openList.Min;
+
             //remove it from the open list
             openList.Remove(current);
-
-            //if the current node is the end node, return the path
-            if (current.Item2 == end)
-            {
-                UnityEngine.Debug.Log("nodes visited " + nodesVisited);
-                return (gScores[end], ReconstructPath(cameFrom, start, end));
-            }
-
-            closedList.Add(current.Item2);
+            openSet.Remove(current.Item2);
 
             // for each neighbor of the current node
             foreach (var neighbor in graph.GetNeighbors(current.Item2))
             {
-                //if the neighbor is in the closed list, skip it
-                if (closedList.Contains(neighbor.node))
-                {
-                    continue;
-                }
-
                 //cost from start through current node to the neighbor
                 var tentativeGScore = gScores[current.Item2] + neighbor.cost;
 
-                if (!openList.Contains((fScores.GetValueOrDefault(neighbor.node, float.MaxValue), neighbor.node)) || tentativeGScore < gScores.GetValueOrDefault(neighbor.node, float.MaxValue))
+                // if neighbor is the end node, return the path
+                if (neighbor.node == end)
                 {
-                    cameFrom[neighbor.node] = current.Item2;
-
-                    //calculate the f and g scores
+                    UnityEngine.Debug.Log("the enddd");
+                    UnityEngine.Debug.Log("nodes visited " + nodesVisited);
+                    return (tentativeGScore, ReconstructPath(cameFrom, start, end));
+                }
+                else
+                {
                     gScores[neighbor.node] = tentativeGScore;
-                    fScores[neighbor.node] = gScores[neighbor.node] + HeuristicCostEstimate(neighbor.node, end);
-                    if (!openList.Contains((fScores[neighbor.node], neighbor.node)))
+
+                    //calculate the f score
+                    float neighborFScore = gScores[neighbor.node] + HeuristicCostEstimate(neighbor.node, end);
+
+                    if (openSet.Contains(neighbor.node) && fScores[neighbor.node] < neighborFScore)
                     {
-                        openList.Add((fScores[neighbor.node], neighbor.node));
+                        continue;
+                    }
+                    if (closedList.Contains(neighbor.node) && fScores.GetValueOrDefault(neighbor.node, float.MaxValue) < neighborFScore)
+                    {
+                        continue;
+                    }
+                    else
+                    {
+                        cameFrom[neighbor.node] = current.Item2;
+                        fScores[neighbor.node] = neighborFScore;
+                        openList.Add((neighborFScore, neighbor.node));
+                        openSet.Add(neighbor.node);
                     }
                 }
             }
+            //add it to the closed list
+            closedList.Add(current.Item2);
         }
         return (float.MaxValue, new long[0]);
     }
@@ -105,6 +117,18 @@ public class MapController : MonoBehaviour
         var startCoords = graph.nodes[start];
         var endCoords = graph.nodes[end];
         return Mathf.Sqrt(Mathf.Pow(endCoords[0] - startCoords[0], 2) + Mathf.Pow(endCoords[1] - startCoords[1], 2));
+    }
+
+    public bool containsNodeWithSmallerCost(SortedSet<(float, long)> openList, long node, float cost)
+    {
+        foreach (var element in openList)
+        {
+            if (element.Item2 == node && element.Item1 < cost)
+            {
+                return true;
+            }
+        }
+        return false;
     }
 
     public (float, long[]) Dijkstra(Graph graph, long start, long end)
