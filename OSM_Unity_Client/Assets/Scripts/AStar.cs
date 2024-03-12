@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using ProjNet.CoordinateSystems;
 using UnityEditor.UI;
 using UnityEngine;
@@ -29,87 +30,69 @@ public class AStar
 {
     public Graph graph;
     private SortedSet<AstarNode> openlist = new SortedSet<AstarNode>(new NodeComparer()); //priority queue
-    private List<AstarNode> closedList = new List<AstarNode>();
+    private HashSet<long> closedList = new HashSet<long>();
 
     public AStar(Graph graph)
     {
         this.graph = graph;
     }
 
-    public (float, long[]) FindShortestPath(long start, long end)
+   public (float, long[]) FindShortestPath(long start, long end)
+{
+    Debug.Log("A*");
+
+    float[] startCoords = graph.nodes[start];
+
+    AstarNode startNode = new AstarNode(start, startCoords[0], startCoords[1], 0, 0, 0, null);
+    openlist.Add(startNode);
+
+    int nodesVisited = 0;
+    while (openlist.Count > 0)
     {
-        Debug.Log("A*");
-
-        float[] startCoords = graph.nodes[start];
-
-        AstarNode startNode = new AstarNode(start, startCoords[0], startCoords[1], 0, 0, 0, null);
-        openlist.Add(startNode);
-
-        int nodesVisited = 0;
-        while (openlist.Count > 0)
+        AstarNode currentNode = openlist.Min;
+        if (currentNode.NodeId == end)
         {
-            AstarNode currentNode = openlist.Min;
-            if (currentNode.NodeId == end)
-                {
-                    Debug.Log("nodes visited " + nodesVisited);
-                    float[] node = graph.nodes[currentNode.NodeId];
-                    AstarNode endNode = new AstarNode(currentNode.NodeId, node[0], node[1], currentNode.GCost, 0, 0, currentNode);
-                    // Reconstruct path
-                    return (currentNode.GCost, ReconstructPath(endNode));
-                }
-            openlist.Remove(openlist.Min);
-            nodesVisited++;
-
-            Edge[] neighbors = graph.GetNeighbors(currentNode.NodeId);
-
-            foreach (Edge neighbor in neighbors)
-            {
-                // Cost from start to this node
-                float gCost = neighbor.cost + currentNode.GCost;
-                float hCost = HeuristicCostEstimate(neighbor.node, end);
-                float fCost = gCost + hCost;
-
-                bool existsInOpenList = false;
-                AstarNode existingNode = null;
-                foreach (AstarNode node in openlist)
-                {
-                    if (node.NodeId == neighbor.node)
-                    {
-                        existsInOpenList = true;
-                        existingNode = node;
-                        break;
-                    }
-                }
-
-                if (existsInOpenList && existingNode.FCost < fCost)
-                {
-                    continue;
-                }
-
-                bool existsInClosedList = false;
-                foreach (AstarNode node in closedList)
-                {
-                    if (node.NodeId == neighbor.node)
-                    {
-                        existsInClosedList = true;
-                        break;
-                    }
-                }
-
-                if (existsInClosedList)
-                {
-                    continue;
-                }
-
-                float[] graphNode = graph.nodes[neighbor.node];
-                AstarNode neighborNode = new AstarNode(neighbor.node, graphNode[0], graphNode[1], gCost, hCost, fCost, currentNode);
-                openlist.Add(neighborNode);
-            }
-            closedList.Add(currentNode);
+            Debug.Log("nodes visited " + nodesVisited);
+            float[] node = graph.nodes[currentNode.NodeId];
+            // Reconstruct path
+            return (currentNode.GCost, ReconstructPath(currentNode));
         }
+        openlist.Remove(currentNode);
+        closedList.Add(currentNode.NodeId); // Mark current node as visited
+        nodesVisited++;
 
-        return (0, new long[0]);
+        Edge[] neighbors = graph.GetNeighbors(currentNode.NodeId);
+
+        foreach (Edge neighbor in neighbors)
+        {
+
+            // Cost from start to this node
+            float gCost = neighbor.cost + currentNode.GCost;
+            float hCost = HeuristicCostEstimate(neighbor.node, end);
+            float fCost = gCost + hCost;
+
+            AstarNode openNode = openlist.FirstOrDefault(node => node.NodeId == neighbor.node);
+
+            if (openNode != null && openNode.FCost < fCost)
+            {
+                continue;
+            }
+
+            // Check if neighbor has already been visited
+            if (closedList.Contains(neighbor.node))
+            {
+                continue;
+            }
+
+            float[] graphNode = graph.nodes[neighbor.node];
+            AstarNode neighborNode = new AstarNode(neighbor.node, graphNode[0], graphNode[1], gCost, hCost, fCost, currentNode);
+            openlist.Add(neighborNode);
+        }
     }
+
+    return (0, new long[0]);
+}
+
 
 
     private float HeuristicCostEstimate(long start, long end)
