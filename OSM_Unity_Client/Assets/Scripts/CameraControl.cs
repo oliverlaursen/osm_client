@@ -123,7 +123,8 @@ public class CameraControl : MonoBehaviour
     public void AstarOnSelection()
     {
         var graph = GameObject.Find("Map").GetComponent<MapController>().graph;
-        var (distance, path) = GameObject.Find("Map").GetComponent<MapController>().AStar(graph, nodeA, nodeB);
+        AStar astar = new AStar(graph);
+        var (distance, path) = astar.FindShortestPath(nodeA, nodeB);
         var lineRenderer = Camera.main.gameObject.GetComponent<GLLineRenderer>();
         lineRenderer.ClearPath();
         GameObject.Find("Map").GetComponent<MapController>().DrawPath(graph.nodes, path);
