@@ -45,7 +45,10 @@ pub struct NodeWriteFormat {
     pub node_id: NodeId,
     pub x: f32,
     pub y: f32,
+    pub lat: f64,
+    pub lon: f64,
     pub neighbours: Vec<(NodeId, u32)>,
+    pub bi_neighbours: Vec<(NodeId, u32)>,
 }
 
 fn create_blacklist() -> HashSet<&'static str> {
@@ -86,21 +89,22 @@ impl Preprocessor {
             && !tags.contains_key("area")
     }
 
-    pub fn build_graph(&mut self) -> HashMap<NodeId, Vec<Edge>> {
+    pub fn build_graph(&mut self) -> HashMap<NodeId, (Vec<Edge>, Vec<Edge>)> {
         let time = std::time::Instant::now();
         let mut graph = Graph::build_graph(&self.nodes, &self.roads);
         self.roads = Vec::new(); // Clear the roads since we don't need them anymore
         println!("Time to build graph: {:?}", time.elapsed());
         let time = std::time::Instant::now();
         Graph::minimize_graph(&mut graph, true);
+        let full_graph = Graph::add_bidirectional_edges(&mut graph);
         println!("Time to minimize graph: {:?}", time.elapsed());
-        graph
+        full_graph
     }
 
     pub fn write_graph(
         &self,
         projected_points: HashMap<NodeId, (f32, f32)>,
-        graph: HashMap<NodeId, Vec<Edge>>,
+        graph: HashMap<NodeId, (Vec<Edge>, Vec<Edge>)>,
         filename: &str,
     ) {
         /*
@@ -111,14 +115,19 @@ impl Preprocessor {
         let result = GraphWriteFormat {
             nodes: graph
                 .iter()
-                .map(|(node_id, edges)| {
+                .map(|(node_id, (edges, bi_edges))| {
                     let (x, y) = projected_points.get(node_id).unwrap();
                     let neighbours = edges.iter().map(|edge| (edge.node, edge.cost)).collect();
+                    let bi_neighbours = bi_edges.iter().map(|edge| (edge.node, edge.cost)).collect();
+                    let node = self.nodes.get(node_id).unwrap();
                     NodeWriteFormat {
                         node_id: *node_id,
                         x: *x,
                         y: *y,
+                        lat: node.coord.lat,
+                        lon: node.coord.lon,
                         neighbours,
+                        bi_neighbours
                     }
                 })
                 .collect(),

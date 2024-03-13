@@ -8,6 +8,37 @@ use std::collections::HashSet;
 pub struct Graph;
 
 impl Graph {
+    pub fn add_bidirectional_edges(
+        graph: &HashMap<NodeId, Vec<Edge>>,
+    ) -> HashMap<NodeId, (Vec<Edge>, Vec<Edge>)> {
+        let nodes_pointing_to = Graph::find_nodes_pointing_to_node(graph);
+        let bidirectional_graph: HashMap<NodeId, (Vec<Edge>, Vec<Edge>)> = graph
+            .iter()
+            .map(|(node_id, edges)| {
+                (
+                    *node_id,
+                    (edges.clone(),
+                    nodes_pointing_to
+                        .get(node_id)
+                        .unwrap_or(&Vec::new())
+                        .iter()
+                        .map(|nodeid| Edge {
+                            node: *nodeid,
+                            cost: graph
+                                .get(nodeid)
+                                .unwrap()
+                                .iter()
+                                .find(|x| x.node == *node_id)
+                                .unwrap()
+                                .cost,
+                        })
+                        .collect::<Vec<Edge>>(),
+                ))
+            })
+            .collect();
+        bidirectional_graph
+    }
+
     pub fn find_intermediate_nodes(
         graph: &HashMap<NodeId, Vec<Edge>>,
         nodes_pointing_to_node: &HashMap<NodeId, Vec<NodeId>>,
