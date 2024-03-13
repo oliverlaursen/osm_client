@@ -43,6 +43,20 @@ public class Graph
     public Dictionary<long,Edge[]> graph {get; set;}
     public Dictionary<long, Edge[]> bi_graph { get; set; }
     public Dictionary<long, float[]> nodes {get; set;}
+
+    public Edge[] GetNeighbors(long node)
+{
+    if (graph.ContainsKey(node))
+    {
+        return graph[node];
+    }
+    else
+    {
+        // Log a warning message to help with debugging
+        Debug.LogWarning("Node " + node + " does not exist in the graph");
+        return new Edge[0];
+    }
+}
 }
 
 [MessagePackObject]

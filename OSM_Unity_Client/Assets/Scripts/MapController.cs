@@ -21,23 +21,47 @@ public class MapController : MonoBehaviour
     {
         var path = new List<long>();
         var current = end;
+
+        // Check if there is a path from start to end
+        if (!previous.ContainsKey(current))
+        {
+
+            // Path not found, return an empty array or handle the error accordingly
+            UnityEngine.Debug.Log("the end is not reachable from the start node");
+            return new long[0];
+        }
+
+        // Reconstruct the path
         while (current != start)
         {
             path.Add(current);
+
+            // Ensure the key exists before accessing it
+            if (!previous.ContainsKey(current))
+            {
+                // Handle the error or return an incomplete path
+                return new long[0];
+            }
+
             current = previous[current];
         }
+
         path.Add(start);
         path.Reverse();
         return path.ToArray();
     }
+
     public (float, long[]) Dijkstra(Graph graph, long start, long end)
     {
+        UnityEngine.Debug.Log("Dijkstra");
         var nodes = graph.nodes;
         var edges = graph.graph;
         var visited = new HashSet<long>();
         var distances = new Dictionary<long, float>();
         var previous = new Dictionary<long, long>();
         var queue = new SortedSet<(float, long)>();
+
+        int nodesVisited = 0;
 
         foreach (var node in nodes.Keys)
         {
@@ -58,13 +82,21 @@ public class MapController : MonoBehaviour
             }
             visited.Add(node);
 
+            nodesVisited++;
+
             if (node == end)
             {
+                UnityEngine.Debug.Log("nodes visited " + nodesVisited);
                 return (distance, ReconstructPath(previous, start, end));
             }
 
             foreach (var edge in edges[node])
             {
+                var firstCoord = new Vector3(nodes[node][0], nodes[node][1], 0);
+                var secondCoord = new Vector3(nodes[edge.node][0], nodes[edge.node][1], 0);
+
+                UnityEngine.Debug.DrawLine(firstCoord, secondCoord, Color.green, 0.0f);
+
                 var neighbor = edge.node;
                 var cost = edge.cost;
                 var newDistance = distance + cost;
@@ -80,6 +112,17 @@ public class MapController : MonoBehaviour
         return (float.MaxValue, new long[0]);
     }
 
+    public void DrawGreenLine(Vector3 node1, Vector3 node2)
+    {
+        GL.Begin(GL.LINES);
+        GL.Color(Color.green);
+
+        GL.Vertex(node1);
+        GL.Vertex(node2);
+
+        GL.End();
+    }
+
 
     public static Graph DeserializeGraph(string mapFile)
     {
@@ -87,7 +130,7 @@ public class MapController : MonoBehaviour
            Format:
            nodeId x y neighbour cost neighbour cost
            long float float long int long int
-        */        
+        */
         var input = File.ReadAllBytes(mapFile);
         var deserialized = MessagePack.MessagePackSerializer.Deserialize<GraphReadFormat>(input);
         var nodes = new Dictionary<long, float[]>();
@@ -95,11 +138,15 @@ public class MapController : MonoBehaviour
         var bi_graph = new Dictionary<long, Edge[]>();
         foreach (var node in deserialized.nodes)
         {
+<<<<<<< HEAD
+            nodes[node.id] = new float[] { node.x, node.y };
+=======
             nodes[node.id] = new float[] {node.x, node.y, node.lat, node.lon};
+>>>>>>> 8636b782275c5749a8c4dc799dd609653913f5e5
             var edges = new List<Edge>();
             for (int i = 0; i < node.neighbours.Length; i++)
             {
-                edges.Add(new Edge {node = node.neighbours[i].Item1, cost = node.neighbours[i].Item2});
+                edges.Add(new Edge { node = node.neighbours[i].Item1, cost = node.neighbours[i].Item2 });
             }
             graph[node.id] = edges.ToArray();
 
@@ -109,8 +156,12 @@ public class MapController : MonoBehaviour
                 bi_edges.Add(new Edge { node = node.bi_neighbours[i].Item1, cost = node.bi_neighbours[i].Item2 });
             }
         }
+<<<<<<< HEAD
+        return new Graph { nodes = nodes, graph = graph };
+=======
         var full_graph = new Graph { nodes = nodes, graph = graph, bi_graph = bi_graph };
         return full_graph;
+>>>>>>> 8636b782275c5749a8c4dc799dd609653913f5e5
     }
 
     public void DrawAllEdges(Dictionary<long, float[]> nodes, Dictionary<long, Edge[]> graph)
