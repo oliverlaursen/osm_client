@@ -138,11 +138,8 @@ public class MapController : MonoBehaviour
         var bi_graph = new Dictionary<long, Edge[]>();
         foreach (var node in deserialized.nodes)
         {
-<<<<<<< HEAD
             nodes[node.id] = new float[] { node.x, node.y };
-=======
             nodes[node.id] = new float[] {node.x, node.y, node.lat, node.lon};
->>>>>>> 8636b782275c5749a8c4dc799dd609653913f5e5
             var edges = new List<Edge>();
             for (int i = 0; i < node.neighbours.Length; i++)
             {
@@ -156,12 +153,9 @@ public class MapController : MonoBehaviour
                 bi_edges.Add(new Edge { node = node.bi_neighbours[i].Item1, cost = node.bi_neighbours[i].Item2 });
             }
         }
-<<<<<<< HEAD
         return new Graph { nodes = nodes, graph = graph };
-=======
         var full_graph = new Graph { nodes = nodes, graph = graph, bi_graph = bi_graph };
         return full_graph;
->>>>>>> 8636b782275c5749a8c4dc799dd609653913f5e5
     }
 
     public void DrawAllEdges(Dictionary<long, float[]> nodes, Dictionary<long, Edge[]> graph)

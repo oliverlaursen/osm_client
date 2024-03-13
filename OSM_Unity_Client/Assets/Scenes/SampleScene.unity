@@ -180,7 +180,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: Dijkstra
+  m_text: A*
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
@@ -355,11 +355,8 @@ RectTransform:
   - {fileID: 1840730868}
   - {fileID: 2096710327}
   - {fileID: 843594657}
-<<<<<<< HEAD
-  - {fileID: 1862405791}
-=======
   - {fileID: 1437284860}
->>>>>>> 8636b782275c5749a8c4dc799dd609653913f5e5
+  - {fileID: 1862405791}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
@@ -811,11 +808,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   mapFileName: denmark.graph
-<<<<<<< HEAD
-  mapText: {fileID: 1379906887}
-=======
   mapText: {fileID: 1437284859}
->>>>>>> 8636b782275c5749a8c4dc799dd609653913f5e5
 --- !u!114 &693338888
 MonoBehaviour:
   m_ObjectHideFlags: 0
