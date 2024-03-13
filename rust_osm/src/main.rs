@@ -39,16 +39,16 @@ fn azimuthal_equidistant_projection(coord: Coord, center: (f64, f64)) -> (f64, f
 
 fn main() {
     let time = std::time::Instant::now();
-    let mut preprocessor = Preprocessor::new();
     // TODO: Remove state (nodes and roads) to be able to drop()
-    preprocessor.get_roads_and_nodes("src/test_data/europe.osm.pbf");
-    preprocessor.filter_nodes();
+    let (nodes_to_keep, mut nodes, mut roads) = Preprocessor::get_roads_and_nodes("src/test_data/andorra.osm.testpbf");
+    Preprocessor::filter_nodes(&mut nodes, &nodes_to_keep);
+    Preprocessor::rewrite_ids(&mut nodes, &mut roads);
     println!("Time to get roads and nodes: {:?}", time.elapsed());
-    let graph = preprocessor.build_graph_interwrites();
+    let graph = Preprocessor::build_graph_interwrites(nodes, roads);
     let projected_points = Preprocessor::project_nodes_to_2d_interwrites("node_coordinates_temp.txt");
     let time2 = std::time::Instant::now();
     println!("Length of projected points: {}", projected_points.len());
-    preprocessor.write_graph(projected_points, graph, "europe.graph");
+    Preprocessor::write_graph(projected_points, graph, "denmark.graph");
     println!("Time to write graph: {:?}", time2.elapsed());
     println!("Total time: {:?}", time.elapsed());
 }

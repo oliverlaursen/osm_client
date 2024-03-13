@@ -4,7 +4,14 @@ use crate::preprocessor::preprocessor::*;
 use osmpbfreader::NodeId;
 use std::collections::HashMap;
 use std::collections::HashSet;
+use std::fs;
+use std::fs::File;
+use std::io;
 use std::io::BufRead;
+use std::io::BufReader;
+use std::io::BufWriter;
+use std::io::Write;
+use std::path::Path;
 
 pub struct Graph;
 
@@ -31,94 +38,123 @@ impl Graph {
         intermediate_nodes
     }
 
+    pub fn find_intermediate_nodes_interwrites(
+        graph: &Vec<Vec<Edge>>,
+        nodes_pointing_to_node_file: &str,
+    ) -> Vec<NodeId> {
+        let file = std::fs::File::open(nodes_pointing_to_node_file).unwrap();
+        let mut reader = std::io::BufReader::new(file);
+        let mut intermediate_nodes: Vec<NodeId> = Vec::new();
+        let mut buf = String::new();
+        for (node_id, _) in graph.iter().enumerate() {
+            let edges = graph.get(node_id).unwrap();
+            let mut neighbors: HashSet<NodeId> = edges.iter().map(|edge| edge.node).collect();
+            let outgoing = neighbors.clone();
+            let num_bytes = reader.read_line(&mut buf).unwrap();
+            let incoming:Vec<NodeId> = buf.split(' ').map(|n| NodeId(n.parse::<i64>().unwrap())).collect();
+            neighbors.extend(incoming.iter());
+
+            if neighbors.len() == 2 && incoming.len() == outgoing.len() {
+                intermediate_nodes.push(NodeId(node_id as i64));
+            }
+        }
+        intermediate_nodes
+    }
+
     pub fn find_nodes_pointing_to_node(
-        graph: &HashMap<NodeId, Vec<Edge>>,
-    ) -> HashMap<NodeId, Vec<NodeId>> {
-        let mut nodes_pointing_to_node: HashMap<NodeId, Vec<NodeId>> = HashMap::new();
-        graph.iter().for_each(|(node_id, edges)| {
-            edges.iter().for_each(|edge| {
-                nodes_pointing_to_node
-                    .entry(edge.node)
-                    .or_insert_with(Vec::new)
-                    .push(*node_id);
-            });
-        });
+        graph: &Vec<Vec<Edge>>,
+    ) -> Vec<Vec<NodeId>> {
+        let mut nodes_pointing_to_node: Vec<Vec<NodeId>> = Vec::with_capacity(graph.len());
+        for (node_id, edges) in graph.iter().enumerate() {
+            for edge in edges {
+                let node = edge.node.0 as usize;
+                nodes_pointing_to_node.get_mut(node).or(Some(&mut Vec::new())).unwrap().push(NodeId(node as i64));
+            }
+        }
         nodes_pointing_to_node
     }
 
     pub fn fix_intermediate_nodes(
-        graph: &mut HashMap<NodeId, Vec<Edge>>,
-        nodes_pointing_to_node: &mut HashMap<NodeId, Vec<NodeId>>,
+        graph: &mut Vec<Vec<Edge>>,
+        nodes_pointing_to_node_file: &str,
         intermediate_nodes: Vec<NodeId>,
     ) {
+        let file = std::fs::File::open(nodes_pointing_to_node_file).unwrap();
+        let mut reader = std::io::BufReader::new(file);
+        let mut buf = String::new();
         for node_id in &intermediate_nodes {
-            let edges = graph.get(node_id).unwrap();
+            let edges = graph.get(node_id.0 as usize).unwrap();
             let node_id = *node_id;
             let outgoing: HashSet<NodeId> = edges.iter().map(|edge| edge.node).collect();
             let two_way = outgoing.len() == 2;
             if !two_way {
-                let pred = nodes_pointing_to_node.get(&node_id).unwrap()[0];
+                let num_bytes = reader.read_line(&mut buf);
+                let pred_edges: Vec<usize> = buf.split(' ').map(|n|n.parse().unwrap()).collect();
+                let pred = pred_edges[0];
                 let succ = edges[0].node;
                 let cost = edges[0].cost
                     + graph
-                        .get(&pred)
+                        .get(pred)
                         .unwrap()
                         .iter()
                         .find(|x| x.node == node_id)
                         .unwrap()
                         .cost;
                 let new_edge = Edge::new(succ, cost);
-                Graph::update_edges_and_remove_node(pred, node_id, graph, new_edge);
+                Graph::update_edges_and_remove_node(pred, node_id.0 as usize, graph, new_edge);
                 Graph::update_nodes_pointing_to_node_edge(
-                    &succ,
-                    nodes_pointing_to_node,
-                    &pred,
-                    node_id,
+                    succ.0 as usize,
+                    nodes_pointing_to_node_file,
+                    pred,
+                    node_id.0 as usize,
                 )
             } else {
                 let succ = edges[0].node;
                 let pred = edges.get(1).map(|x| x.node).unwrap();
-                let edge_from_pred = graph.get(&pred).unwrap().iter().find(|x| x.node == node_id);
+                let edge_from_pred = graph.get(pred.0 as usize).unwrap().iter().find(|x| x.node == node_id);
                 let cost = edges[0].cost + edge_from_pred.or(edges.get(1)).unwrap().cost;
                 let new_edge_from_pred = Edge::new(succ, cost);
                 let new_edge_from_succ = Edge::new(pred, cost);
-                Graph::update_edges_and_remove_node(pred, node_id, graph, new_edge_from_pred);
-                Graph::update_edges_and_remove_node(succ, node_id, graph, new_edge_from_succ);
+                Graph::update_edges_and_remove_node(pred.0 as usize, node_id.0 as usize, graph, new_edge_from_pred);
+                Graph::update_edges_and_remove_node(succ.0 as usize, node_id.0 as usize, graph, new_edge_from_succ);
                 Graph::update_nodes_pointing_to_node_edge(
-                    &pred,
-                    nodes_pointing_to_node,
-                    &succ,
-                    node_id,
+                    pred.0 as usize,
+                    nodes_pointing_to_node_file,
+                    succ.0 as usize,
+                    node_id.0 as usize,
                 );
                 Graph::update_nodes_pointing_to_node_edge(
-                    &succ,
-                    nodes_pointing_to_node,
-                    &pred,
-                    node_id,
+                    succ.0 as usize,
+                    nodes_pointing_to_node_file,
+                    pred.0 as usize,
+                    node_id.0 as usize,
                 );
             }
         }
         // Remove loops and duplicate edges
-        for (node, edges) in graph.iter_mut() {
-            edges.retain(|x| x.node != *node);
+        for (node, edges) in graph.iter_mut().enumerate() {
+            edges.retain(|x| x.node.0 as usize != node);
             edges.sort_by(|a, b| a.node.0.cmp(&b.node.0));
             edges.dedup_by(|a, b| a.node == b.node);
         }
     }
 
     pub fn find_end_nodes(
-        graph: &HashMap<NodeId, Vec<Edge>>,
-        nodes_pointing_to_node: &HashMap<NodeId, Vec<NodeId>>,
+        graph: &Vec<Vec<Edge>>,
+        nodes_pointing_to_node_file: &str,
     ) -> (Vec<NodeId>, Vec<NodeId>, Vec<NodeId>, Vec<NodeId>) {
         let mut end_nodes: Vec<NodeId> = Vec::new();
         let mut start_nodes: Vec<NodeId> = Vec::new();
         let mut two_way_end_nodes: Vec<NodeId> = Vec::new();
         let mut dead_nodes: Vec<NodeId> = Vec::new();
-        for (node, edges) in graph.iter() {
-            let pointing = &nodes_pointing_to_node
-                .get(node)
-                .unwrap_or(&Vec::new())
-                .clone();
+
+        let file = File::open(nodes_pointing_to_node_file).unwrap();
+        let reader = BufReader::new(file);
+        let buf = String::new();
+
+        for (node, edges) in graph.iter().enumerate() {
+            let num_bytes = reader.read_line(&mut buf);
+            let pointing:Vec<usize> = buf.split(' ').map(|n|n.parse().unwrap()).collect();
             if edges.len() == 1 {
                 if pointing.len() == 0 {
                     start_nodes.push(*node);
@@ -244,17 +280,91 @@ impl Graph {
         }
     }
 
+    pub fn minimize_graph_interwrites(graph: &mut Vec<Vec<Edge>>, remove_ends: bool) {
+        // Write nodes_pointing_to_node to a file
+        let filename = "nodes_pointing_to_node.txt";
+        let file = std::fs::File::create(filename).unwrap();
+        let mut writer = std::io::BufWriter::new(file);
+        let mut nodes_pointing_to_node = Self::find_nodes_pointing_to_node(graph);
+        for (node, edges) in nodes_pointing_to_node.iter().enumerate() {
+            let mut line = format!("{} ", node);
+            for edge in edges {
+                line.push_str(&format!("{} ", edge.0));
+            }
+            line.push_str("\n");
+            writer.write(line.as_bytes()).unwrap();
+        }
+
+        let mut intermediate_nodes = Self::find_intermediate_nodes_interwrites(graph, &filename);
+
+        while !intermediate_nodes.is_empty() {
+            Self::fix_intermediate_nodes(
+                graph,
+                filename,
+                intermediate_nodes.clone(),
+            );
+            nodes_pointing_to_node = Self::find_nodes_pointing_to_node(graph);
+            intermediate_nodes = Self::find_intermediate_nodes_interwrites(graph, filename);
+        }
+        if remove_ends {
+            nodes_pointing_to_node = Self::find_nodes_pointing_to_node(graph);
+            let (mut end_nodes, mut start_nodes, mut two_way_end_nodes, mut dead_nodes) =
+                Self::find_end_nodes(graph, &nodes_pointing_to_node);
+            fn can_remove_ends(
+                end_nodes: &Vec<NodeId>,
+                start_nodes: &Vec<NodeId>,
+                two_way_end_nodes: &Vec<NodeId>,
+                dead_nodes: &Vec<NodeId>,
+            ) -> bool {
+                !end_nodes.is_empty()
+                    || !start_nodes.is_empty()
+                    || !two_way_end_nodes.is_empty()
+                    || !dead_nodes.is_empty()
+            }
+            while can_remove_ends(&end_nodes, &start_nodes, &two_way_end_nodes, &dead_nodes)
+                || !intermediate_nodes.is_empty()
+            {
+                while can_remove_ends(&end_nodes, &start_nodes, &two_way_end_nodes, &dead_nodes) {
+                    Self::fix_end_nodes(
+                        graph,
+                        &mut nodes_pointing_to_node,
+                        &start_nodes,
+                        &end_nodes,
+                        &two_way_end_nodes,
+                        &dead_nodes,
+                    );
+                    nodes_pointing_to_node = Self::find_nodes_pointing_to_node(graph);
+                    (end_nodes, start_nodes, two_way_end_nodes, dead_nodes) =
+                        Self::find_end_nodes(graph, &nodes_pointing_to_node);
+                }
+                intermediate_nodes = Self::find_intermediate_nodes(graph, &nodes_pointing_to_node);
+                while !intermediate_nodes.is_empty() {
+                    Self::fix_intermediate_nodes(
+                        graph,
+                        &mut nodes_pointing_to_node,
+                        intermediate_nodes.clone(),
+                    );
+                    nodes_pointing_to_node = Self::find_nodes_pointing_to_node(graph);
+                    intermediate_nodes =
+                        Self::find_intermediate_nodes(graph, &nodes_pointing_to_node);
+                }
+                (end_nodes, start_nodes, two_way_end_nodes, dead_nodes) =
+                    Self::find_end_nodes(graph, &nodes_pointing_to_node);
+            }
+        }
+    }
+
     fn update_edges_and_remove_node(
-        pred: NodeId,
-        node: NodeId,
-        graph: &mut HashMap<NodeId, Vec<Edge>>,
+        pred: usize,
+        node: usize,
+        graph:&mut Vec<Vec<Edge>>,
         new_edge: Edge,
     ) {
         let mut pred_edges = graph
-            .get_mut(&pred)
+            .get_mut(pred)
             .unwrap_or_else(|| panic!("Could not get edges from {:?}", &pred))
             .clone();
-        pred_edges.retain(|x| x.node != node);
+        pred_edges.retain(|x| x.node.0 as usize != node);
         if pred_edges.iter().any(|x| x.node == new_edge.node) {
             let edge = pred_edges
                 .iter_mut()
@@ -264,23 +374,48 @@ impl Graph {
         } else {
             pred_edges.push(new_edge);
         }
-        graph.remove(&node);
+        graph.remove(node);
         graph.insert(pred, pred_edges);
     }
 
     fn update_nodes_pointing_to_node_edge(
-        from: &NodeId,
-        nodes_pointing_to_node: &mut HashMap<NodeId, Vec<NodeId>>,
-        to: &NodeId,
-        intermediate: NodeId,
+        from: usize,
+        nodes_pointing_to_node_file: &str,
+        to: usize,
+        intermediate: usize,
     ) {
-        let mut edges = nodes_pointing_to_node.get_mut(from).unwrap().clone();
-        edges.retain(|x| *x != intermediate && *x != *to);
-        edges.push(*to);
-        nodes_pointing_to_node.insert(*from, edges);
+        let file = std::fs::File::open(nodes_pointing_to_node_file).unwrap();
+        let reader = BufReader::new(file);
+        let mut edges:Vec<usize> = reader.lines().nth(from).expect("Couldnt get line").unwrap().split(' ').map(|n|n.parse().unwrap()).collect();
+        edges.retain(|x| *x != intermediate && *x != to);
+        edges.push(to);
+        let edges_string:Vec<String> = edges.iter().map(|e|e.to_string()).collect();
+        let edges_string = edges_string.join("");
+        let _ = Self::change_nth_line(nodes_pointing_to_node_file, from, &edges_string).unwrap();
+    }
+    fn change_nth_line(filename: &str, n: usize, new_line: &str) -> io::Result<()> {
+        let path = Path::new(filename);
+        let file = File::open(&path)?;
+        let reader = BufReader::new(file);
+    
+        let temp_path = Path::new("temp.txt");
+        let mut temp_file = File::create(&temp_path)?;
+    
+        for (index, line) in reader.lines().enumerate() {
+            let line = line?;
+            if index == n {
+                writeln!(temp_file, "{}", new_line)?;
+            } else {
+                writeln!(temp_file, "{}", line)?;
+            }
+        }
+    
+        fs::rename(temp_path, path)?;
+    
+        Ok(())
     }
 
-    pub fn build_graph_interwrites(filename: &str) -> HashMap<NodeId, Vec<Edge>> {
+    pub fn build_graph_interwrites(filename: &str) -> Vec<Vec<Edge>> {
         let mut graph: HashMap<NodeId, Vec<Edge>> = HashMap::new();
         // Read line by line and build the graph
         let file = std::fs::File::open(filename).unwrap();
@@ -305,8 +440,14 @@ impl Graph {
             edges.sort_by(|a, b| a.node.0.cmp(&b.node.0));
             edges.dedup_by(|a, b| a.node == b.node);
         }
+        // Convert the HashMap into a Vec of tuples and sort it by NodeId
+        let mut graph_vec: Vec<(NodeId, Vec<Edge>)> = graph.into_iter().collect();
+        graph_vec.sort_by(|a, b| a.0.cmp(&b.0));
 
-        graph
+        // Map the sorted Vec to a Vec<Vec<Edge>>
+        let graph_vec: Vec<Vec<Edge>> = graph_vec.into_iter().map(|(_, edges)| edges).collect();
+
+        graph_vec
     }
 
     pub fn build_graph(
@@ -343,8 +484,8 @@ impl Graph {
 // TESTS
 fn initialize(filename: &str) -> Preprocessor {
     let mut preprocessor = Preprocessor::new();
-    preprocessor.get_roads_and_nodes(filename);
-    preprocessor.filter_nodes();
+    let (nodes_to_keep, mut nodes, roads) = Preprocessor::get_roads_and_nodes(filename);
+    Preprocessor::filter_nodes(&mut nodes, &nodes_to_keep);
     preprocessor
 }
 

@@ -82,13 +82,37 @@ fn create_blacklist() -> HashSet<&'static str> {
 }
 
 impl Preprocessor {
-    pub fn is_valid_highway(&self, blacklist: &HashSet<&str>, tags: &osmpbfreader::Tags) -> bool {
+    pub fn is_valid_highway(blacklist: &HashSet<&str>, tags: &osmpbfreader::Tags) -> bool {
         tags.iter()
             .any(|(k, v)| (k == "highway" && !blacklist.contains(v.as_str())))
             && !tags.contains_key("area")
     }
 
-    pub fn build_graph_interwrites(&mut self) -> HashMap<NodeId, Vec<Edge>> {
+    pub fn rewrite_ids(
+        nodes: &mut HashMap<NodeId, Coord>,
+        roads: &mut Vec<Road>,
+    ) {
+        let mut new_id = 0;
+        let mut old_to_new: HashMap<NodeId, NodeId> = HashMap::new();
+        for road in roads.iter_mut() {
+            for node in road.node_refs.iter_mut() {
+                if !old_to_new.contains_key(node) {
+                    old_to_new.insert(*node, NodeId(new_id));
+                    new_id += 1;
+                }
+                *node = old_to_new[node];
+            }
+        }
+        *nodes = nodes
+            .par_iter()
+            .map(|(nodeid, coord)| (old_to_new[nodeid], coord.clone()))
+            .collect();
+    }
+
+    pub fn build_graph_interwrites(
+        nodes: HashMap<NodeId, Coord>,
+        roads: Vec<Road>,
+    ) -> HashMap<NodeId, Vec<Edge>> {
         let time = std::time::Instant::now();
         // Write node distances to file
         let filename = "node_distances_temp.txt";
@@ -98,11 +122,12 @@ impl Preprocessor {
             .open(filename)
             .unwrap();
         let mut stream = BufWriter::new(file);
-        for road in &self.roads {
+        for road in &roads {
             for i in 0..road.node_refs.len() - 1 {
-                let node1 = &self.nodes[&road.node_refs[i]];
-                let node2 = &self.nodes[&road.node_refs[i + 1]];
-                let distance = node1.coord.distance_to(node2.coord) as u32;
+                let node1 = &nodes[&road.node_refs[i]];
+                let node2 = &nodes[&road.node_refs[i + 1]];
+
+                let distance = node1.distance_to(*node2) as u32;
                 let line = format!(
                     "{} {} {} {}\n",
                     road.node_refs[i].0,
@@ -113,7 +138,7 @@ impl Preprocessor {
                 let _ = stream.write(line.as_bytes());
             }
         }
-        self.roads = Vec::new(); // Clear the roads since we don't need them anymore
+        drop(roads);
         // Write node coordinates to file
         let coordinates_filename = "node_coordinates_temp.txt";
         let file = OpenOptions::new()
@@ -122,15 +147,15 @@ impl Preprocessor {
             .open(coordinates_filename)
             .unwrap();
         let mut stream = BufWriter::new(file);
-        for (nodeid, node) in &self.nodes {
-            let line = format!("{} {} {}\n", nodeid.0, node.coord.lat, node.coord.lon);
+        for (nodeid, node) in &nodes {
+            let line = format!("{} {} {}\n", nodeid.0, node.lat, node.lon);
             let _ = stream.write(line.as_bytes());
         }
-        self.nodes = HashMap::new(); // Clear the nodes since we don't need them anymore
+        drop(nodes);
         let mut graph = Graph::build_graph_interwrites(filename);
         println!("Time to build graph: {:?}", time.elapsed());
         let time = std::time::Instant::now();
-        Graph::minimize_graph(&mut graph, true);
+        Graph::minimize_graph_interwrites(&mut graph, true);
         println!("Time to minimize graph: {:?}", time.elapsed());
         graph
     }
@@ -149,7 +174,6 @@ impl Preprocessor {
     }
 
     pub fn write_graph(
-        &self,
         projected_points: HashMap<NodeId, (f32, f32)>,
         graph: HashMap<NodeId, Vec<Edge>>,
         filename: &str,
@@ -179,7 +203,9 @@ impl Preprocessor {
         std::fs::write(filename, buf).unwrap();
     }
 
-    pub fn get_roads_and_nodes(&mut self, filename: &str) {
+    pub fn get_roads_and_nodes(
+        filename: &str,
+    ) -> (HashSet<NodeId>, HashMap<NodeId, Coord>, Vec<Road>) {
         let r = std::fs::File::open(&std::path::Path::new(filename)).unwrap();
         let mut pbf = osmpbfreader::OsmPbfReader::new(r);
         let mut roads: Vec<Road> = Vec::new();
@@ -188,7 +214,7 @@ impl Preprocessor {
         for obj in pbf.par_iter().map(Result::unwrap) {
             match obj {
                 osmpbfreader::OsmObj::Way(way) => {
-                    if !self.is_valid_highway(&blacklist, &way.tags) {
+                    if !Self::is_valid_highway(&blacklist, &way.tags) {
                         continue;
                     }
                     nodes_to_keep.extend(&way.nodes);
@@ -208,17 +234,16 @@ impl Preprocessor {
         }
         let nodes_to_keep_hashset = HashSet::from_par_iter(nodes_to_keep);
 
-        let nodes = self.get_nodes(filename, &nodes_to_keep_hashset);
-        let nodes_hashmap: HashMap<NodeId, Node> = nodes
+        let nodes = Self::get_nodes(filename, &nodes_to_keep_hashset);
+        let nodes_hashmap: HashMap<NodeId, Coord> = nodes
             .par_iter()
-            .map(|node| (node.id, node.clone()))
+            .map(|node| (node.id, node.coord))
             .collect();
-        self.nodes_to_keep = nodes_to_keep_hashset;
-        self.nodes = nodes_hashmap;
-        self.roads = roads;
+
+        (nodes_to_keep_hashset, nodes_hashmap, roads)
     }
 
-    pub fn get_nodes(&mut self, filename: &str, nodes_to_keep: &HashSet<NodeId>) -> Vec<Node> {
+    pub fn get_nodes(filename: &str, nodes_to_keep: &HashSet<NodeId>) -> Vec<Node> {
         let mut nodes: Vec<Node> = Vec::new();
         let r = std::fs::File::open(&std::path::Path::new(filename)).unwrap();
         let mut pbf = osmpbfreader::OsmPbfReader::new(r);
@@ -240,15 +265,13 @@ impl Preprocessor {
         nodes
     }
 
-    pub fn filter_nodes(&mut self) {
+    pub fn filter_nodes(nodes: &mut HashMap<NodeId, Coord>, nodes_to_keep: &HashSet<NodeId>) {
         // Filter out nodes that are not in nodes_to_keep
-        self.nodes = self
-            .nodes
+        *nodes = nodes
             .par_iter() // Use a parallel iterator
-            .map(|(nodeid, node)| (*nodeid, node.clone()))
-            .filter(|(nodeid, _)| self.nodes_to_keep.contains(nodeid))
+            .map(|(nodeid, coord)| (*nodeid, coord.clone()))
+            .filter(|(nodeid, _)| nodes_to_keep.contains(nodeid))
             .collect();
-        self.nodes_to_keep = HashSet::new(); // Clear the nodes_to_keep set since we don't need it anymore
     }
 
     pub fn new() -> Self {
@@ -301,8 +324,8 @@ impl Preprocessor {
 //TESTS
 fn initialize(filename: &str) -> Preprocessor {
     let mut preprocessor = Preprocessor::new();
-    preprocessor.get_roads_and_nodes(filename);
-    preprocessor.filter_nodes();
+    let (nodes_to_keep, mut nodes, roads) = Preprocessor::get_roads_and_nodes(filename);
+    Preprocessor::filter_nodes(&mut nodes, &nodes_to_keep);
     preprocessor
 }
 
