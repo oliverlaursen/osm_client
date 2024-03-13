@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using ProjNet.CoordinateSystems;
@@ -42,6 +43,9 @@ public class AStar
     Debug.Log("A*");
 
     float[] startCoords = graph.nodes[start];
+    float[] endCoords = graph.nodes[end];
+    float dist = HeuristicCostEstimate(start, end);
+    Debug.Log("start lat: " + startCoords[2] + " start lon: " + startCoords[3] + " endlat: " + endCoords[2] + " end lon: " + endCoords[3] + " Heuristic cost: " + dist);
 
     AstarNode startNode = new AstarNode(start, startCoords[0], startCoords[1], 0, 0, 0, null);
     openlist.Add(startNode);
@@ -96,19 +100,34 @@ public class AStar
 
 
     private float HeuristicCostEstimate(long start, long end)
-    {
-        // Implement your heuristic here. This could be Manhattan, Euclidean, etc.
-        // For now, let's assume it's Euclidean distance.
-        var startCoords = graph.nodes[start];
-        var endCoords = graph.nodes[end];
-        var distance = Mathf.Sqrt(Mathf.Pow(endCoords[0] - startCoords[0], 2) + Mathf.Pow(endCoords[1] - startCoords[1], 2));
+{
+    var startCoords = graph.nodes[start];
+    double startLat = startCoords[2]; // Convert to radians
+    double startLon = startCoords[3]; // Convert to radians
 
-        if (distance <= 0)
-        {
-            UnityEngine.Debug.Log("distance is negative");
-        }
-        return distance;
-    }
+    double startLat_radians = startLat * (Math.PI / 180);
+    double startLon_radians = startLon * (Math.PI / 180);
+
+    var endCoords = graph.nodes[end];
+    double endLat = endCoords[2]; // Convert to radians
+    double endLon = endCoords[3]; // Convert to radians
+
+    double endLat_radians = endLat * (Math.PI / 180);
+    double endLon_radians = endLon * (Math.PI / 180);
+
+    double dLat = endLat_radians - startLat_radians;
+    double dLon = endLon_radians - startLon_radians;
+    
+    double r = 6371; //radius of the earth in meters
+
+    double a = (Math.Sin(dLat / 2) * Math.Sin(dLat / 2)) +
+               (Math.Sin(dLon / 2) * Math.Sin(dLon / 2) * Math.Cos(startLat_radians) * Math.Cos(endLat_radians));
+    double c = 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
+
+    double dist = r * c;
+    
+    return (float)dist;
+}
 
     private long[] ReconstructPath(AstarNode EndNode)
     {
