@@ -60,4 +60,6 @@ public class NodeReadFormat {
     public float y {get; set;}
     [Key(3)]
     public (long, int)[] neighbours {get; set;}
+    [Key(4)]
+    public (long, int)[] bi_neighbours { get; set; }
 }
