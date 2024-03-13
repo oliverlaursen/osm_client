@@ -45,6 +45,8 @@ pub struct NodeWriteFormat {
     pub node_id: NodeId,
     pub x: f32,
     pub y: f32,
+    pub lat: f64,
+    pub lon: f64,
     pub neighbours: Vec<(NodeId, u32)>,
     pub bi_neighbours: Vec<(NodeId, u32)>,
 }
@@ -117,10 +119,13 @@ impl Preprocessor {
                     let (x, y) = projected_points.get(node_id).unwrap();
                     let neighbours = edges.iter().map(|edge| (edge.node, edge.cost)).collect();
                     let bi_neighbours = bi_edges.iter().map(|edge| (edge.node, edge.cost)).collect();
+                    let node = self.nodes.get(node_id).unwrap();
                     NodeWriteFormat {
                         node_id: *node_id,
                         x: *x,
                         y: *y,
+                        lat: node.coord.lat,
+                        lon: node.coord.lon,
                         neighbours,
                         bi_neighbours
                     }

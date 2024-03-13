@@ -41,6 +41,7 @@ public class Edge
 public class Graph
 {
     public Dictionary<long,Edge[]> graph {get; set;}
+    public Dictionary<long, Edge[]> bi_graph { get; set; }
     public Dictionary<long, float[]> nodes {get; set;}
 }
 
@@ -59,7 +60,11 @@ public class NodeReadFormat {
     [Key(2)]
     public float y {get; set;}
     [Key(3)]
-    public (long, int)[] neighbours {get; set;}
+    public float lat { get; set; }
     [Key(4)]
+    public float lon { get; set; }
+    [Key(5)]
+    public (long, int)[] neighbours {get; set;}
+    [Key(6)]
     public (long, int)[] bi_neighbours { get; set; }
 }
