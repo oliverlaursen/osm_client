@@ -198,17 +198,6 @@ impl Preprocessor {
         nodes
     }
 
-    pub fn filter_nodes(&mut self) {
-        // Filter out nodes that are not in nodes_to_keep
-        self.nodes = self
-            .nodes
-            .par_iter() // Use a parallel iterator
-            .map(|(nodeid, node)| (*nodeid, node.clone()))
-            .filter(|(nodeid, _)| self.nodes_to_keep.contains(nodeid))
-            .collect();
-        self.nodes_to_keep = HashSet::new(); // Clear the nodes_to_keep set since we don't need it anymore
-    }
-
     pub fn new() -> Self {
         Preprocessor {
             nodes_to_keep: HashSet::new(),
@@ -242,7 +231,6 @@ impl Preprocessor {
 fn initialize(filename: &str) -> Preprocessor {
     let mut preprocessor = Preprocessor::new();
     preprocessor.get_roads_and_nodes(filename);
-    preprocessor.filter_nodes();
     preprocessor
 }
 

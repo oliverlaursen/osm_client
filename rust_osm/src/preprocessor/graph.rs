@@ -329,7 +329,7 @@ impl Graph {
                     let edge = Edge::new(node, distance);
                     graph.get_mut(&next_node).unwrap().push(edge);
                 }
-            }
+            }   
         }
         // Remove duplicate edges
         for (_, edges) in graph.iter_mut() {
@@ -345,7 +345,6 @@ impl Graph {
 fn initialize(filename: &str) -> Preprocessor {
     let mut preprocessor = Preprocessor::new();
     preprocessor.get_roads_and_nodes(filename);
-    preprocessor.filter_nodes();
     preprocessor
 }
 
