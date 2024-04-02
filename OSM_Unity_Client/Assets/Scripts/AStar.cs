@@ -58,6 +58,13 @@ public class AStar
                         openList.Add(neighborTuple);
                         openSet.Add(neighbor.node);
                     }
+                    else
+                    {
+                        // If the node is already in the openList, remove the old tuple and add the new one.
+                        openList.RemoveWhere(tuple => tuple.Item2 == neighbor.node);
+                        openList.Add(neighborTuple);
+                        openSet.Add(neighbor.node);
+                    }
                 }
             }
         }
@@ -97,7 +104,7 @@ public class AStar
         double dLat = endLat_radians - startLat_radians;
         double dLon = endLon_radians - startLon_radians;
 
-        double r = 6371; //radius of the earth in meters
+        double r = 6371000; //radius of the earth in meters
 
         double a = (Math.Sin(dLat / 2) * Math.Sin(dLat / 2)) +
                    (Math.Sin(dLon / 2) * Math.Sin(dLon / 2) * Math.Cos(startLat_radians) * Math.Cos(endLat_radians));
