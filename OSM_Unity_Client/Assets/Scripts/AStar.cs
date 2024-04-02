@@ -1,142 +1,135 @@
+using System;
 using System.Collections.Generic;
-using System.Linq;
-using ProjNet.CoordinateSystems;
-using UnityEditor.UI;
 using UnityEngine;
-
-public class AstarNode
-{
-    public long NodeId { get; set; }
-    public float X { get; set; }
-    public float Y { get; set; }
-    public float GCost { get; set; }
-    public float HCost { get; set; }
-    public float FCost { get; set; }
-    public AstarNode Parent { get; set; } //parent node in the path
-
-    public AstarNode(long nodeId, float x, float y, float gCost, float hCost, float fCost, AstarNode parent)
-    {
-        NodeId = nodeId;
-        X = x;
-        Y = y;
-        GCost = gCost;
-        HCost = hCost;
-        FCost = fCost;
-        Parent = parent;
-    }
-}
 
 public class AStar
 {
     public Graph graph;
-    private SortedSet<AstarNode> openlist = new SortedSet<AstarNode>(new NodeComparer()); //priority queue
-    private HashSet<long> closedList = new HashSet<long>();
 
     public AStar(Graph graph)
     {
         this.graph = graph;
     }
 
-   public (float, long[]) FindShortestPath(long start, long end)
-{
-    Debug.Log("A*");
-
-    float[] startCoords = graph.nodes[start];
-
-    AstarNode startNode = new AstarNode(start, startCoords[0], startCoords[1], 0, 0, 0, null);
-    openlist.Add(startNode);
-
-    int nodesVisited = 0;
-    while (openlist.Count > 0)
+    public (float, long[]) FindShortestPath(long start, long end)
     {
-        AstarNode currentNode = openlist.Min;
-        if (currentNode.NodeId == end)
+        Debug.Log("A*");
+        //initialize data structures
+        SortedSet<Tuple<float, long>> openList = new SortedSet<Tuple<float, long>>(new OpenListComparer());
+        HashSet<long> openSet = new HashSet<long>();
+        Dictionary<long, long> cameFrom = new Dictionary<long, long>();
+        Dictionary<long, float> gScore = new Dictionary<long, float>();
+        Dictionary<long, float> fScore = new Dictionary<long, float>();
+
+        int nodesVisited = 0;
+
+        gScore[start] = 0;
+        fScore[start] = HeuristicCostEstimate(start, end);
+        cameFrom[start] = -1;
+        openList.Add(Tuple.Create(fScore[start], start));
+        openSet.Add(start);
+
+        while (openList.Count > 0)
         {
-            Debug.Log("nodes visited " + nodesVisited);
-            float[] node = graph.nodes[currentNode.NodeId];
-            // Reconstruct path
-            return (currentNode.GCost, ReconstructPath(currentNode));
-        }
-        openlist.Remove(currentNode);
-        closedList.Add(currentNode.NodeId); // Mark current node as visited
-        nodesVisited++;
+            long current = openList.Min.Item2;
+            
 
-        Edge[] neighbors = graph.GetNeighbors(currentNode.NodeId);
-
-        foreach (Edge neighbor in neighbors)
-        {
-
-            // Cost from start to this node
-            float gCost = neighbor.cost + currentNode.GCost;
-            float hCost = HeuristicCostEstimate(neighbor.node, end);
-            float fCost = gCost + hCost;
-
-            AstarNode openNode = openlist.FirstOrDefault(node => node.NodeId == neighbor.node);
-
-            if (openNode != null && openNode.FCost < fCost)
+            if (current == end)
             {
-                continue;
+                Debug.Log("Nodes visited: " + nodesVisited);
+                return (gScore[current], ReconstructPath(cameFrom, start, end));
             }
+            openSet.Remove(current);
+            openList.Remove(openList.Min);
+            nodesVisited++;
 
-            // Check if neighbor has already been visited
-            if (closedList.Contains(neighbor.node))
+            Edge[] neighbors = graph.GetNeighbors(current);
+            foreach (Edge neighbor in neighbors)
             {
-                continue;
+                float tentativeGScore = gScore[current] + neighbor.cost;
+                if (!gScore.ContainsKey(neighbor.node) || tentativeGScore < gScore[neighbor.node])
+                {
+                    cameFrom[neighbor.node] = current;
+                    gScore[neighbor.node] = tentativeGScore;
+                    fScore[neighbor.node] = gScore[neighbor.node] + HeuristicCostEstimate(neighbor.node, end);
+                    Tuple<float, long> neighborTuple = new Tuple<float, long>(fScore[neighbor.node], neighbor.node);
+                    if (!openSet.Contains(neighbor.node))
+                    {
+                        openList.Add(neighborTuple);
+                        openSet.Add(neighbor.node);
+                    }
+                    else
+                    {
+                        // If the node is already in the openList, remove the old tuple and add the new one.
+                        openList.RemoveWhere(tuple => tuple.Item2 == neighbor.node);
+                        openList.Add(neighborTuple);
+                        openSet.Add(neighbor.node);
+                    }
+                }
             }
-
-            float[] graphNode = graph.nodes[neighbor.node];
-            AstarNode neighborNode = new AstarNode(neighbor.node, graphNode[0], graphNode[1], gCost, hCost, fCost, currentNode);
-            openlist.Add(neighborNode);
         }
+
+        return (0, new long[0]);
     }
 
-    return (0, new long[0]);
-}
-
-
+    public class OpenListComparer : IComparer<Tuple<float, long>>
+    {
+        public int Compare(Tuple<float, long> x, Tuple<float, long> y)
+        {
+            int result = x.Item1.CompareTo(y.Item1);
+            if (result == 0)
+            {
+                result = x.Item2.CompareTo(y.Item2); // Compare by node if fscores are equal
+            }
+            return result;
+        }
+    }
 
     private float HeuristicCostEstimate(long start, long end)
     {
-        // Implement your heuristic here. This could be Manhattan, Euclidean, etc.
-        // For now, let's assume it's Euclidean distance.
         var startCoords = graph.nodes[start];
-        var endCoords = graph.nodes[end];
-        var distance = Mathf.Sqrt(Mathf.Pow(endCoords[0] - startCoords[0], 2) + Mathf.Pow(endCoords[1] - startCoords[1], 2));
+        double startLat = startCoords[2]; // Convert to radians
+        double startLon = startCoords[3]; // Convert to radians
 
-        if (distance <= 0)
-        {
-            UnityEngine.Debug.Log("distance is negative");
-        }
-        return distance;
+        double startLat_radians = startLat * (Math.PI / 180);
+        double startLon_radians = startLon * (Math.PI / 180);
+
+        var endCoords = graph.nodes[end];
+        double endLat = endCoords[2]; // Convert to radians
+        double endLon = endCoords[3]; // Convert to radians
+
+        double endLat_radians = endLat * (Math.PI / 180);
+        double endLon_radians = endLon * (Math.PI / 180);
+
+        double dLat = endLat_radians - startLat_radians;
+        double dLon = endLon_radians - startLon_radians;
+
+        double r = 6371000; //radius of the earth in meters
+
+        double a = (Math.Sin(dLat / 2) * Math.Sin(dLat / 2)) +
+                   (Math.Sin(dLon / 2) * Math.Sin(dLon / 2) * Math.Cos(startLat_radians) * Math.Cos(endLat_radians));
+        double c = 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
+
+        double dist = r * c;
+
+        return (float)dist;
     }
 
-    private long[] ReconstructPath(AstarNode EndNode)
+    private long[] ReconstructPath(Dictionary<long, long> cameFrom, long start, long end)
     {
         var path = new List<long>();
-        var parent = EndNode;
-
-
-        // Reconstruct the path
-        while (parent != null)
+        long parent = end;
+        while (parent != -1)
         {
-            path.Add(parent.NodeId);
-            parent = parent.Parent;
+            path.Add(parent);
+            if (!cameFrom.ContainsKey(parent))
+            {
+                throw new Exception("the end is not reachable from the start node");
+            }
+            parent = cameFrom[parent];
         }
 
         path.Reverse();
         return path.ToArray();
-    }
-
-    private class NodeComparer : IComparer<AstarNode>
-    {
-        public int Compare(AstarNode x, AstarNode y)
-        {
-            if (x.FCost == y.FCost)
-                return 0;
-            else if (x.FCost < y.FCost)
-                return -1;
-            else
-                return 1;
-        }
     }
 }
