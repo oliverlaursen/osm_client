@@ -109,73 +109,22 @@ impl Preprocessor {
             .collect();
     }
 
-    pub fn build_graph_interwrites(
-        nodes: HashMap<NodeId, Coord>,
-        roads: Vec<Road>,
-    ) -> HashMap<NodeId, Vec<Edge>> {
+    pub fn build_graph(roads: &Vec<Road>,nodes: &HashMap<NodeId, Coord>) -> Vec<Vec<Edge>> {
         let time = std::time::Instant::now();
-        // Write node distances to file
-        let filename = "node_distances_temp.txt";
-        let file = OpenOptions::new()
-            .write(true)
-            .create(true)
-            .open(filename)
-            .unwrap();
-        let mut stream = BufWriter::new(file);
-        for road in &roads {
-            for i in 0..road.node_refs.len() - 1 {
-                let node1 = &nodes[&road.node_refs[i]];
-                let node2 = &nodes[&road.node_refs[i + 1]];
-
-                let distance = node1.distance_to(*node2) as u32;
-                let line = format!(
-                    "{} {} {} {}\n",
-                    road.node_refs[i].0,
-                    road.node_refs[i + 1].0,
-                    distance,
-                    road.direction.clone() as u8
-                );
-                let _ = stream.write(line.as_bytes());
-            }
-        }
-        drop(roads);
-        // Write node coordinates to file
-        let coordinates_filename = "node_coordinates_temp.txt";
-        let file = OpenOptions::new()
-            .write(true)
-            .create(true)
-            .open(coordinates_filename)
-            .unwrap();
-        let mut stream = BufWriter::new(file);
-        for (nodeid, node) in &nodes {
-            let line = format!("{} {} {}\n", nodeid.0, node.lat, node.lon);
-            let _ = stream.write(line.as_bytes());
-        }
-        drop(nodes);
-        let mut graph = Graph::build_graph_interwrites(filename);
-        println!("Time to build graph: {:?}", time.elapsed());
-        let time = std::time::Instant::now();
-        Graph::minimize_graph_interwrites(&mut graph, true);
-        println!("Time to minimize graph: {:?}", time.elapsed());
-        graph
-    }
-
-    pub fn build_graph(&mut self) -> HashMap<NodeId, Vec<Edge>> {
-        let time = std::time::Instant::now();
-        let mut graph = Graph::build_graph(&self.nodes, &self.roads);
-        self.roads = Vec::new(); // Clear the roads since we don't need them anymore
+        let mut graph = Graph::build_graph(nodes, roads);
+        drop(roads); // Clear the roads since we don't need them anymore
         println!("Time to build graph: {:?}", time.elapsed());
         let time = std::time::Instant::now();
         println!("Length of graph: {}", graph.len());
 
-        Graph::minimize_graph(&mut graph, true);
+        Graph::minimize_graph(&mut graph, false);
         println!("Time to minimize graph: {:?}", time.elapsed());
         graph
     }
 
     pub fn write_graph(
         projected_points: HashMap<NodeId, (f32, f32)>,
-        graph: HashMap<NodeId, Vec<Edge>>,
+        graph: Vec<Vec<Edge>>,
         filename: &str,
     ) {
         /*
@@ -186,11 +135,13 @@ impl Preprocessor {
         let result = GraphWriteFormat {
             nodes: graph
                 .iter()
+                .enumerate()
                 .map(|(node_id, edges)| {
-                    let (x, y) = projected_points.get(node_id).unwrap();
+                    let nid = NodeId(node_id as i64);
+                    let (x, y) = projected_points.get(&nid).unwrap();
                     let neighbours = edges.iter().map(|edge| (edge.node, edge.cost)).collect();
                     NodeWriteFormat {
-                        node_id: *node_id,
+                        node_id: nid,
                         x: *x,
                         y: *y,
                         neighbours,
@@ -205,7 +156,7 @@ impl Preprocessor {
 
     pub fn get_roads_and_nodes(
         filename: &str,
-    ) -> (HashSet<NodeId>, HashMap<NodeId, Coord>, Vec<Road>) {
+    ) -> (HashMap<NodeId, Coord>, Vec<Road>) {
         let r = std::fs::File::open(&std::path::Path::new(filename)).unwrap();
         let mut pbf = osmpbfreader::OsmPbfReader::new(r);
         let mut roads: Vec<Road> = Vec::new();
@@ -240,7 +191,7 @@ impl Preprocessor {
             .map(|node| (node.id, node.coord))
             .collect();
 
-        (nodes_to_keep_hashset, nodes_hashmap, roads)
+        (nodes_hashmap, roads)
     }
 
     pub fn get_nodes(filename: &str, nodes_to_keep: &HashSet<NodeId>) -> Vec<Node> {
@@ -324,8 +275,7 @@ impl Preprocessor {
 //TESTS
 fn initialize(filename: &str) -> Preprocessor {
     let mut preprocessor = Preprocessor::new();
-    let (nodes_to_keep, mut nodes, roads) = Preprocessor::get_roads_and_nodes(filename);
-    Preprocessor::filter_nodes(&mut nodes, &nodes_to_keep);
+    let (mut nodes, roads) = Preprocessor::get_roads_and_nodes(filename);
     preprocessor
 }
 
