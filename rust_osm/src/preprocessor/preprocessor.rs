@@ -109,16 +109,18 @@ impl Preprocessor {
             .collect();
     }
 
-    pub fn build_graph(roads: &Vec<Road>,nodes: &HashMap<NodeId, Coord>) -> Vec<Vec<Edge>> {
+    pub fn build_graph(roads: Vec<Road>,nodes: &HashMap<NodeId, Coord>) -> Vec<Vec<Edge>> {
         let time = std::time::Instant::now();
-        let mut graph = Graph::build_graph(nodes, roads);
+        let mut graph = Graph::build_graph(nodes, &roads);
         drop(roads); // Clear the roads since we don't need them anymore
         println!("Time to build graph: {:?}", time.elapsed());
         let time = std::time::Instant::now();
         println!("Length of graph: {}", graph.len());
 
-        Graph::minimize_graph(&mut graph, false);
+        Graph::minimize_graph(&mut graph, true);
         println!("Time to minimize graph: {:?}", time.elapsed());
+
+        Graph::rewrite_ids(&mut graph);
         graph
     }
 
@@ -270,40 +272,58 @@ impl Preprocessor {
             .collect();
         projected_points
     }
+
+    pub fn project_nodes_to_2d(nodes:HashMap<NodeId, Coord>) -> HashMap<NodeId, (f32, f32)> {
+        let center_point = nodes.iter().fold((0.0, 0.0), |acc, (_, node)| {
+            (acc.0 + node.lat, acc.1 + node.lon)
+        });
+        let center_point = (
+            center_point.0 / nodes.len() as f64,
+            center_point.1 / nodes.len() as f64,
+        );
+
+        let projected_points = nodes
+            .par_iter()
+            .map(|(nodeid, coord)| {
+                let (x, y) = azimuthal_equidistant_projection(*coord, center_point);
+                (*nodeid, (x as f32, y as f32))
+            })
+            .collect();
+        projected_points
+    }
 }
 
 //TESTS
-fn initialize(filename: &str) -> Preprocessor {
-    let mut preprocessor = Preprocessor::new();
-    let (mut nodes, roads) = Preprocessor::get_roads_and_nodes(filename);
-    preprocessor
+fn initialize(filename: &str) -> (HashMap<NodeId, Coord>, Vec<Road>) {
+    let (nodes, roads) = Preprocessor::get_roads_and_nodes(filename);
+    (nodes,roads)
 }
 
 #[test]
 fn test_real_all() {
     //checks if file has been parsed correctly, with 2 nodes and 1 road
-    let preprocessor = initialize("src/test_data/minimal.osm.testpbf");
-    assert_eq!(1, preprocessor.roads.len());
-    assert_eq!(2, preprocessor.nodes.len());
+    let (n,r) = initialize("src/test_data/minimal.osm.testpbf");
+    assert_eq!(1, r.len());
+    assert_eq!(2, n.len());
 }
 
 #[test]
 fn road_is_oneway() {
     //checks if road is a oneway road
-    let preprocessor = initialize("src/test_data/minimal.osm.testpbf");
-    assert_eq!(CarDirection::Forward, preprocessor.roads[0].direction);
+    let (n,r) = initialize("src/test_data/minimal.osm.testpbf");
+    assert_eq!(CarDirection::Forward, r[0].direction);
 }
 
 #[test]
 fn does_not_include_blacklisted_roads() {
     //length of the road list should be 1, since one of the roads is pedestrian, which is blacklisted
-    let preprocessor = initialize("src/test_data/minimal_ignored_road.osm.testpbf");
-    assert_eq!(1, preprocessor.roads.len());
+    let (n,r) = initialize("src/test_data/minimal_ignored_road.osm.testpbf");
+    assert_eq!(1, r.len());
 }
 
 #[test]
 fn one_node_is_dropped() {
     //amount of nodes kept are 2, because one node is not referenced by a road
-    let preprocessor = initialize("src/test_data/one_node_is_dropped.osm.testpbf");
-    assert_eq!(2, preprocessor.nodes.len());
+    let (n,r) = initialize("src/test_data/one_node_is_dropped.osm.testpbf");
+    assert_eq!(2, n.len());
 }

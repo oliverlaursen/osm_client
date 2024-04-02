@@ -43,8 +43,8 @@ fn main() {
     let (mut nodes, mut roads) = Preprocessor::get_roads_and_nodes("src/test_data/andorra.osm.testpbf");
     Preprocessor::rewrite_ids(&mut nodes, &mut roads);
     println!("Time to get roads and nodes: {:?}", time.elapsed());
-    let graph = Preprocessor::build_graph(&roads,&nodes);
-    let projected_points = Preprocessor::project_nodes_to_2d_interwrites("node_coordinates_temp.txt");
+    let graph = Preprocessor::build_graph(roads,&nodes);
+    let projected_points = Preprocessor::project_nodes_to_2d(nodes);
     let time2 = std::time::Instant::now();
     println!("Length of projected points: {}", projected_points.len());
     Preprocessor::write_graph(projected_points, graph, "denmark.graph");
