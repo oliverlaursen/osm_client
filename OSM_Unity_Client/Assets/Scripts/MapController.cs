@@ -105,8 +105,6 @@ public class MapController : MonoBehaviour
             }
             visited.Add(node);
 
-            nodesVisited++;
-
             if (node == end)
             {
                 stopwatch.Stop();
@@ -117,6 +115,12 @@ public class MapController : MonoBehaviour
 
             foreach (var edge in edges[node])
             {
+                nodesVisited++;
+                var firstCoord = new Vector3(nodes[node][0], nodes[node][1], 0);
+                var secondCoord = new Vector3(nodes[edge.node][0], nodes[edge.node][1], 0);
+
+                UnityEngine.Debug.DrawLine(firstCoord, secondCoord, Color.green, 0.0f);
+
                 var neighbor = edge.node;
                 var cost = edge.cost;
                 var newDistance = distance + cost;
@@ -135,7 +139,7 @@ public class MapController : MonoBehaviour
     public void DrawGreenLine(Vector3 node1, Vector3 node2)
     {
         GL.Begin(GL.LINES);
-        GL.Color(Color.green);
+        GL.Color(Color.green);  
 
         GL.Vertex(node1);
         GL.Vertex(node2);
@@ -158,7 +162,6 @@ public class MapController : MonoBehaviour
         var bi_graph = new Dictionary<long, Edge[]>();
         foreach (var node in deserialized.nodes)
         {
-            nodes[node.id] = new float[] { node.x, node.y };
             nodes[node.id] = new float[] {node.x, node.y, node.lat, node.lon};
             var edges = new List<Edge>();
             for (int i = 0; i < node.neighbours.Length; i++)
@@ -173,7 +176,6 @@ public class MapController : MonoBehaviour
                 bi_edges.Add(new Edge { node = node.bi_neighbours[i].Item1, cost = node.bi_neighbours[i].Item2 });
             }
         }
-        return new Graph { nodes = nodes, graph = graph };
         var full_graph = new Graph { nodes = nodes, graph = graph, bi_graph = bi_graph };
         return full_graph;
     }

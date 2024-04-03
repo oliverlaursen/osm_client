@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using Unity.IO.LowLevel.Unsafe;
+using Priority_Queue;
 using UnityEngine;
-using System.Diagnostics;
 
 public class AStar
 {
@@ -15,57 +17,79 @@ public class AStar
     public (float, long[]) FindShortestPath(long start, long end)
     {
         UnityEngine.Debug.Log("A*");
-        var stopwatch = new Stopwatch();
+        var stopwatch = new System.Diagnostics.Stopwatch();
         stopwatch.Start();
         //initialize data structures
-        SortedSet<Tuple<float, long>> openList = new SortedSet<Tuple<float, long>>(new OpenListComparer());
+        SimplePriorityQueue<long> openList = new SimplePriorityQueue<long>();
         HashSet<long> openSet = new HashSet<long>();
-        Dictionary<long, long> cameFrom = new Dictionary<long, long>();
+        HashSet<long> closedSet = new HashSet<long>();
+        Dictionary<long, long> parent = new Dictionary<long, long>();
         Dictionary<long, float> gScore = new Dictionary<long, float>();
         Dictionary<long, float> fScore = new Dictionary<long, float>();
 
+        var watch = new System.Diagnostics.Stopwatch();
         int nodesVisited = 0;
 
         gScore[start] = 0;
-        fScore[start] = HeuristicCostEstimate(start, end);
-        cameFrom[start] = -1;
-        openList.Add(Tuple.Create(fScore[start], start));
-        openSet.Add(start);
+        fScore[start] = 0;
+        parent[start] = -1;
+        openList.Enqueue(start, fScore[start]);
 
         while (openList.Count > 0)
         {
-            long current = openList.Min.Item2;
+            long current = openList.Dequeue();
             
 
             if (current == end)
             {
                 MapController.DisplayStatistics(start, end, gScore[current], stopwatch.ElapsedMilliseconds, nodesVisited);
                 UnityEngine.Debug.Log("Nodes visited: " + nodesVisited);
-                return (gScore[current], ReconstructPath(cameFrom, start, end));
+                return (gScore[current], ReconstructPath(parent, start, end));
             }
-            openSet.Remove(current);
-            openList.Remove(openList.Min);
             nodesVisited++;
 
+
+            watch.Start();
             Edge[] neighbors = graph.GetNeighbors(current);
             foreach (Edge neighbor in neighbors)
             {
-                float tentativeGScore = gScore[current] + neighbor.cost;
-                if (!gScore.ContainsKey(neighbor.node) || tentativeGScore < gScore[neighbor.node])
+                if (current == end)
                 {
-                    cameFrom[neighbor.node] = current;
-                    gScore[neighbor.node] = tentativeGScore;
-                    fScore[neighbor.node] = gScore[neighbor.node] + HeuristicCostEstimate(neighbor.node, end);
-                    Tuple<float, long> neighborTuple = new Tuple<float, long>(fScore[neighbor.node], neighbor.node);
-                    if(openSet.Contains(neighbor.node))
-                    {
-                        openList.RemoveWhere(tuple => tuple.Item2 == neighbor.node);
+                    parent[neighbor.node] = current;
+                    Debug.Log("Nodes visited: " + nodesVisited);
+                    return (gScore[current], ReconstructPath(parent, start, end));
+                }
 
-                    }
-                    openList.Add(neighborTuple);
-                    openSet.Add(neighbor.node);
+                float tentativeGScore = gScore[current] + neighbor.cost;
+                float heuristicCostEstimate = HeuristicCostEstimate(neighbor.node, end);
+                nodesVisited++;
+                float neighborFScore = tentativeGScore + heuristicCostEstimate;
+
+                //gScore[neighbor.node] = tentativeGScore;
+                //fScore[neighbor.node] = neighborFScore;
+
+                if (openList.Contains(neighbor.node) && fScore[neighbor.node] < neighborFScore)
+                {
+                    continue;
+                }
+                else if (closedSet.Contains(neighbor.node) && fScore[neighbor.node] < neighborFScore)
+                {
+                    continue;
+                }
+                parent[neighbor.node] = current;
+                gScore[neighbor.node] = tentativeGScore;
+                fScore[neighbor.node] = neighborFScore;
+                Console.WriteLine("Adding to open list: " + neighbor.node);
+                if (openList.Contains(neighbor.node))
+                {
+                    openList.UpdatePriority(neighbor.node, fScore[neighbor.node]);
+                }
+                else
+                {
+                    openList.Enqueue(neighbor.node, fScore[neighbor.node]);
                 }
             }
+            closedSet.Add(current);
         }
 
         return (0, new long[0]);
@@ -117,6 +141,7 @@ public class AStar
     private long[] ReconstructPath(Dictionary<long, long> cameFrom, long start, long end)
     {
         var path = new List<long>();
+        Debug.Log("Reconstructing path " + cameFrom.Count);
         long parent = end;
         while (parent != -1)
         {
