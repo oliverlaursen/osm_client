@@ -120,7 +120,6 @@ impl Preprocessor {
         Graph::minimize_graph(&mut graph, true);
         println!("Time to minimize graph: {:?}", time.elapsed());
 
-        Graph::rewrite_ids(&mut graph);
         graph
     }
 

@@ -77,26 +77,28 @@ impl Graph {
         nodes_pointing_to_node
     }
 
-    pub fn rewrite_ids(graph: &mut Vec<Vec<Edge>>) {
+    pub fn rewrite_ids(graph: &mut Vec<Vec<Edge>>, dead_nodes: &Vec<usize>) {
         /*
         We want to compress the graph by removing all nodes with no edges
         This means that we need to rewrite the ids of the nodes since the id is the index of the node in the graph
+        
+        When an ID is removed, all nodes with an ID greater than the removed ID will have their ID decremented by 1
          */
         let mut new_ids: HashMap<NodeId, NodeId> = HashMap::new();
         let mut new_graph: Vec<Vec<Edge>> = Vec::new();
+        let mut new_id = 0;
         for (node_id, edges) in graph.iter().enumerate() {
-            if !edges.is_empty() {
-                let new_id = NodeId(new_graph.len() as i64);
-                new_ids.insert(NodeId(node_id as i64), new_id);
+            if !dead_nodes.contains(&node_id) {
+                new_ids.insert(NodeId(node_id as i64), NodeId(new_id as i64));
                 new_graph.push(edges.clone());
-            }
+                new_id += 1;
+            } 
         }
         for edges in new_graph.iter_mut() {
-            for edge in edges {
+            for edge in edges.iter_mut() {
                 edge.node = *new_ids.get(&edge.node).unwrap();
             }
         }
-        *graph = new_graph;
     }
 
     pub fn fix_intermediate_nodes(
@@ -203,8 +205,6 @@ impl Graph {
     ) {
         for node in start_nodes {
             let edges = graph.get_mut(*node).unwrap();
-            println!("{:?}", edges);
-            println!("{:?}", nodes_pointing_to_node);
             nodes_pointing_to_node
                 .get_mut(edges[0].node.0 as usize)
                 .unwrap()
@@ -226,16 +226,16 @@ impl Graph {
             if !pred_edges.is_empty() {
                 let edges = graph.get_mut(pred_edges.iter().next().unwrap().0 as usize);
                 if let Some(edges) = edges {
-                    nodes_pointing_to_node
-                        .get_mut(edges[0].node.0 as usize)
-                        .unwrap()
-                        .retain(|x| x.0 as usize != *node);
-                    edges.retain(|x| x.node != NodeId(*node as i64));
+                    if edges.len() > 0 {
+                        let nid = edges[0].node.0 as usize;
+                        nodes_pointing_to_node
+                            .get_mut(nid)
+                            .unwrap()
+                            .retain(|x| x.0 as usize != *node);
+                        edges.retain(|x| x.node != NodeId(*node as i64));
+                    }
                 }
             }
-            graph[*node] = Vec::new();
-        }
-        for node in dead_nodes {
             graph[*node] = Vec::new();
         }
     }
@@ -260,17 +260,17 @@ impl Graph {
                 end_nodes: &Vec<usize>,
                 start_nodes: &Vec<usize>,
                 two_way_end_nodes: &Vec<usize>,
-                dead_nodes: &Vec<usize>,
             ) -> bool {
                 !end_nodes.is_empty()
                     || !start_nodes.is_empty()
                     || !two_way_end_nodes.is_empty()
-                    || !dead_nodes.is_empty()
             }
-            while can_remove_ends(&end_nodes, &start_nodes, &two_way_end_nodes, &dead_nodes)
+            //println!("End:{:?}, start:{:?}, twoway:{:?}, dead:{:?}", end_nodes, start_nodes, two_way_end_nodes, dead_nodes);
+
+            while can_remove_ends(&end_nodes, &start_nodes, &two_way_end_nodes)
                 || !intermediate_nodes.is_empty()
             {
-                while can_remove_ends(&end_nodes, &start_nodes, &two_way_end_nodes, &dead_nodes) {
+                while can_remove_ends(&end_nodes, &start_nodes, &two_way_end_nodes) {
                     Self::fix_end_nodes(
                         graph,
                         &mut nodes_pointing_to_node,
@@ -444,12 +444,12 @@ fn can_build_full_graph() {
     // builds a graph with two nodes and one edge
     // should minimize to 0
     let graph = initialize("src/test_data/minimal_twoway.osm.testpbf");
-    assert_eq!(graph.len(), 2);
+    assert_eq!(graph.iter().filter(|x|x.len()>0).count(), 0);
 }
 
 #[test]
 fn can_minimize_graph() {
-    // //removes one intermediate node
+    // removes one intermediate node
     // and all ends
     let graph = initialize("src/test_data/minimize_correctly.osm.testpbf");
     println!("{:?}", graph);
@@ -477,17 +477,15 @@ fn one_way_roads_minimization() {
 #[test]
 fn one_way_roads_minimization_long() {
     let mut graph: Vec<Vec<Edge>> = Vec::new();
+    graph.push(vec![Edge::new(NodeId(1), 1)]);
     graph.push(vec![Edge::new(NodeId(2), 1)]);
     graph.push(vec![Edge::new(NodeId(3), 1)]);
     graph.push(vec![Edge::new(NodeId(4), 1)]);
-    graph.push(vec![Edge::new(NodeId(5), 1)]);
-    let mut node_ids = Vec::new();
-    for node in graph.iter() {
-        node_ids.push(node);
-    }
+    graph.push(Vec::new());
+    
     Graph::minimize_graph(&mut graph, false);
-    assert_eq!(graph.len(), 1);
-    assert_eq!(graph.get(0).unwrap()[0].node, NodeId(5));
+    assert_eq!(graph.iter().filter(|x| x.len() > 0).count(), 1);
+    assert_eq!(graph.get(0).unwrap()[0].node, NodeId(4));
     assert_eq!(graph.get(0).unwrap()[0].cost, 4);
 }
 
@@ -584,19 +582,20 @@ fn two_time_minimize() {
     assert_eq!(graph.len(), 1);
     assert!(graph.get(&NodeId(1)).unwrap()[0] == Edge::new(NodeId(6), 2));
 }
-
+*/
 #[test]
 fn remove_ends() {
-    let mut graph: HashMap<NodeId, Vec<Edge>> = HashMap::new();
-    graph.insert(NodeId(1), vec![Edge::new(NodeId(2), 1)]);
-    graph.insert(NodeId(2), vec![Edge::new(NodeId(3), 1)]);
-    graph.insert(NodeId(3), vec![Edge::new(NodeId(4), 1)]);
-    graph.insert(NodeId(4), vec![Edge::new(NodeId(5), 1)]);
-    graph.insert(NodeId(5), Vec::new());
+    let mut graph: Vec<Vec<Edge>> = Vec::new();
+    graph.push(vec![Edge::new(NodeId(1), 1)]);
+    graph.push(vec![Edge::new(NodeId(2), 1)]);
+    graph.push(vec![Edge::new(NodeId(3), 1)]);
+    graph.push(vec![Edge::new(NodeId(4), 1)]);
+    graph.push(Vec::new());
     Graph::minimize_graph(&mut graph, true);
-    assert_eq!(graph.len(), 0);
+    let len = graph.iter().filter(|x| x.len() > 0).count();
+    assert_eq!(len, 0);
 }
-
+/* 
 #[test]
 fn two_way_cycle() {
     let mut graph: HashMap<NodeId, Vec<Edge>> = HashMap::new();
