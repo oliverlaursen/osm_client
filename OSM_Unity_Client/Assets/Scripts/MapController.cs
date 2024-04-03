@@ -51,8 +51,31 @@ public class MapController : MonoBehaviour
         return path.ToArray();
     }
 
+    public static void DisplayStatistics(long start, long end, float distance, long timeElapsed, int nodesVisited)
+    {
+        var startText = GameObject.Find("Start");
+        var endText = GameObject.Find("End");
+        var distanceText = GameObject.Find("Distance");
+        var nodesVisitedText = GameObject.Find("NodesVisited");
+        var timeText = GameObject.Find("TimeText");
+
+        ChangeTextHelper(startText, "Start: " + start);
+        ChangeTextHelper(endText, "End: " + end);
+        ChangeTextHelper(distanceText, "Distance: " + distance);
+        ChangeTextHelper(timeText, "Time (ms): " + timeElapsed);
+        ChangeTextHelper(nodesVisitedText, "Nodes visited: " + nodesVisited);
+
+    }
+
+    public static void ChangeTextHelper(GameObject gameObject, string text)
+    {
+        gameObject.GetComponent<TMPro.TMP_Text>().text = text;
+    }
+
     public (float, long[]) Dijkstra(Graph graph, long start, long end)
     {
+        var stopwatch = new Stopwatch();
+        stopwatch.Start();
         UnityEngine.Debug.Log("Dijkstra");
         var nodes = graph.nodes;
         var edges = graph.graph;
@@ -86,17 +109,14 @@ public class MapController : MonoBehaviour
 
             if (node == end)
             {
+                stopwatch.Stop();
+                DisplayStatistics(start, end, distance, stopwatch.ElapsedMilliseconds, nodesVisited);
                 UnityEngine.Debug.Log("nodes visited " + nodesVisited);
                 return (distance, ReconstructPath(previous, start, end));
             }
 
             foreach (var edge in edges[node])
             {
-                var firstCoord = new Vector3(nodes[node][0], nodes[node][1], 0);
-                var secondCoord = new Vector3(nodes[edge.node][0], nodes[edge.node][1], 0);
-
-                UnityEngine.Debug.DrawLine(firstCoord, secondCoord, Color.green, 0.0f);
-
                 var neighbor = edge.node;
                 var cost = edge.cost;
                 var newDistance = distance + cost;

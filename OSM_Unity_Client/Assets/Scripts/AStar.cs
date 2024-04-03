@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using System.Diagnostics;
 
 public class AStar
 {
@@ -13,7 +14,9 @@ public class AStar
 
     public (float, long[]) FindShortestPath(long start, long end)
     {
-        Debug.Log("A*");
+        UnityEngine.Debug.Log("A*");
+        var stopwatch = new Stopwatch();
+        stopwatch.Start();
         //initialize data structures
         SortedSet<Tuple<float, long>> openList = new SortedSet<Tuple<float, long>>(new OpenListComparer());
         HashSet<long> openSet = new HashSet<long>();
@@ -36,7 +39,8 @@ public class AStar
 
             if (current == end)
             {
-                Debug.Log("Nodes visited: " + nodesVisited);
+                MapController.DisplayStatistics(start, end, gScore[current], stopwatch.ElapsedMilliseconds, nodesVisited);
+                UnityEngine.Debug.Log("Nodes visited: " + nodesVisited);
                 return (gScore[current], ReconstructPath(cameFrom, start, end));
             }
             openSet.Remove(current);
@@ -53,18 +57,13 @@ public class AStar
                     gScore[neighbor.node] = tentativeGScore;
                     fScore[neighbor.node] = gScore[neighbor.node] + HeuristicCostEstimate(neighbor.node, end);
                     Tuple<float, long> neighborTuple = new Tuple<float, long>(fScore[neighbor.node], neighbor.node);
-                    if (!openSet.Contains(neighbor.node))
+                    if(openSet.Contains(neighbor.node))
                     {
-                        openList.Add(neighborTuple);
-                        openSet.Add(neighbor.node);
-                    }
-                    else
-                    {
-                        // If the node is already in the openList, remove the old tuple and add the new one.
                         openList.RemoveWhere(tuple => tuple.Item2 == neighbor.node);
-                        openList.Add(neighborTuple);
-                        openSet.Add(neighbor.node);
+
                     }
+                    openList.Add(neighborTuple);
+                    openSet.Add(neighbor.node);
                 }
             }
         }
