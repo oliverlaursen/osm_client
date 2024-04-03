@@ -4,6 +4,7 @@ using System.Linq;
 using Unity.IO.LowLevel.Unsafe;
 using Priority_Queue;
 using UnityEngine;
+using UnityEngine.Assertions;
 
 public class AStar
 {
@@ -95,19 +96,6 @@ public class AStar
         return (0, new long[0]);
     }
 
-    public class OpenListComparer : IComparer<Tuple<float, long>>
-    {
-        public int Compare(Tuple<float, long> x, Tuple<float, long> y)
-        {
-            int result = x.Item1.CompareTo(y.Item1);
-            if (result == 0)
-            {
-                result = x.Item2.CompareTo(y.Item2); // Compare by node if fscores are equal
-            }
-            return result;
-        }
-    }
-
     private float HeuristicCostEstimate(long start, long end)
     {
         var startCoords = graph.nodes[start];
@@ -134,6 +122,10 @@ public class AStar
         double c = 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
 
         double dist = r * c;
+
+        var floatDist = (float)dist;
+
+        Assert.IsTrue(floatDist >= 0);
 
         return (float)dist;
     }
