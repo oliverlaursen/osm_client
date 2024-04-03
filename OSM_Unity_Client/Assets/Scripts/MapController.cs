@@ -51,8 +51,31 @@ public class MapController : MonoBehaviour
         return path.ToArray();
     }
 
+    public static void DisplayStatistics(long start, long end, float distance, long timeElapsed, int nodesVisited)
+    {
+        var startText = GameObject.Find("Start");
+        var endText = GameObject.Find("End");
+        var distanceText = GameObject.Find("Distance");
+        var nodesVisitedText = GameObject.Find("NodesVisited");
+        var timeText = GameObject.Find("TimeText");
+
+        ChangeTextHelper(startText, "Start: " + start);
+        ChangeTextHelper(endText, "End: " + end);
+        ChangeTextHelper(distanceText, "Distance: " + distance);
+        ChangeTextHelper(timeText, "Time (ms): " + timeElapsed);
+        ChangeTextHelper(nodesVisitedText, "Nodes visited: " + nodesVisited);
+
+    }
+
+    public static void ChangeTextHelper(GameObject gameObject, string text)
+    {
+        gameObject.GetComponent<TMPro.TMP_Text>().text = text;
+    }
+
     public (float, long[]) Dijkstra(Graph graph, long start, long end)
     {
+        var stopwatch = new Stopwatch();
+        stopwatch.Start();
         UnityEngine.Debug.Log("Dijkstra");
         var nodes = graph.nodes;
         var edges = graph.graph;
@@ -84,6 +107,8 @@ public class MapController : MonoBehaviour
 
             if (node == end)
             {
+                stopwatch.Stop();
+                DisplayStatistics(start, end, distance, stopwatch.ElapsedMilliseconds, nodesVisited);
                 UnityEngine.Debug.Log("nodes visited " + nodesVisited);
                 return (distance, ReconstructPath(previous, start, end));
             }

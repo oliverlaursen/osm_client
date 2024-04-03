@@ -16,7 +16,9 @@ public class AStar
 
     public (float, long[]) FindShortestPath(long start, long end)
     {
-        Debug.Log("A*");
+        UnityEngine.Debug.Log("A*");
+        var stopwatch = new System.Diagnostics.Stopwatch();
+        stopwatch.Start();
         //initialize data structures
         SimplePriorityQueue<long> openList = new SimplePriorityQueue<long>();
         HashSet<long> openSet = new HashSet<long>();
@@ -32,24 +34,33 @@ public class AStar
         fScore[start] = 0;
         parent[start] = -1;
         openList.Enqueue(start, fScore[start]);
-        Debug.Log("queue length: " + openList.Count);
 
         while (openList.Count > 0)
         {
-            long q = openList.Dequeue();
+            long current = openList.Dequeue();
+            
+
+            if (current == end)
+            {
+                MapController.DisplayStatistics(start, end, gScore[current], stopwatch.ElapsedMilliseconds, nodesVisited);
+                UnityEngine.Debug.Log("Nodes visited: " + nodesVisited);
+                return (gScore[current], ReconstructPath(parent, start, end));
+            }
+            nodesVisited++;
+
 
             watch.Start();
-            Edge[] neighbors = graph.GetNeighbors(q);
+            Edge[] neighbors = graph.GetNeighbors(current);
             foreach (Edge neighbor in neighbors)
             {
-                if (q == end)
+                if (current == end)
                 {
-                    parent[neighbor.node] = q;
+                    parent[neighbor.node] = current;
                     Debug.Log("Nodes visited: " + nodesVisited);
-                    return (gScore[q], ReconstructPath(parent, start, end));
+                    return (gScore[current], ReconstructPath(parent, start, end));
                 }
 
-                float tentativeGScore = gScore[q] + neighbor.cost;
+                float tentativeGScore = gScore[current] + neighbor.cost;
                 float heuristicCostEstimate = HeuristicCostEstimate(neighbor.node, end);
                 nodesVisited++;
                 float neighborFScore = tentativeGScore + heuristicCostEstimate;
@@ -65,7 +76,7 @@ public class AStar
                 {
                     continue;
                 }
-                parent[neighbor.node] = q;
+                parent[neighbor.node] = current;
                 gScore[neighbor.node] = tentativeGScore;
                 fScore[neighbor.node] = neighborFScore;
                 Console.WriteLine("Adding to open list: " + neighbor.node);
@@ -78,7 +89,7 @@ public class AStar
                     openList.Enqueue(neighbor.node, fScore[neighbor.node]);
                 }
             }
-            closedSet.Add(q);
+            closedSet.Add(current);
         }
 
         return (0, new long[0]);
