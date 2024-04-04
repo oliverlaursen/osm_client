@@ -130,12 +130,6 @@ public class CameraControl : MonoBehaviour
         return closestNode;
     }
 
-    void HandlePathfindingComplete(float distance, long[] path)
-    {
-        GameObject.Find("Map").GetComponent<MapController>().DrawPath(graph.nodes, path);
-        Debug.Log("Distance: " + distance);
-    }
-
     public void DijkstraOnSelection()
     {
         StopAllCoroutines();
@@ -147,8 +141,7 @@ public class CameraControl : MonoBehaviour
         }
         else
         {
-            var (dist, path) = dijkstra.FindShortestPath(nodeA, nodeB);
-            HandlePathfindingComplete(dist, path);
+            dijkstra.FindShortestPath(nodeA, nodeB);
         }
     }
 
@@ -156,12 +149,17 @@ public class CameraControl : MonoBehaviour
 
     public void AstarOnSelection()
     {
+        StopAllCoroutines();
         var lineRenderer = Camera.main.gameObject.GetComponent<GLLineRenderer>();
         lineRenderer.ClearDiscoveryPath();
         lineRenderer.ClearPath();
-        var (distance, path) = astar.FindShortestPath(nodeA, nodeB);
-        GameObject.Find("Map").GetComponent<MapController>().DrawPath(graph.nodes, path);
-        Debug.Log("Distance: " + distance);
+        if (visual) {
+            StartCoroutine(astar.FindShortestPathWithVisual(nodeA, nodeB));
+        }
+        else
+        {
+            astar.FindShortestPath(nodeA, nodeB);
+        }
     }
 
     public void FlipNodes()

@@ -1,9 +1,11 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using Priority_Queue;
+using UnityEngine;
 using UnityEngine.Assertions;
 
-public class AStar : IPathfindingAlgorithm
+public class AStar : MonoBehaviour, IPathfindingAlgorithm
 {
     public Graph graph;
 
@@ -12,68 +14,120 @@ public class AStar : IPathfindingAlgorithm
         this.graph = graph;
     }
 
-    public (float, long[]) FindShortestPath(long start, long end)
+    private void InitializeSearch(long start, long end, out SimplePriorityQueue<long, float> openList, out HashSet<long> openSet, out HashSet<long> closedSet, out Dictionary<long, long> parent, out Dictionary<long, float> gScore, out Dictionary<long, float> fScore)
     {
-        // Assuming SimplePriorityQueue is similar to PriorityQueue in .NET 6+, 
-        // which does not have a Contains method, thus maintaining a HashSet for open set tracking
-        var openList = new SimplePriorityQueue<long, float>();
-        var openSet = new HashSet<long>(); // Tracks the items currently in the open list
-        var closedSet = new HashSet<long>();
-        var parent = new Dictionary<long, long>();
-        var gScore = new Dictionary<long, float>() { [start] = 0 };
-        var fScore = new Dictionary<long, float>() { [start] = HeuristicCostEstimate(start, end) };
-
-        int nodesVisited = 0;
-        var stopwatch = new System.Diagnostics.Stopwatch();
-        stopwatch.Start();
+        openList = new SimplePriorityQueue<long, float>();
+        openSet = new HashSet<long>();
+        closedSet = new HashSet<long>();
+        parent = new Dictionary<long, long>();
+        gScore = new Dictionary<long, float>() { [start] = 0 };
+        fScore = new Dictionary<long, float>() { [start] = HeuristicCostEstimate(start, end) };
 
         openList.Enqueue(start, fScore[start]);
         openSet.Add(start);
+    }
+
+    public void FindShortestPath(long start, long end)
+    {
+        InitializeSearch(start, end, out var openList, out var openSet, out var closedSet, out var parent, out var gScore, out var fScore);
+        int nodesVisited = 0;
+        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
 
         while (openList.Count > 0)
         {
-            long current = openList.Dequeue();
-            openSet.Remove(current);
+            long current = DequeueAndUpdateSets(openList, openSet);
+            if (ProcessCurrentNode(current, start, end, ref nodesVisited, gScore, parent, stopwatch)) return;
+            UpdateNeighbors(current, end, closedSet, gScore, fScore, openList, openSet, parent);
+        }
+    }
 
-            if (current == end)
-            {
-                stopwatch.Stop();
-                MapController.DisplayStatistics(start, end, gScore[current], stopwatch.ElapsedMilliseconds, nodesVisited);
-                return (gScore[current], MapController.ReconstructPath(parent, start, end));
+    public IEnumerator FindShortestPathWithVisual(long start, long end)
+    {
+        InitializeSearch(start, end, out var openList, out var openSet, out var closedSet, out var parent, out var gScore, out var fScore);
+        var lineRenderer = Camera.main.GetComponent<GLLineRenderer>(); // Ensure Camera has GLLineRenderer component
+        int nodesVisited = 0;
+        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+
+        while (openList.Count > 0)
+        {
+            long current = DequeueAndUpdateSets(openList, openSet);
+            if (ProcessCurrentNode(current, start, end, ref nodesVisited, gScore, parent, stopwatch)) {
+                lineRenderer.ClearDiscoveryPath();   
+                yield break;
             }
-            nodesVisited++;
+            UpdateNeighborsWithVisual(current, end, closedSet, gScore, fScore, openList, openSet, parent, lineRenderer);
+            yield return null;
+        }
+    }
 
-            closedSet.Add(current);
+    private long DequeueAndUpdateSets(SimplePriorityQueue<long, float> openList, HashSet<long> openSet)
+    {
+        var current = openList.Dequeue();
+        openSet.Remove(current);
+        return current;
+    }
 
-            foreach (var neighbor in graph.GetNeighbors(current))
+    private bool ProcessCurrentNode(long current, long start, long end, ref int nodesVisited, Dictionary<long, float> gScore, Dictionary<long, long> parent, System.Diagnostics.Stopwatch stopwatch)
+    {
+        nodesVisited++;
+        if (current == end)
+        {
+            stopwatch.Stop();
+            DisplayPathFound(start, end, gScore[current], stopwatch.ElapsedMilliseconds, nodesVisited, parent);
+            return true;
+        }
+        return false;
+    }
+
+    private void DisplayPathFound(long start, long end, float cost, long elapsedMs, int nodesVisited, Dictionary<long, long> parent)
+    {
+        MapController.DisplayStatistics(start, end, cost, elapsedMs, nodesVisited);
+        GameObject.Find("Map").GetComponent<MapController>().DrawPath(graph.nodes, MapController.ReconstructPath(parent, start, end));
+    }
+
+    private void UpdateNeighbors(long current, long end, HashSet<long> closedSet, Dictionary<long, float> gScore, Dictionary<long, float> fScore, SimplePriorityQueue<long, float> openList, HashSet<long> openSet, Dictionary<long, long> parent)
+    {
+        foreach (var neighbor in graph.GetNeighbors(current))
+        {
+            if (closedSet.Contains(neighbor.node)) continue;
+            TryEnqueueNeighbor(neighbor, current, end, gScore, fScore, openList, openSet, parent);
+        }
+    }
+
+    private void UpdateNeighborsWithVisual(long current, long end, HashSet<long> closedSet, Dictionary<long, float> gScore, Dictionary<long, float> fScore, SimplePriorityQueue<long, float> openList, HashSet<long> openSet, Dictionary<long, long> parent, GLLineRenderer lineRenderer)
+    {
+        foreach (var neighbor in graph.GetNeighbors(current))
+        {
+            if (closedSet.Contains(neighbor.node)) continue;
+            if (TryEnqueueNeighbor(neighbor, current, end, gScore, fScore, openList, openSet, parent))
             {
-                if (closedSet.Contains(neighbor.node))
-                    continue;
-
-                float tentativeGScore = gScore[current] + neighbor.cost;
-
-                if (!gScore.ContainsKey(neighbor.node) || tentativeGScore < gScore[neighbor.node])
-                {
-                    // This path to neighbor is better than any previous one. 
-                    parent[neighbor.node] = current;
-                    gScore[neighbor.node] = tentativeGScore;
-                    fScore[neighbor.node] = tentativeGScore + HeuristicCostEstimate(neighbor.node, end);
-
-                    if (!openSet.Contains(neighbor.node))
-                    {
-                        openList.Enqueue(neighbor.node, fScore[neighbor.node]);
-                        openSet.Add(neighbor.node);
-                    }
-                    else
-                    {
-                        openList.UpdatePriority(neighbor.node, fScore[neighbor.node]);
-                    }
-                }
+                var startCoord = graph.nodes[current];
+                var endCoord = graph.nodes[neighbor.node];
+                lineRenderer.AddDiscoveryPath(new List<Vector3> { new(startCoord.Item1[0], startCoord.Item1[1], 0), new(endCoord.Item1[0], endCoord.Item1[1], 0) });
             }
         }
+    }
 
-        // If the goal is never reached
-        return (float.MaxValue, Array.Empty<long>());
+    private bool TryEnqueueNeighbor(Edge neighbor, long current, long end, Dictionary<long, float> gScore, Dictionary<long, float> fScore, SimplePriorityQueue<long, float> openList, HashSet<long> openSet, Dictionary<long, long> parent)
+    {
+        var tentativeGScore = gScore[current] + neighbor.cost;
+        if (!gScore.ContainsKey(neighbor.node) || tentativeGScore < gScore[neighbor.node])
+        {
+            parent[neighbor.node] = current;
+            gScore[neighbor.node] = tentativeGScore;
+            fScore[neighbor.node] = tentativeGScore + HeuristicCostEstimate(neighbor.node, end);
+            if (!openSet.Contains(neighbor.node))
+            {
+                openList.Enqueue(neighbor.node, fScore[neighbor.node]);
+                openSet.Add(neighbor.node);
+            }
+            else
+            {
+                openList.UpdatePriority(neighbor.node, fScore[neighbor.node]);
+            }
+            return true;
+        }
+        return false;
     }
 
     private float HeuristicCostEstimate(long start, long end)
