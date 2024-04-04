@@ -23,12 +23,21 @@ public class CameraControl : MonoBehaviour
     private Dijkstra dijkstra;
     private Graph graph;
 
+    public bool visual = true;
+
     public void InitializeAlgorithms(Graph graph)
     {
         this.graph = graph;
         astar = new AStar(graph);
         dijkstra = new Dijkstra(graph);
     }
+
+    public void ChangeVisual()
+    {
+        visual = !visual;
+    }
+
+
 
     void Update()
     {
@@ -121,20 +130,36 @@ public class CameraControl : MonoBehaviour
         return closestNode;
     }
 
-    public void DijkstraOnSelection()
+    void HandlePathfindingComplete(float distance, long[] path)
     {
-        var (distance, path) = dijkstra.FindShortestPath(nodeA, nodeB);
-        var lineRenderer = Camera.main.gameObject.GetComponent<GLLineRenderer>();
-        lineRenderer.ClearPath();
         GameObject.Find("Map").GetComponent<MapController>().DrawPath(graph.nodes, path);
         Debug.Log("Distance: " + distance);
     }
 
+    public void DijkstraOnSelection()
+    {
+        StopAllCoroutines();
+        var lineRenderer = Camera.main.gameObject.GetComponent<GLLineRenderer>();
+        lineRenderer.ClearDiscoveryPath();
+        lineRenderer.ClearPath();
+        if (visual) {
+            StartCoroutine(dijkstra.FindShortestPathWithVisual(nodeA, nodeB));
+        }
+        else
+        {
+            var (dist, path) = dijkstra.FindShortestPath(nodeA, nodeB);
+            HandlePathfindingComplete(dist, path);
+        }
+    }
+
+
+
     public void AstarOnSelection()
     {
-        var (distance, path) = astar.FindShortestPath(nodeA, nodeB);
         var lineRenderer = Camera.main.gameObject.GetComponent<GLLineRenderer>();
+        lineRenderer.ClearDiscoveryPath();
         lineRenderer.ClearPath();
+        var (distance, path) = astar.FindShortestPath(nodeA, nodeB);
         GameObject.Find("Map").GetComponent<MapController>().DrawPath(graph.nodes, path);
         Debug.Log("Distance: " + distance);
     }

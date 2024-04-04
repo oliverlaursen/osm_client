@@ -7,8 +7,9 @@ public class GLLineRenderer : MonoBehaviour
 {
     public Material lineMaterial;
     public (List<List<Vector3>>, Color) path { get; set; } = (new(), Color.red);
+    public (List<List<Vector3>>, Color) discoveryPath { get; set; } = (new(), Color.green);
 
-    void OnPostRender()
+    public void OnPostRender()
     {
         if (!lineMaterial)
         {
@@ -20,24 +21,24 @@ public class GLLineRenderer : MonoBehaviour
         lineMaterial.SetPass(0);
         GL.LoadProjectionMatrix(Camera.main.projectionMatrix);
 
+        GL.Begin(GL.LINES);
+        DrawLines(discoveryPath.Item1, discoveryPath.Item2);
         DrawLines(path.Item1, path.Item2);
+        GL.End();
 
         GL.PopMatrix();
     }
 
     public void DrawLines(List<List<Vector3>> lines, Color color)
     {
+        GL.Color(color);
         foreach (var line in lines)
         {
-            GL.Begin(GL.LINES);
-            GL.Color(color);
-
             for (int i = 0; i < line.Count - 1; i++)
             {
                 GL.Vertex(line[i]);
                 GL.Vertex(line[i + 1]);
             }
-            GL.End();
         }
     }
 
@@ -45,8 +46,19 @@ public class GLLineRenderer : MonoBehaviour
     {
         this.path.Item1.Add(path);
     }
+
+    public void AddDiscoveryPath(List<Vector3> path)
+    {
+        this.discoveryPath.Item1.Add(path);
+    }
+
     public void ClearPath()
     {
         path = (new(), Color.red);
+    }
+
+    public void ClearDiscoveryPath()
+    {
+        discoveryPath = (new(), Color.red);
     }
 }
