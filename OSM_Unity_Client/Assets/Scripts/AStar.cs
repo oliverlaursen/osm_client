@@ -1,8 +1,6 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
 using Priority_Queue;
-using UnityEngine;
 using UnityEngine.Assertions;
 
 public class AStar : IPathfindingAlgorithm
