@@ -55,7 +55,7 @@ public class CameraControl : MonoBehaviour
                 var worldPosition = Camera.main.ScreenToWorldPoint(clickPosition);
                 var nodes = GameObject.Find("Map").GetComponent<MapController>().graph.nodes;
                 long closestNode = ClosestNode(worldPosition, nodes);
-                float[] nodeCoords = nodes[closestNode];
+                float[] nodeCoords = nodes[closestNode].Item1;
                 var lineRenderer = GetComponent<GLLineRenderer>();
                 if (node_selection == 0)
                 {
@@ -101,14 +101,14 @@ public class CameraControl : MonoBehaviour
         node_selection = selection;
     }
 
-    long ClosestNode(Vector2 position, Dictionary<long, float[]> nodes)
+    long ClosestNode(Vector2 position, Dictionary<long, (float[],double[])> nodes)
     {
         float minDistance = float.MaxValue;
         long closestNode = 0;
         foreach (var node in nodes)
         {
-            var x = node.Value[0];
-            var y = node.Value[1];
+            var x = node.Value.Item1[0];
+            var y = node.Value.Item1[1];
             var dX = position.x - x;
             var dY = position.y - y;
             var distance = dX*dX + dY*dY;

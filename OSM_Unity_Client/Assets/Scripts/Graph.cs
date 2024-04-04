@@ -42,7 +42,7 @@ public class Graph
 {
     public Dictionary<long,Edge[]> graph {get; set;}
     public Dictionary<long, Edge[]> bi_graph { get; set; }
-    public Dictionary<long, float[]> nodes {get; set;}
+    public Dictionary<long, (float[],double[])> nodes {get; set;}
 
     public Edge[] GetNeighbors(long node)
 {
@@ -74,9 +74,9 @@ public class NodeReadFormat {
     [Key(2)]
     public float y {get; set;}
     [Key(3)]
-    public float lat { get; set; }
+    public double lat { get; set; }
     [Key(4)]
-    public float lon { get; set; }
+    public double lon { get; set; }
     [Key(5)]
     public (long, int)[] neighbours {get; set;}
     [Key(6)]

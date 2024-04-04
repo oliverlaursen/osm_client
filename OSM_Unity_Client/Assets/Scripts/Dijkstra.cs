@@ -54,10 +54,10 @@ public class Dijkstra : IPathfindingAlgorithm
             foreach (var edge in edges[node])
             {
                 nodesVisited++;
-                var firstCoord = new Vector3(nodes[node][0], nodes[node][1], 0);
-                var secondCoord = new Vector3(nodes[edge.node][0], nodes[edge.node][1], 0);
+                var firstCoord = new Vector3(nodes[node].Item1[0], nodes[node].Item1[1], 0);
+                var secondCoord = new Vector3(nodes[edge.node].Item1[0], nodes[edge.node].Item1[1], 0);
 
-                Debug.DrawLine(firstCoord, secondCoord, Color.green, 0.0f);
+                Debug.DrawLine(firstCoord, secondCoord, Color.green, 10.0f);
 
                 var neighbor = edge.node;
                 var cost = edge.cost;
