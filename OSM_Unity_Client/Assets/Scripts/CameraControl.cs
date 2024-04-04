@@ -19,6 +19,17 @@ public class CameraControl : MonoBehaviour
     private GameObject circleBInstance;
     private float circleSize = 300f;
 
+    private AStar astar;
+    private Dijkstra dijkstra;
+    private Graph graph;
+
+    public void InitializeAlgorithms(Graph graph)
+    {
+        this.graph = graph;
+        astar = new AStar(graph);
+        dijkstra = new Dijkstra(graph);
+    }
+
     void Update()
     {
         circleSize = (float)(maxOrthoSize * 0.05);
@@ -112,8 +123,7 @@ public class CameraControl : MonoBehaviour
 
     public void DijkstraOnSelection()
     {
-        var graph = GameObject.Find("Map").GetComponent<MapController>().graph;
-        var (distance, path) = GameObject.Find("Map").GetComponent<MapController>().Dijkstra(graph, nodeA, nodeB);
+        var (distance, path) = dijkstra.FindShortestPath(nodeA, nodeB);
         var lineRenderer = Camera.main.gameObject.GetComponent<GLLineRenderer>();
         lineRenderer.ClearPath();
         GameObject.Find("Map").GetComponent<MapController>().DrawPath(graph.nodes, path);
@@ -122,8 +132,6 @@ public class CameraControl : MonoBehaviour
 
     public void AstarOnSelection()
     {
-        var graph = GameObject.Find("Map").GetComponent<MapController>().graph;
-        AStar astar = new AStar(graph);
         var (distance, path) = astar.FindShortestPath(nodeA, nodeB);
         var lineRenderer = Camera.main.gameObject.GetComponent<GLLineRenderer>();
         lineRenderer.ClearPath();

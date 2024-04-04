@@ -1,12 +1,10 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using Unity.IO.LowLevel.Unsafe;
 using Priority_Queue;
 using UnityEngine;
 using UnityEngine.Assertions;
 
-public class AStar
+public class AStar : IPathfindingAlgorithm
 {
     public Graph graph;
 
@@ -45,7 +43,7 @@ public class AStar
             {
                 MapController.DisplayStatistics(start, end, gScore[current], stopwatch.ElapsedMilliseconds, nodesVisited);
                 UnityEngine.Debug.Log("Nodes visited: " + nodesVisited);
-                return (gScore[current], ReconstructPath(parent, start, end));
+                return (gScore[current], MapController.ReconstructPath(parent, start, end));
             }
             nodesVisited++;
 
@@ -58,7 +56,7 @@ public class AStar
                 {
                     parent[neighbor.node] = current;
                     Debug.Log("Nodes visited: " + nodesVisited);
-                    return (gScore[current], ReconstructPath(parent, start, end));
+                    return (gScore[current], MapController.ReconstructPath(parent, start, end));
                 }
 
                 float tentativeGScore = gScore[current] + neighbor.cost;
@@ -128,24 +126,5 @@ public class AStar
         Assert.IsTrue(floatDist >= 0);
 
         return (float)dist;
-    }
-
-    private long[] ReconstructPath(Dictionary<long, long> cameFrom, long start, long end)
-    {
-        var path = new List<long>();
-        Debug.Log("Reconstructing path " + cameFrom.Count);
-        long parent = end;
-        while (parent != -1)
-        {
-            path.Add(parent);
-            if (!cameFrom.ContainsKey(parent))
-            {
-                throw new Exception("the end is not reachable from the start node");
-            }
-            parent = cameFrom[parent];
-        }
-
-        path.Reverse();
-        return path.ToArray();
     }
 }
