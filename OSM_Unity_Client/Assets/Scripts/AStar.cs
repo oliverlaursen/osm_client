@@ -1,125 +1,172 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
-using Unity.IO.LowLevel.Unsafe;
 using Priority_Queue;
 using UnityEngine;
+using UnityEngine.Assertions;
 
-public class AStar
+public class AStar : MonoBehaviour, IPathfindingAlgorithm
 {
     public Graph graph;
+    private FastPriorityQueue<PriorityQueueNode> openList;
+    private HashSet<long> openSet;
+    private HashSet<long> closedSet;
+    private Dictionary<long, long> parent;
+    private Dictionary<long, float> gScore;
+    private Dictionary<long, float> fScore;
+    private Dictionary<long, PriorityQueueNode> priorityQueueNodes;
 
     public AStar(Graph graph)
     {
         this.graph = graph;
     }
 
-    public (float, long[]) FindShortestPath(long start, long end)
+    public class PriorityQueueNode : FastPriorityQueueNode
     {
-        UnityEngine.Debug.Log("A*");
-        var stopwatch = new System.Diagnostics.Stopwatch();
-        stopwatch.Start();
-        //initialize data structures
-        SimplePriorityQueue<long> openList = new SimplePriorityQueue<long>();
-        HashSet<long> openSet = new HashSet<long>();
-        HashSet<long> closedSet = new HashSet<long>();
-        Dictionary<long, long> parent = new Dictionary<long, long>();
-        Dictionary<long, float> gScore = new Dictionary<long, float>();
-        Dictionary<long, float> fScore = new Dictionary<long, float>();
+        public long Id { get; private set; }
 
-        var watch = new System.Diagnostics.Stopwatch();
+        public PriorityQueueNode(long id)
+        {
+            Id = id;
+        }
+    }
+
+    private void InitializeSearch(long start, long end)
+    {
+        //openList = new SimplePriorityQueue<long, float>();
+        openList = new FastPriorityQueue<PriorityQueueNode>(graph.nodes.Count);
+        openSet = new HashSet<long>();
+        closedSet = new HashSet<long>();
+        parent = new Dictionary<long, long>();
+        gScore = new Dictionary<long, float>() { [start] = 0 };
+        fScore = new Dictionary<long, float>() { [start] = HeuristicCostEstimate(start, end) };
+        priorityQueueNodes = new Dictionary<long, PriorityQueueNode>();
+
+        PriorityQueueNode startNode = new PriorityQueueNode(start);
+        openList.Enqueue(startNode, fScore[start]);
+        priorityQueueNodes[start] = startNode;
+        openSet.Add(start);
+    }
+
+    public void FindShortestPath(long start, long end)
+    {
+        InitializeSearch(start, end);
         int nodesVisited = 0;
-
-        gScore[start] = 0;
-        fScore[start] = 0;
-        parent[start] = -1;
-        openList.Enqueue(start, fScore[start]);
+        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
 
         while (openList.Count > 0)
         {
-            long current = openList.Dequeue();
-            
-
-            if (current == end)
-            {
-                MapController.DisplayStatistics(start, end, gScore[current], stopwatch.ElapsedMilliseconds, nodesVisited);
-                UnityEngine.Debug.Log("Nodes visited: " + nodesVisited);
-                return (gScore[current], ReconstructPath(parent, start, end));
-            }
-            nodesVisited++;
-
-
-            watch.Start();
-            Edge[] neighbors = graph.GetNeighbors(current);
-            foreach (Edge neighbor in neighbors)
-            {
-                if (current == end)
-                {
-                    parent[neighbor.node] = current;
-                    Debug.Log("Nodes visited: " + nodesVisited);
-                    return (gScore[current], ReconstructPath(parent, start, end));
-                }
-
-                float tentativeGScore = gScore[current] + neighbor.cost;
-                float heuristicCostEstimate = HeuristicCostEstimate(neighbor.node, end);
-                nodesVisited++;
-                float neighborFScore = tentativeGScore + heuristicCostEstimate;
-
-                //gScore[neighbor.node] = tentativeGScore;
-                //fScore[neighbor.node] = neighborFScore;
-
-                if (openList.Contains(neighbor.node) && fScore[neighbor.node] < neighborFScore)
-                {
-                    continue;
-                }
-                else if (closedSet.Contains(neighbor.node) && fScore[neighbor.node] < neighborFScore)
-                {
-                    continue;
-                }
-                parent[neighbor.node] = current;
-                gScore[neighbor.node] = tentativeGScore;
-                fScore[neighbor.node] = neighborFScore;
-                Console.WriteLine("Adding to open list: " + neighbor.node);
-                if (openList.Contains(neighbor.node))
-                {
-                    openList.UpdatePriority(neighbor.node, fScore[neighbor.node]);
-                }
-                else
-                {
-                    openList.Enqueue(neighbor.node, fScore[neighbor.node]);
-                }
-            }
-            closedSet.Add(current);
+            long current = DequeueAndUpdateSets(openList, openSet);
+            if (ProcessCurrentNode(current, start, end, ref nodesVisited, stopwatch)) return;
+            UpdateNeighbors(current, end);
         }
-
-        return (0, new long[0]);
     }
 
-    public class OpenListComparer : IComparer<Tuple<float, long>>
+    public IEnumerator FindShortestPathWithVisual(long start, long end)
     {
-        public int Compare(Tuple<float, long> x, Tuple<float, long> y)
+        InitializeSearch(start, end);
+        var lineRenderer = Camera.main.GetComponent<GLLineRenderer>(); // Ensure Camera has GLLineRenderer component
+        int nodesVisited = 0;
+        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+
+        while (openList.Count > 0)
         {
-            int result = x.Item1.CompareTo(y.Item1);
-            if (result == 0)
+            long current = DequeueAndUpdateSets(openList, openSet);
+            if (ProcessCurrentNode(current, start, end, ref nodesVisited, stopwatch))
             {
-                result = x.Item2.CompareTo(y.Item2); // Compare by node if fscores are equal
+                lineRenderer.ClearDiscoveryPath();
+                yield break;
             }
-            return result;
+            UpdateNeighborsWithVisual(current, end, lineRenderer);
+            yield return null;
         }
+    }
+
+    private long DequeueAndUpdateSets(FastPriorityQueue<PriorityQueueNode> openList, HashSet<long> openSet)
+    {
+        var current = openList.Dequeue().Id;
+        openSet.Remove(current);
+        return current;
+    }
+
+    private bool ProcessCurrentNode(long current, long start, long end, ref int nodesVisited, System.Diagnostics.Stopwatch stopwatch)
+    {
+        nodesVisited++;
+        if (current == end)
+        {
+            stopwatch.Stop();
+            DisplayPathFound(start, end, gScore[current], stopwatch.ElapsedMilliseconds, nodesVisited);
+            return true;
+        }
+        return false;
+    }
+
+    private void DisplayPathFound(long start, long end, float cost, long elapsedMs, int nodesVisited)
+    {
+        MapController.DisplayStatistics(start, end, cost, elapsedMs, nodesVisited);
+        GameObject.Find("Map").GetComponent<MapController>().DrawPath(graph.nodes, MapController.ReconstructPath(parent, start, end));
+    }
+
+    private void UpdateNeighbors(long current, long end)
+    {
+        foreach (var neighbor in graph.GetNeighbors(current))
+        {
+            if (closedSet.Contains(neighbor.node)) continue;
+            TryEnqueueNeighbor(neighbor, current, end);
+        }
+    }
+
+    private void UpdateNeighborsWithVisual(long current, long end, GLLineRenderer lineRenderer)
+    {
+        foreach (var neighbor in graph.GetNeighbors(current))
+        {
+            if (closedSet.Contains(neighbor.node)) continue;
+            if (TryEnqueueNeighbor(neighbor, current, end))
+            {
+                var startCoord = graph.nodes[current];
+                var endCoord = graph.nodes[neighbor.node];
+                lineRenderer.AddDiscoveryPath(new List<Vector3> { new(startCoord.Item1[0], startCoord.Item1[1], 0), new(endCoord.Item1[0], endCoord.Item1[1], 0) });
+            }
+        }
+    }
+
+    private bool TryEnqueueNeighbor(Edge neighbor, long current, long end)
+    {
+        var tentativeGScore = gScore[current] + neighbor.cost;
+        if (!gScore.ContainsKey(neighbor.node) || tentativeGScore < gScore[neighbor.node])
+        {
+            parent[neighbor.node] = current;
+            gScore[neighbor.node] = tentativeGScore;
+            fScore[neighbor.node] = tentativeGScore + HeuristicCostEstimate(neighbor.node, end);
+            PriorityQueueNode neighborNode = new PriorityQueueNode(neighbor.node);
+            if (!openSet.Contains(neighbor.node))
+            {
+                openList.Enqueue(neighborNode, fScore[neighbor.node]);
+                priorityQueueNodes[neighbor.node] = neighborNode;
+                openSet.Add(neighbor.node);
+            }
+            else
+            {
+                PriorityQueueNode nodeToUpdate = priorityQueueNodes[neighbor.node];
+                openList.UpdatePriority(nodeToUpdate, fScore[neighbor.node]);
+            }
+            return true;
+        }
+        return false;
     }
 
     private float HeuristicCostEstimate(long start, long end)
     {
         var startCoords = graph.nodes[start];
-        double startLat = startCoords[2]; // Convert to radians
-        double startLon = startCoords[3]; // Convert to radians
+        double startLat = startCoords.Item2[0]; // Convert to radians
+        double startLon = startCoords.Item2[1]; // Convert to radians
 
         double startLat_radians = startLat * (Math.PI / 180);
         double startLon_radians = startLon * (Math.PI / 180);
 
         var endCoords = graph.nodes[end];
-        double endLat = endCoords[2]; // Convert to radians
-        double endLon = endCoords[3]; // Convert to radians
+        double endLat = endCoords.Item2[0]; // Convert to radians
+        double endLon = endCoords.Item2[1]; // Convert to radians
 
         double endLat_radians = endLat * (Math.PI / 180);
         double endLon_radians = endLon * (Math.PI / 180);
@@ -135,25 +182,10 @@ public class AStar
 
         double dist = r * c;
 
+        var floatDist = (float)dist;
+
+        Assert.IsTrue(floatDist >= 0);
+
         return (float)dist;
-    }
-
-    private long[] ReconstructPath(Dictionary<long, long> cameFrom, long start, long end)
-    {
-        var path = new List<long>();
-        Debug.Log("Reconstructing path " + cameFrom.Count);
-        long parent = end;
-        while (parent != -1)
-        {
-            path.Add(parent);
-            if (!cameFrom.ContainsKey(parent))
-            {
-                throw new Exception("the end is not reachable from the start node");
-            }
-            parent = cameFrom[parent];
-        }
-
-        path.Reverse();
-        return path.ToArray();
     }
 }

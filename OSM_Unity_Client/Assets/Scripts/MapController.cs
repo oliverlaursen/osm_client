@@ -1,15 +1,10 @@
 ﻿using System.Diagnostics;
 using UnityEngine;
-using Newtonsoft.Json;
 using System.Collections.Generic;
-using UnityEditor.U2D.Animation;
-using Unity.VisualScripting;
 using System;
 using System.Linq;
 
 using System.IO;
-using System.Globalization;
-using System.Threading.Tasks;
 
 public class MapController : MonoBehaviour
 {
@@ -17,7 +12,7 @@ public class MapController : MonoBehaviour
     public string mapFileName = "andorra.graph";
     public GameObject mapText;
 
-    private long[] ReconstructPath(Dictionary<long, long> previous, long start, long end)
+    public static long[] ReconstructPath(Dictionary<long, long> previous, long start, long end)
     {
         var path = new List<long>();
         var current = end;
@@ -25,27 +20,22 @@ public class MapController : MonoBehaviour
         // Check if there is a path from start to end
         if (!previous.ContainsKey(current))
         {
-
             // Path not found, return an empty array or handle the error accordingly
             UnityEngine.Debug.Log("the end is not reachable from the start node");
             return new long[0];
         }
-
         // Reconstruct the path
         while (current != start)
         {
             path.Add(current);
-
             // Ensure the key exists before accessing it
             if (!previous.ContainsKey(current))
             {
                 // Handle the error or return an incomplete path
                 return new long[0];
             }
-
             current = previous[current];
         }
-
         path.Add(start);
         path.Reverse();
         return path.ToArray();
@@ -72,82 +62,6 @@ public class MapController : MonoBehaviour
         gameObject.GetComponent<TMPro.TMP_Text>().text = text;
     }
 
-    public (float, long[]) Dijkstra(Graph graph, long start, long end)
-    {
-        var stopwatch = new Stopwatch();
-        stopwatch.Start();
-        UnityEngine.Debug.Log("Dijkstra");
-        var nodes = graph.nodes;
-        var edges = graph.graph;
-        var visited = new HashSet<long>();
-        var distances = new Dictionary<long, float>();
-        var previous = new Dictionary<long, long>();
-        var queue = new SortedSet<(float, long)>();
-
-        int nodesVisited = 0;
-
-        foreach (var node in nodes.Keys)
-        {
-            distances[node] = float.MaxValue;
-            previous[node] = -1;
-        }
-
-        distances[start] = 0;
-        queue.Add((0, start));
-
-        while (queue.Count > 0)
-        {
-            var (distance, node) = queue.Min;
-            queue.Remove(queue.Min);
-            if (visited.Contains(node))
-            {
-                continue;
-            }
-            visited.Add(node);
-
-            if (node == end)
-            {
-                stopwatch.Stop();
-                DisplayStatistics(start, end, distance, stopwatch.ElapsedMilliseconds, nodesVisited);
-                UnityEngine.Debug.Log("nodes visited " + nodesVisited);
-                return (distance, ReconstructPath(previous, start, end));
-            }
-
-            foreach (var edge in edges[node])
-            {
-                nodesVisited++;
-                var firstCoord = new Vector3(nodes[node][0], nodes[node][1], 0);
-                var secondCoord = new Vector3(nodes[edge.node][0], nodes[edge.node][1], 0);
-
-                UnityEngine.Debug.DrawLine(firstCoord, secondCoord, Color.green, 0.0f);
-
-                var neighbor = edge.node;
-                var cost = edge.cost;
-                var newDistance = distance + cost;
-                if (newDistance < distances[neighbor])
-                {
-                    distances[neighbor] = newDistance;
-                    previous[neighbor] = node;
-                    queue.Add((newDistance, neighbor));
-                }
-            }
-        }
-
-        return (float.MaxValue, new long[0]);
-    }
-
-    public void DrawGreenLine(Vector3 node1, Vector3 node2)
-    {
-        GL.Begin(GL.LINES);
-        GL.Color(Color.green);  
-
-        GL.Vertex(node1);
-        GL.Vertex(node2);
-
-        GL.End();
-    }
-
-
     public static Graph DeserializeGraph(string mapFile)
     {
         /**
@@ -157,12 +71,12 @@ public class MapController : MonoBehaviour
         */
         var input = File.ReadAllBytes(mapFile);
         var deserialized = MessagePack.MessagePackSerializer.Deserialize<GraphReadFormat>(input);
-        var nodes = new Dictionary<long, float[]>();
+        var nodes = new Dictionary<long, (float[],double[])>();
         var graph = new Dictionary<long, Edge[]>();
         var bi_graph = new Dictionary<long, Edge[]>();
         foreach (var node in deserialized.nodes)
         {
-            nodes[node.id] = new float[] {node.x, node.y, node.lat, node.lon};
+            nodes[node.id] = (new float[] {node.x, node.y}, new double[] {node.lat, node.lon});
             var edges = new List<Edge>();
             for (int i = 0; i < node.neighbours.Length; i++)
             {
@@ -180,42 +94,42 @@ public class MapController : MonoBehaviour
         return full_graph;
     }
 
-    public void DrawAllEdges(Dictionary<long, float[]> nodes, Dictionary<long, Edge[]> graph)
+    public void DrawAllEdges(Dictionary<long, (float[],double[])> nodes, Dictionary<long, Edge[]> graph)
     {
         var meshGenerator = GetComponent<MeshGenerator>();
         foreach (var element in graph)
         {
             var startNode = element.Key;
             var startPos = nodes[startNode];
-            var startCoord = new Vector3(startPos[0], startPos[1], 0);
+            var startCoord = new Vector3(startPos.Item1[0], startPos.Item1[1], 0);
             var edges = element.Value;
             var amountOfEdges = edges.Count();
             for (int i = 0; i < amountOfEdges; i++)
             {
                 var endNode = edges[i].node;
                 var endPos = nodes[endNode];
-                var endCoord = new Vector3(endPos[0], endPos[1], 0);
+                var endCoord = new Vector3(endPos.Item1[0], endPos.Item1[1], 0);
                 meshGenerator.AddLine(startCoord, endCoord, Color.white);
             }
         }
         meshGenerator.UpdateMesh();
     }
 
-    public void DrawPath(Dictionary<long, float[]> nodes, long[] path)
+    public void DrawPath(Dictionary<long, (float[],double[])> nodes, long[] path)
     {
         var lineRenderer = Camera.main.gameObject.GetComponent<GLLineRenderer>();
-        var coords = Array.ConvertAll(path, node => new Vector3(nodes[node][0], nodes[node][1], 0)).ToList();
+        var coords = Array.ConvertAll(path, node => new Vector3(nodes[node].Item1[0], nodes[node].Item1[1], 0)).ToList();
         lineRenderer.AddPath(coords);
     }
 
-    public float GetHeight(Dictionary<long, float[]> nodes)
+    public float GetHeight(Dictionary<long, (float[],double[])> nodes)
     {
         var min = float.MaxValue;
         var max = float.MinValue;
         foreach (var node in nodes.Values)
         {
-            min = Mathf.Min(min, node[1]);
-            max = Mathf.Max(max, node[1]);
+            min = Mathf.Min(min, node.Item1[1]);
+            max = Mathf.Max(max, node.Item1[1]);
         }
         return max - min;
     }
@@ -233,6 +147,7 @@ public class MapController : MonoBehaviour
         Camera.main.GetComponent<CameraControl>().maxOrthoSize = height / 2;
         Camera.main.orthographicSize = height / 2;
         this.graph = graph;
+        Camera.main.GetComponent<CameraControl>().InitializeAlgorithms(graph);
         DrawAllEdges(graph.nodes, graph.graph);
         UnityEngine.Debug.Log("Draw time: " + time.ElapsedMilliseconds + "ms");
         time.Stop();

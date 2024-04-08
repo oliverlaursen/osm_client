@@ -19,6 +19,26 @@ public class CameraControl : MonoBehaviour
     private GameObject circleBInstance;
     private float circleSize = 300f;
 
+    private AStar astar;
+    private Dijkstra dijkstra;
+    private Graph graph;
+
+    public bool visual = true;
+
+    public void InitializeAlgorithms(Graph graph)
+    {
+        this.graph = graph;
+        astar = new AStar(graph);
+        dijkstra = new Dijkstra(graph);
+    }
+
+    public void ChangeVisual()
+    {
+        visual = !visual;
+    }
+
+
+
     void Update()
     {
         circleSize = (float)(maxOrthoSize * 0.05);
@@ -44,7 +64,7 @@ public class CameraControl : MonoBehaviour
                 var worldPosition = Camera.main.ScreenToWorldPoint(clickPosition);
                 var nodes = GameObject.Find("Map").GetComponent<MapController>().graph.nodes;
                 long closestNode = ClosestNode(worldPosition, nodes);
-                float[] nodeCoords = nodes[closestNode];
+                float[] nodeCoords = nodes[closestNode].Item1;
                 var lineRenderer = GetComponent<GLLineRenderer>();
                 if (node_selection == 0)
                 {
@@ -90,14 +110,14 @@ public class CameraControl : MonoBehaviour
         node_selection = selection;
     }
 
-    long ClosestNode(Vector2 position, Dictionary<long, float[]> nodes)
+    long ClosestNode(Vector2 position, Dictionary<long, (float[],double[])> nodes)
     {
         float minDistance = float.MaxValue;
         long closestNode = 0;
         foreach (var node in nodes)
         {
-            var x = node.Value[0];
-            var y = node.Value[1];
+            var x = node.Value.Item1[0];
+            var y = node.Value.Item1[1];
             var dX = position.x - x;
             var dY = position.y - y;
             var distance = dX*dX + dY*dY;
@@ -112,23 +132,34 @@ public class CameraControl : MonoBehaviour
 
     public void DijkstraOnSelection()
     {
-        var graph = GameObject.Find("Map").GetComponent<MapController>().graph;
-        var (distance, path) = GameObject.Find("Map").GetComponent<MapController>().Dijkstra(graph, nodeA, nodeB);
+        StopAllCoroutines();
         var lineRenderer = Camera.main.gameObject.GetComponent<GLLineRenderer>();
+        lineRenderer.ClearDiscoveryPath();
         lineRenderer.ClearPath();
-        GameObject.Find("Map").GetComponent<MapController>().DrawPath(graph.nodes, path);
-        Debug.Log("Distance: " + distance);
+        if (visual) {
+            StartCoroutine(dijkstra.FindShortestPathWithVisual(nodeA, nodeB));
+        }
+        else
+        {
+            dijkstra.FindShortestPath(nodeA, nodeB);
+        }
     }
+
+
 
     public void AstarOnSelection()
     {
-        var graph = GameObject.Find("Map").GetComponent<MapController>().graph;
-        AStar astar = new AStar(graph);
-        var (distance, path) = astar.FindShortestPath(nodeA, nodeB);
+        StopAllCoroutines();
         var lineRenderer = Camera.main.gameObject.GetComponent<GLLineRenderer>();
+        lineRenderer.ClearDiscoveryPath();
         lineRenderer.ClearPath();
-        GameObject.Find("Map").GetComponent<MapController>().DrawPath(graph.nodes, path);
-        Debug.Log("Distance: " + distance);
+        if (visual) {
+            StartCoroutine(astar.FindShortestPathWithVisual(nodeA, nodeB));
+        }
+        else
+        {
+            astar.FindShortestPath(nodeA, nodeB);
+        }
     }
 
     public void FlipNodes()
