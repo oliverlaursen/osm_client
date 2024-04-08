@@ -89,6 +89,7 @@ public class MapController : MonoBehaviour
             {
                 bi_edges.Add(new Edge { node = node.bi_neighbours[i].Item1, cost = node.bi_neighbours[i].Item2 });
             }
+            bi_graph[node.id] = bi_edges.ToArray();
         }
         var full_graph = new Graph { nodes = nodes, graph = graph, bi_graph = bi_graph };
         return full_graph;

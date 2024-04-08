@@ -1,23 +1,23 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
 public class Dijkstra : IPathfindingAlgorithm
 {
     public Graph graph;
-    public Material lineMaterial; // Ensure this is set in the Inspector
 
     public Dijkstra(Graph graph)
     {
         this.graph = graph;
     }
 
-    private void InitializeDijkstra(long start, out Dictionary<long, float> distances, out Dictionary<long, long> previous, out HashSet<long> visited, out SortedSet<(float, long)> queue)
+    public static (Dictionary<long, float> distances, Dictionary<long, long> previous, HashSet<long> visited, SortedSet<(float, long)> queue) InitializeDijkstra(long start, Graph graph)
     {
-        distances = new Dictionary<long, float>();
-        previous = new Dictionary<long, long>();
-        visited = new HashSet<long>();
-        queue = new SortedSet<(float, long)>();
+        var distances = new Dictionary<long, float>();
+        var previous = new Dictionary<long, long>();
+        var visited = new HashSet<long>();
+        var queue = new SortedSet<(float, long)>();
 
         foreach (var node in graph.nodes.Keys)
         {
@@ -26,11 +26,13 @@ public class Dijkstra : IPathfindingAlgorithm
         }
         distances[start] = 0;
         queue.Add((0, start));
+
+        return (distances, previous, visited, queue);
     }
 
     public void FindShortestPath(long start, long end)
     {
-        InitializeDijkstra(start, out var distances, out var previous, out var visited, out var queue);
+        (var distances, var previous, var visited, var queue) = InitializeDijkstra(start, graph);
         var stopwatch = System.Diagnostics.Stopwatch.StartNew();
         int nodesVisited = 0;
 
@@ -48,7 +50,7 @@ public class Dijkstra : IPathfindingAlgorithm
                 return;
             }
 
-            UpdateNeighbors(currentNode, distance, graph.graph[currentNode], ref distances, ref previous, ref queue, ref nodesVisited, visited);
+            UpdateNeighbors(currentNode, distance, graph.graph[currentNode], ref distances, ref previous, ref queue, ref nodesVisited, visited,graph);
         }
 
         return;
@@ -56,12 +58,12 @@ public class Dijkstra : IPathfindingAlgorithm
 
     public IEnumerator FindShortestPathWithVisual(long start, long end)
     {
-        InitializeDijkstra(start, out var distances, out var previous, out var visited, out var queue);
+        (var distances, var previous, var visited, var queue) = InitializeDijkstra(start, graph);
         var stopwatch = System.Diagnostics.Stopwatch.StartNew();
         var lineRenderer = Camera.main.GetComponent<GLLineRenderer>(); // Ensure Camera has GLLineRenderer component
         int nodesVisited = 0;
 
-        while (queue.Count > 0)
+        while (queue.Count > 0) 
         {
             var (distance, currentNode) = queue.Min;
             queue.Remove(queue.Min);
@@ -76,12 +78,12 @@ public class Dijkstra : IPathfindingAlgorithm
                 yield break;
             }
 
-            UpdateNeighbors(currentNode, distance, graph.graph[currentNode], ref distances, ref previous, ref queue, ref nodesVisited, visited, lineRenderer);
+            UpdateNeighbors(currentNode, distance, graph.graph[currentNode], ref distances, ref previous, ref queue, ref nodesVisited, visited, graph, lineRenderer);
             yield return null; // Wait for next frame
         }
     }
 
-    private void UpdateNeighbors(long currentNode, float distance, IEnumerable<Edge> neighbors, ref Dictionary<long, float> distances, ref Dictionary<long, long> previous, ref SortedSet<(float, long)> queue, ref int nodesVisited, HashSet<long> visited, GLLineRenderer lineRenderer = null)
+    public static void UpdateNeighbors(long currentNode, float distance, IEnumerable<Edge> neighbors, ref Dictionary<long, float> distances, ref Dictionary<long, long> previous, ref SortedSet<(float, long)> queue, ref int nodesVisited, HashSet<long> visited, Graph graph, GLLineRenderer lineRenderer = null)
     {
         foreach (var edge in neighbors)
         {

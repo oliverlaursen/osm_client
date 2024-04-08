@@ -21,20 +21,28 @@ public class CameraControl : MonoBehaviour
 
     private AStar astar;
     private Dijkstra dijkstra;
+    private BiDijkstra bidijkstra;
+    
     private Graph graph;
 
     public bool visual = true;
+    private bool bidirectional = true;
 
     public void InitializeAlgorithms(Graph graph)
     {
         this.graph = graph;
         astar = new AStar(graph);
         dijkstra = new Dijkstra(graph);
+        bidijkstra = new BiDijkstra(graph);
     }
 
     public void ChangeVisual()
     {
         visual = !visual;
+    }
+
+    public void ChangeBidirectional(){
+        bidirectional = !bidirectional;
     }
 
 
@@ -132,16 +140,18 @@ public class CameraControl : MonoBehaviour
 
     public void DijkstraOnSelection()
     {
+
         StopAllCoroutines();
         var lineRenderer = Camera.main.gameObject.GetComponent<GLLineRenderer>();
         lineRenderer.ClearDiscoveryPath();
         lineRenderer.ClearPath();
+        IPathfindingAlgorithm algo = bidirectional ? bidijkstra : dijkstra;
         if (visual) {
-            StartCoroutine(dijkstra.FindShortestPathWithVisual(nodeA, nodeB));
+            StartCoroutine(algo.FindShortestPathWithVisual(nodeA, nodeB));
         }
         else
         {
-            dijkstra.FindShortestPath(nodeA, nodeB);
+            algo.FindShortestPath(nodeA, nodeB);
         }
     }
 
