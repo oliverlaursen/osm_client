@@ -31,7 +31,7 @@ public class AStar : MonoBehaviour, IPathfindingAlgorithm
         }
     }
 
-    private void InitializeSearch(long start, long end)
+    public void InitializeSearch(long start, long end)
     {
         //openList = new SimplePriorityQueue<long, float>();
         openList = new FastPriorityQueue<PriorityQueueNode>(graph.nodes.Count);
@@ -82,14 +82,14 @@ public class AStar : MonoBehaviour, IPathfindingAlgorithm
         }
     }
 
-    private long DequeueAndUpdateSets(FastPriorityQueue<PriorityQueueNode> openList, HashSet<long> openSet)
+    public static long DequeueAndUpdateSets(FastPriorityQueue<PriorityQueueNode> openList, HashSet<long> openSet)
     {
         var current = openList.Dequeue().Id;
         openSet.Remove(current);
         return current;
     }
 
-    private bool ProcessCurrentNode(long current, long start, long end, ref int nodesVisited, System.Diagnostics.Stopwatch stopwatch)
+    public bool ProcessCurrentNode(long current, long start, long end, ref int nodesVisited, System.Diagnostics.Stopwatch stopwatch)
     {
         nodesVisited++;
         if (current == end)

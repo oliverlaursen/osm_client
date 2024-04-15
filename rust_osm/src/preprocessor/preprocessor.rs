@@ -119,6 +119,7 @@ impl Preprocessor {
                     let (x, y) = projected_points.get(node_id).unwrap();
                     let neighbours = edges.iter().map(|edge| (edge.node, edge.cost)).collect();
                     let bi_neighbours = bi_edges.iter().map(|edge| (edge.node, edge.cost)).collect();
+
                     let node = self.nodes.get(node_id).unwrap();
                     NodeWriteFormat {
                         node_id: *node_id,

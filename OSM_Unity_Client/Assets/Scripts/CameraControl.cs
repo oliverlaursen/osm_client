@@ -20,6 +20,7 @@ public class CameraControl : MonoBehaviour
     private float circleSize = 300f;
 
     private AStar astar;
+    private BiAStar biastar;
     private Dijkstra dijkstra;
     private BiDijkstra bidijkstra;
     
@@ -32,6 +33,7 @@ public class CameraControl : MonoBehaviour
     {
         this.graph = graph;
         astar = new AStar(graph);
+        biastar = new BiAStar(graph);
         dijkstra = new Dijkstra(graph);
         bidijkstra = new BiDijkstra(graph);
     }
@@ -163,12 +165,13 @@ public class CameraControl : MonoBehaviour
         var lineRenderer = Camera.main.gameObject.GetComponent<GLLineRenderer>();
         lineRenderer.ClearDiscoveryPath();
         lineRenderer.ClearPath();
+        IPathfindingAlgorithm algo = bidirectional ? biastar : astar;
         if (visual) {
-            StartCoroutine(astar.FindShortestPathWithVisual(nodeA, nodeB));
+            StartCoroutine(algo.FindShortestPathWithVisual(nodeA, nodeB));
         }
         else
         {
-            astar.FindShortestPath(nodeA, nodeB);
+            algo.FindShortestPath(nodeA, nodeB);
         }
     }
 
