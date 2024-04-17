@@ -72,8 +72,8 @@ public class AStar : MonoBehaviour, IPathfindingAlgorithm
             if (drawspeed == 0) yield return null;
                 else if (stopwatch2.ElapsedMilliseconds > drawspeed)
                 {
-                    stopwatch2.Restart();
                     yield return null;
+                    stopwatch2.Restart();
                 }
         }
     }
