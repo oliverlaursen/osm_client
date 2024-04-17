@@ -10,6 +10,7 @@ public class BiDijkstra : IPathfindingAlgorithm
     public Graph graph;
     private Dijkstra dijkstra1;
     private Dijkstra dijkstra2;
+    double shortestDistance = double.PositiveInfinity;
 
     public BiDijkstra(Graph graph)
     {
@@ -24,8 +25,6 @@ public class BiDijkstra : IPathfindingAlgorithm
         int nodesVisited = 0;
         dijkstra1.InitializeDijkstra(start, graph);
         dijkstra2.InitializeDijkstra(end, graph);
-
-        double shortestDistance = double.PositiveInfinity;
         long meetingNode = -1;
 
         while (dijkstra1.queue.Count > 0 && dijkstra2.queue.Count > 0)
@@ -38,11 +37,11 @@ public class BiDijkstra : IPathfindingAlgorithm
                 GameObject.Find("Map").GetComponent<MapController>().DrawPath(graph.nodes, MapController.ReconstructPath(allPrev, start, end));
                 return;
             }
-            UpdateBiNeighbors(ref nodesVisited, ref shortestDistance, ref meetingNode, null);
+            UpdateBiNeighbors(ref meetingNode, null);
         }
     }
 
-    public void UpdateBiNeighbors(ref int nodesVisited, ref double shortestDistance, ref long meetingNode, GLLineRenderer lineRenderer)
+    public void UpdateBiNeighbors(ref long meetingNode, GLLineRenderer lineRenderer)
     {
         var (distance, currentNode) = dijkstra1.queue.Min;
         var (distance2, currentNode2) = dijkstra2.queue.Min;
@@ -56,7 +55,7 @@ public class BiDijkstra : IPathfindingAlgorithm
             meetingNode = currentNode;
         }
 
-        dijkstra1.UpdateNeighbors(currentNode, distance, graph.graph[currentNode], ref nodesVisited, lineRenderer);
+        dijkstra1.UpdateNeighbors(currentNode, distance, graph.graph[currentNode], lineRenderer);
 
         dijkstra2.queue.Remove(dijkstra2.queue.Min);
         if (!dijkstra2.visited.Add(currentNode2)) return;
@@ -67,7 +66,7 @@ public class BiDijkstra : IPathfindingAlgorithm
             meetingNode = currentNode2;
         }
         var neighbors = graph.bi_graph[currentNode2];
-        dijkstra2.UpdateNeighbors(currentNode2, distance2, neighbors, ref nodesVisited, lineRenderer);
+        dijkstra2.UpdateNeighbors(currentNode2, distance2, neighbors, lineRenderer);
 
     }
 
@@ -114,7 +113,7 @@ public class BiDijkstra : IPathfindingAlgorithm
             }
             else
             {
-                UpdateBiNeighbors(ref nodesVisited, ref shortestDistance, ref meetingNode, lineRenderer);
+                UpdateBiNeighbors(ref meetingNode, lineRenderer);
                 if (drawspeed == 0) yield return null;
                 else if (stopwatch2.ElapsedMilliseconds > drawspeed)
                 {

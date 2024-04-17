@@ -13,6 +13,7 @@ public class Dijkstra : IPathfindingAlgorithm
     public Dictionary<long, long> previous;
     public HashSet<long> visited;
     public SortedSet<(float, long)> queue;
+    public int nodesVisited = 0;
 
     public Dijkstra(Graph graph)
     {
@@ -40,7 +41,6 @@ public class Dijkstra : IPathfindingAlgorithm
     {
         InitializeDijkstra(start, graph);
         var stopwatch = System.Diagnostics.Stopwatch.StartNew();
-        int nodesVisited = 0;
 
         while (queue.Count > 0)
         {
@@ -57,7 +57,7 @@ public class Dijkstra : IPathfindingAlgorithm
             }
 
             var neighbors = graph.graph[currentNode];
-            UpdateNeighbors(currentNode, distance, neighbors, ref nodesVisited);
+            UpdateNeighbors(currentNode, distance, neighbors);
         }
 
         return;
@@ -87,7 +87,7 @@ public class Dijkstra : IPathfindingAlgorithm
             }
 
             var neighbors = graph.graph[currentNode];
-            UpdateNeighbors(currentNode, distance, neighbors, ref nodesVisited, lineRenderer);
+            UpdateNeighbors(currentNode, distance, neighbors, lineRenderer);
             if (drawspeed == 0) yield return null;
                 else if (stopwatch2.ElapsedMilliseconds > drawspeed)
                 {
@@ -97,7 +97,7 @@ public class Dijkstra : IPathfindingAlgorithm
         }
     }
 
-    public void UpdateNeighbors(long currentNode, float distance, IEnumerable<Edge> neighbors, ref int nodesVisited, GLLineRenderer lineRenderer = null)
+    public void UpdateNeighbors(long currentNode, float distance, IEnumerable<Edge> neighbors, GLLineRenderer lineRenderer = null)
     {
         foreach (var edge in neighbors)
         {
