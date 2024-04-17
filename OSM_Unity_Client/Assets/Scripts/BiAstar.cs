@@ -2,8 +2,6 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using Priority_Queue;
-using UnityEngine;
-using UnityEngine.Assertions;
 
 
 public class BiAStar : IPathfindingAlgorithm

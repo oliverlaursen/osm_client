@@ -8,12 +8,14 @@ using Unity.VisualScripting;
 public class Dijkstra : IPathfindingAlgorithm
 {
     public Graph graph;
-    public FastPriorityQueue<PriorityQueueNode> openList;
+    public FastPriorityQueue<PriorityQueueNode> queue;
+    private Dictionary<long, PriorityQueueNode> priorityQueueNodes;
+    private HashSet<long> queueSet;
     public Dictionary<long, float> distances;
     public Dictionary<long, long> previous;
     public HashSet<long> visited;
-    public SortedSet<(float, long)> queue;
     public int nodesVisited = 0;
+    public Dictionary<(long, long), float> pairDistances = new Dictionary<(long, long), float>();
 
     public Dijkstra(Graph graph)
     {
@@ -23,18 +25,18 @@ public class Dijkstra : IPathfindingAlgorithm
 
     public void InitializeDijkstra(long start, Graph graph)
     {
+        queue = new FastPriorityQueue<PriorityQueueNode>(graph.nodes.Count);
+        priorityQueueNodes = new Dictionary<long, PriorityQueueNode>();
+        queueSet = new HashSet<long>();
         distances = new Dictionary<long, float>();
         previous = new Dictionary<long, long>();
         visited = new HashSet<long>();
-        queue = new SortedSet<(float, long)>();
 
-        foreach (var node in graph.nodes.Keys)
-        {
-            distances[node] = float.MaxValue;
-            previous[node] = -1;
-        }
+        PriorityQueueNode startNode = new PriorityQueueNode(start);
+        queue.Enqueue(startNode, float.MaxValue);
+        priorityQueueNodes[start] = startNode;
+        queueSet.Add(start);
         distances[start] = 0;
-        queue.Add((0, start));
     }
 
     public void FindShortestPath(long start, long end)
@@ -44,8 +46,9 @@ public class Dijkstra : IPathfindingAlgorithm
 
         while (queue.Count > 0)
         {
-            var (distance, currentNode) = queue.Min;
-            queue.Remove(queue.Min);
+            var currentNode = queue.Dequeue().Id;
+            var distance = distances[currentNode];
+            queueSet.Remove(currentNode);
             if (!visited.Add(currentNode)) continue;
 
             if (currentNode == end)
@@ -71,10 +74,11 @@ public class Dijkstra : IPathfindingAlgorithm
         var lineRenderer = Camera.main.GetComponent<GLLineRenderer>(); // Ensure Camera has GLLineRenderer component
         int nodesVisited = 0;
 
-        while (queue.Count > 0) 
+        while (queue.Count > 0)
         {
-            var (distance, currentNode) = queue.Min;
-            queue.Remove(queue.Min);
+            var currentNode = queue.Dequeue().Id;
+            var distance = distances[currentNode];
+            queueSet.Remove(currentNode);
             if (!visited.Add(currentNode)) continue;
 
             if (currentNode == end)
@@ -89,11 +93,11 @@ public class Dijkstra : IPathfindingAlgorithm
             var neighbors = graph.graph[currentNode];
             UpdateNeighbors(currentNode, distance, neighbors, lineRenderer);
             if (drawspeed == 0) yield return null;
-                else if (stopwatch2.ElapsedMilliseconds > drawspeed)
-                {
-                    stopwatch2.Restart();
-                    yield return null;
-                }
+            else if (stopwatch2.ElapsedMilliseconds > drawspeed)
+            {
+                stopwatch2.Restart();
+                yield return null;
+            }
         }
     }
 
@@ -104,11 +108,23 @@ public class Dijkstra : IPathfindingAlgorithm
             nodesVisited++;
             var neighbor = edge.node;
             var newDistance = distance + edge.cost;
-            if (newDistance < distances[neighbor])
+            if (!distances.ContainsKey(neighbor) || newDistance < distances[neighbor])
             {
+                pairDistances[(currentNode, neighbor)] = distance;
                 distances[neighbor] = newDistance;
                 previous[neighbor] = currentNode;
-                queue.Add((newDistance, neighbor));
+                PriorityQueueNode neighborNode = new PriorityQueueNode(neighbor);
+                if (!queueSet.Contains(neighbor))
+                {
+                    queue.Enqueue(neighborNode, newDistance);
+                    priorityQueueNodes[neighbor] = neighborNode;
+                    queueSet.Add(neighbor);
+                }
+                else
+                {
+                    PriorityQueueNode nodeToUpdate = priorityQueueNodes[neighbor];
+                    queue.UpdatePriority(nodeToUpdate, newDistance);
+                }
 
                 if (lineRenderer != null)
                 {

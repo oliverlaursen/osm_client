@@ -9,12 +9,12 @@ public class AStar : MonoBehaviour, IPathfindingAlgorithm
 {
     public Graph graph;
     private FastPriorityQueue<PriorityQueueNode> openList;
+    private Dictionary<long, PriorityQueueNode> priorityQueueNodes;
     private HashSet<long> openSet;
     private HashSet<long> closedSet;
     private Dictionary<long, long> parent;
     private Dictionary<long, float> gScore;
     private Dictionary<long, float> fScore;
-    private Dictionary<long, PriorityQueueNode> priorityQueueNodes;
 
     public AStar(Graph graph)
     {
@@ -25,12 +25,12 @@ public class AStar : MonoBehaviour, IPathfindingAlgorithm
     {
         //openList = new SimplePriorityQueue<long, float>();
         openList = new FastPriorityQueue<PriorityQueueNode>(graph.nodes.Count);
+        priorityQueueNodes = new Dictionary<long, PriorityQueueNode>();
         openSet = new HashSet<long>();
         closedSet = new HashSet<long>();
         parent = new Dictionary<long, long>();
         gScore = new Dictionary<long, float>() { [start] = 0 };
         fScore = new Dictionary<long, float>() { [start] = HeuristicCostEstimate(start, end) };
-        priorityQueueNodes = new Dictionary<long, PriorityQueueNode>();
 
         PriorityQueueNode startNode = new PriorityQueueNode(start);
         openList.Enqueue(startNode, fScore[start]);
