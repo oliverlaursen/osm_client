@@ -1,7 +1,9 @@
 ## TODO:
 
 - Make A* faster than dijkstra #DONE
-- Make bidirectional algorithms
+- Implement BiAstar
+- Implement PriorityQueue for Dijkstra
+- Refactor BiDijkstra
 - Make landmarks heuristic for A*
 - Compare algorithms and create graphs
 - Measure how long haversine takes
