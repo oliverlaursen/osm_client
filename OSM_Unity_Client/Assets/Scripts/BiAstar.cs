@@ -36,7 +36,7 @@ public class BiAStar : IPathfindingAlgorithm
         throw new NotImplementedException();
     }
 
-    public IEnumerator FindShortestPathWithVisual(long start, long end)
+    public IEnumerator FindShortestPathWithVisual(long start, long end, int drawspeed)
     {
         throw new NotImplementedException();
     }

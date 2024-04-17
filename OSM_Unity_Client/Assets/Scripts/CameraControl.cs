@@ -1,9 +1,12 @@
 using System.Collections;
 using System.Collections.Generic;
+using TMPro;
+using UnityEditor.UI;
 using UnityEngine;
 
 public class CameraControl : MonoBehaviour
 {
+    public UnityEngine.UI.Slider speedSlider;
     public float zoomSpeed = 1000f;
     public float minOrthoSize = 0.1f;
     public float maxOrthoSize = float.MaxValue;
@@ -29,6 +32,8 @@ public class CameraControl : MonoBehaviour
     public bool visual = true;
     private bool bidirectional = true;
 
+    private int drawspeed = 0;
+
     public void InitializeAlgorithms(Graph graph)
     {
         this.graph = graph;
@@ -47,10 +52,9 @@ public class CameraControl : MonoBehaviour
         bidirectional = !bidirectional;
     }
 
-
-
     void Update()
     {
+        drawspeed = (int)speedSlider.value;
         circleSize = (float)(maxOrthoSize * 0.05);
         if (circleAInstance != null)
         {
@@ -75,7 +79,6 @@ public class CameraControl : MonoBehaviour
                 var nodes = GameObject.Find("Map").GetComponent<MapController>().graph.nodes;
                 long closestNode = ClosestNode(worldPosition, nodes);
                 float[] nodeCoords = nodes[closestNode].Item1;
-                var lineRenderer = GetComponent<GLLineRenderer>();
                 if (node_selection == 0)
                 {
                     nodeA = closestNode;
@@ -88,17 +91,6 @@ public class CameraControl : MonoBehaviour
                     Destroy(circleBInstance);
                     circleBInstance = Instantiate(circleB, new Vector3(nodeCoords[0], nodeCoords[1], 0), Quaternion.identity);
                 }
-                var node_print = "Node: " + closestNode;
-                // Print node edges
-                var graph = GameObject.Find("Map").GetComponent<MapController>().graph.graph;
-                var edges = graph[closestNode];
-                foreach (var edge in edges)
-                {
-                    var endNode = edge.node;
-                    var edge_print = "Edge: " + endNode;
-                    node_print += "\n" + edge_print;
-                }
-                Debug.Log(node_print);
             }
 
             if (Input.GetMouseButtonDown(0))
@@ -106,7 +98,8 @@ public class CameraControl : MonoBehaviour
                 lastPosition = Camera.main.ScreenToWorldPoint(Input.mousePosition);
             }
 
-            if (Input.GetMouseButton(0))
+            // If the right mouse button is held down and mouse isnt hovering over UI
+            if (Input.GetMouseButton(0) && !UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject())
             {
                 Vector3 delta = lastPosition - Camera.main.ScreenToWorldPoint(Input.mousePosition);
                 transform.Translate(delta, Space.World);
@@ -149,7 +142,7 @@ public class CameraControl : MonoBehaviour
         lineRenderer.ClearPath();
         IPathfindingAlgorithm algo = bidirectional ? bidijkstra : dijkstra;
         if (visual) {
-            StartCoroutine(algo.FindShortestPathWithVisual(nodeA, nodeB));
+            StartCoroutine(algo.FindShortestPathWithVisual(nodeA, nodeB, drawspeed));
         }
         else
         {
@@ -167,7 +160,7 @@ public class CameraControl : MonoBehaviour
         lineRenderer.ClearPath();
         IPathfindingAlgorithm algo = bidirectional ? biastar : astar;
         if (visual) {
-            StartCoroutine(algo.FindShortestPathWithVisual(nodeA, nodeB));
+            StartCoroutine(algo.FindShortestPathWithVisual(nodeA, nodeB, drawspeed));
         }
         else
         {

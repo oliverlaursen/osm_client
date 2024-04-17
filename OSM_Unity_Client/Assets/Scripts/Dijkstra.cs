@@ -56,10 +56,11 @@ public class Dijkstra : IPathfindingAlgorithm
         return;
     }
 
-    public IEnumerator FindShortestPathWithVisual(long start, long end)
+    public IEnumerator FindShortestPathWithVisual(long start, long end, int drawspeed)
     {
         (var distances, var previous, var visited, var queue) = InitializeDijkstra(start, graph);
         var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+        var stopwatch2 = System.Diagnostics.Stopwatch.StartNew();
         var lineRenderer = Camera.main.GetComponent<GLLineRenderer>(); // Ensure Camera has GLLineRenderer component
         int nodesVisited = 0;
 
@@ -79,7 +80,12 @@ public class Dijkstra : IPathfindingAlgorithm
             }
 
             UpdateNeighbors(currentNode, distance, graph.graph[currentNode], ref distances, ref previous, ref queue, ref nodesVisited, visited, graph, lineRenderer);
-            yield return null; // Wait for next frame
+            if (drawspeed == 0) yield return null;
+                else if (stopwatch2.ElapsedMilliseconds > drawspeed)
+                {
+                    stopwatch2.Restart();
+                    yield return null;
+                }
         }
     }
 

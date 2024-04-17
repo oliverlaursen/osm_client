@@ -62,12 +62,13 @@ public class AStar : MonoBehaviour, IPathfindingAlgorithm
         }
     }
 
-    public IEnumerator FindShortestPathWithVisual(long start, long end)
+    public IEnumerator FindShortestPathWithVisual(long start, long end, int drawspeed)
     {
         InitializeSearch(start, end);
         var lineRenderer = Camera.main.GetComponent<GLLineRenderer>(); // Ensure Camera has GLLineRenderer component
         int nodesVisited = 0;
         var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+        var stopwatch2 = System.Diagnostics.Stopwatch.StartNew();
 
         while (openList.Count > 0)
         {
@@ -78,7 +79,12 @@ public class AStar : MonoBehaviour, IPathfindingAlgorithm
                 yield break;
             }
             UpdateNeighborsWithVisual(current, end, lineRenderer);
-            yield return null;
+            if (drawspeed == 0) yield return null;
+                else if (stopwatch2.ElapsedMilliseconds > drawspeed)
+                {
+                    stopwatch2.Restart();
+                    yield return null;
+                }
         }
     }
 

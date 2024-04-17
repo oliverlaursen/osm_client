@@ -85,13 +85,14 @@ public class BiDijkstra : IPathfindingAlgorithm
         return merged;
     }
 
-    public IEnumerator FindShortestPathWithVisual(long start, long end)
+    public IEnumerator FindShortestPathWithVisual(long start, long end, int drawspeed)
     {
         var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+        var stopwatch2 = System.Diagnostics.Stopwatch.StartNew();
         int nodesVisited = 0;
         (var distances, var previous, var visited, var queue) = Dijkstra.InitializeDijkstra(start, graph);
         (var distances2, var previous2, var visited2, var queue2) = Dijkstra.InitializeDijkstra(end, graph);
-        var lineRenderer = Camera.main.GetComponent<GLLineRenderer>(); 
+        var lineRenderer = Camera.main.GetComponent<GLLineRenderer>();
 
         double shortestDistance = double.PositiveInfinity;
         long meetingNode = -1;
@@ -101,16 +102,25 @@ public class BiDijkstra : IPathfindingAlgorithm
             var (distance, currentNode) = queue.Min;
             var (distance2, currentNode2) = queue2.Min;
 
-            if (Math.Min(distance, distance2) > shortestDistance)
+            if (queue.Max.Item1 + queue2.Max.Item1 >= shortestDistance)
             {
                 stopwatch.Stop();
                 MapController.DisplayStatistics(start, end, (float)shortestDistance, stopwatch.ElapsedMilliseconds, nodesVisited);
                 var allPrev = MergePrevious(previous, previous2, meetingNode);
+                lineRenderer.ClearDiscoveryPath();
                 GameObject.Find("Map").GetComponent<MapController>().DrawPath(graph.nodes, MapController.ReconstructPath(allPrev, start, end));
                 yield break;
             }
-            UpdateBiNeighbors(ref distances, ref previous, ref visited, ref queue, ref distances2, ref previous2, ref visited2, ref queue2, ref nodesVisited, ref shortestDistance, ref meetingNode, ref currentNode, ref currentNode2, ref distance, ref distance2, lineRenderer);
-            yield return null;
+            else
+            {
+                UpdateBiNeighbors(ref distances, ref previous, ref visited, ref queue, ref distances2, ref previous2, ref visited2, ref queue2, ref nodesVisited, ref shortestDistance, ref meetingNode, ref currentNode, ref currentNode2, ref distance, ref distance2, lineRenderer);
+                if (drawspeed == 0) yield return null;
+                else if (stopwatch2.ElapsedMilliseconds > drawspeed)
+                {
+                    stopwatch2.Restart();
+                    yield return null;
+                }
+            }
         }
     }
 }
