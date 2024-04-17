@@ -96,7 +96,6 @@ public class BiDijkstra : IPathfindingAlgorithm
         dijkstra2.InitializeDijkstra(end, graph);
         var lineRenderer = Camera.main.GetComponent<GLLineRenderer>();
 
-        double shortestDistance = double.PositiveInfinity;
         long meetingNode = -1;
 
         while (dijkstra1.queue.Count > 0 && dijkstra2.queue.Count > 0)
