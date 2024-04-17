@@ -22,7 +22,7 @@ public class BiAStar : IPathfindingAlgorithm
         astar2.InitializeSearch(end, start);
         int nodesVisited = 0;
         var stopwatch = System.Diagnostics.Stopwatch.StartNew();
-        var openList = new FastPriorityQueue<AStar.PriorityQueueNode>(graph.nodes.Count);
+        var openList = new FastPriorityQueue<PriorityQueueNode>(graph.nodes.Count);
         var openSet = new HashSet<long>();
 
 

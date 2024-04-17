@@ -2,22 +2,30 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using Priority_Queue;
+using Unity.VisualScripting;
 
 public class Dijkstra : IPathfindingAlgorithm
 {
     public Graph graph;
+    public FastPriorityQueue<PriorityQueueNode> openList;
+    public Dictionary<long, float> distances;
+    public Dictionary<long, long> previous;
+    public HashSet<long> visited;
+    public SortedSet<(float, long)> queue;
 
     public Dijkstra(Graph graph)
     {
         this.graph = graph;
+
     }
 
-    public static (Dictionary<long, float> distances, Dictionary<long, long> previous, HashSet<long> visited, SortedSet<(float, long)> queue) InitializeDijkstra(long start, Graph graph)
+    public void InitializeDijkstra(long start, Graph graph)
     {
-        var distances = new Dictionary<long, float>();
-        var previous = new Dictionary<long, long>();
-        var visited = new HashSet<long>();
-        var queue = new SortedSet<(float, long)>();
+        distances = new Dictionary<long, float>();
+        previous = new Dictionary<long, long>();
+        visited = new HashSet<long>();
+        queue = new SortedSet<(float, long)>();
 
         foreach (var node in graph.nodes.Keys)
         {
@@ -26,13 +34,11 @@ public class Dijkstra : IPathfindingAlgorithm
         }
         distances[start] = 0;
         queue.Add((0, start));
-
-        return (distances, previous, visited, queue);
     }
 
     public void FindShortestPath(long start, long end)
     {
-        (var distances, var previous, var visited, var queue) = InitializeDijkstra(start, graph);
+        InitializeDijkstra(start, graph);
         var stopwatch = System.Diagnostics.Stopwatch.StartNew();
         int nodesVisited = 0;
 
@@ -50,7 +56,8 @@ public class Dijkstra : IPathfindingAlgorithm
                 return;
             }
 
-            UpdateNeighbors(currentNode, distance, graph.graph[currentNode], ref distances, ref previous, ref queue, ref nodesVisited, visited,graph);
+            var neighbors = graph.graph[currentNode];
+            UpdateNeighbors(currentNode, distance, neighbors, ref nodesVisited);
         }
 
         return;
@@ -58,7 +65,7 @@ public class Dijkstra : IPathfindingAlgorithm
 
     public IEnumerator FindShortestPathWithVisual(long start, long end, int drawspeed)
     {
-        (var distances, var previous, var visited, var queue) = InitializeDijkstra(start, graph);
+        InitializeDijkstra(start, graph);
         var stopwatch = System.Diagnostics.Stopwatch.StartNew();
         var stopwatch2 = System.Diagnostics.Stopwatch.StartNew();
         var lineRenderer = Camera.main.GetComponent<GLLineRenderer>(); // Ensure Camera has GLLineRenderer component
@@ -79,7 +86,8 @@ public class Dijkstra : IPathfindingAlgorithm
                 yield break;
             }
 
-            UpdateNeighbors(currentNode, distance, graph.graph[currentNode], ref distances, ref previous, ref queue, ref nodesVisited, visited, graph, lineRenderer);
+            var neighbors = graph.graph[currentNode];
+            UpdateNeighbors(currentNode, distance, neighbors, ref nodesVisited, lineRenderer);
             if (drawspeed == 0) yield return null;
                 else if (stopwatch2.ElapsedMilliseconds > drawspeed)
                 {
@@ -89,7 +97,7 @@ public class Dijkstra : IPathfindingAlgorithm
         }
     }
 
-    public static void UpdateNeighbors(long currentNode, float distance, IEnumerable<Edge> neighbors, ref Dictionary<long, float> distances, ref Dictionary<long, long> previous, ref SortedSet<(float, long)> queue, ref int nodesVisited, HashSet<long> visited, Graph graph, GLLineRenderer lineRenderer = null)
+    public void UpdateNeighbors(long currentNode, float distance, IEnumerable<Edge> neighbors, ref int nodesVisited, GLLineRenderer lineRenderer = null)
     {
         foreach (var edge in neighbors)
         {
