@@ -21,16 +21,6 @@ public class AStar : MonoBehaviour, IPathfindingAlgorithm
         this.graph = graph;
     }
 
-    public class PriorityQueueNode : FastPriorityQueueNode
-    {
-        public long Id { get; private set; }
-
-        public PriorityQueueNode(long id)
-        {
-            Id = id;
-        }
-    }
-
     public void InitializeSearch(long start, long end)
     {
         //openList = new SimplePriorityQueue<long, float>();
