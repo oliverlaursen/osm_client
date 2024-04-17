@@ -5,7 +5,7 @@ using Priority_Queue;
 using UnityEngine;
 using UnityEngine.Assertions;
 
-public class AStar : MonoBehaviour, IPathfindingAlgorithm
+public class AStar : IPathfindingAlgorithm
 {
     public Graph graph;
     private FastPriorityQueue<PriorityQueueNode> openList;

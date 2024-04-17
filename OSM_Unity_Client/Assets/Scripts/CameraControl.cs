@@ -1,7 +1,6 @@
-using System.Collections;
 using System.Collections.Generic;
-using TMPro;
-using UnityEditor.UI;
+using System.Linq;
+using Unity.VisualScripting;
 using UnityEngine;
 
 public class CameraControl : MonoBehaviour
@@ -17,7 +16,9 @@ public class CameraControl : MonoBehaviour
     public long nodeB = 0;
     public GameObject circleA;
     public GameObject circleB;
+    public GameObject landmarkSquare;
 
+    private List<GameObject> landmarksInstances;
     private GameObject circleAInstance;
     private GameObject circleBInstance;
     private float circleSize = 300f;
@@ -26,6 +27,7 @@ public class CameraControl : MonoBehaviour
     private BiAStar biastar;
     private Dijkstra dijkstra;
     private BiDijkstra bidijkstra;
+    private Landmarks landmarks;
     
     private Graph graph;
 
@@ -41,6 +43,7 @@ public class CameraControl : MonoBehaviour
         biastar = new BiAStar(graph);
         dijkstra = new Dijkstra(graph);
         bidijkstra = new BiDijkstra(graph);
+        landmarks = new Landmarks(graph);
     }
 
     public void ChangeVisual()
@@ -65,6 +68,14 @@ public class CameraControl : MonoBehaviour
         {
             circleBInstance.transform.localScale = new Vector3(circleSize * (Camera.main.orthographicSize / maxOrthoSize), circleSize * (Camera.main.orthographicSize / maxOrthoSize), 0);
         }
+        if (landmarksInstances != null && landmarksInstances.Count > 0)
+        {
+            foreach (var instance in landmarksInstances)
+            {
+                instance.transform.localScale = 2 * new Vector3(circleSize * (Camera.main.orthographicSize / maxOrthoSize), circleSize * (Camera.main.orthographicSize / maxOrthoSize), 0);
+            }
+        }
+    
         zoomSpeed = Camera.main.orthographicSize * 0.4f;
         // Zoom
         float scroll = Input.GetAxis("Mouse ScrollWheel");
@@ -135,37 +146,59 @@ public class CameraControl : MonoBehaviour
 
     public void DijkstraOnSelection()
     {
+        ClearLandmarks();
+        ShortestPathAlgoOnSelection(dijkstra, bidijkstra);
+    }
 
+    private void ShortestPathAlgoOnSelection(IPathfindingAlgorithm algo, IPathfindingAlgorithm bi_algo = null){
         StopAllCoroutines();
         var lineRenderer = Camera.main.gameObject.GetComponent<GLLineRenderer>();
         lineRenderer.ClearDiscoveryPath();
         lineRenderer.ClearPath();
-        IPathfindingAlgorithm algo = bidirectional ? bidijkstra : dijkstra;
+        bi_algo ??= algo;
+        IPathfindingAlgorithm chosen_algo = bidirectional ? algo : bi_algo;
         if (visual) {
-            StartCoroutine(algo.FindShortestPathWithVisual(nodeA, nodeB, drawspeed));
+            StartCoroutine(chosen_algo.FindShortestPathWithVisual(nodeA, nodeB, drawspeed));
         }
         else
         {
-            algo.FindShortestPath(nodeA, nodeB);
+            chosen_algo.FindShortestPath(nodeA, nodeB);
         }
     }
 
-
-
     public void AstarOnSelection()
     {
-        StopAllCoroutines();
-        var lineRenderer = Camera.main.gameObject.GetComponent<GLLineRenderer>();
-        lineRenderer.ClearDiscoveryPath();
-        lineRenderer.ClearPath();
-        IPathfindingAlgorithm algo = bidirectional ? biastar : astar;
-        if (visual) {
-            StartCoroutine(algo.FindShortestPathWithVisual(nodeA, nodeB, drawspeed));
+        ClearLandmarks();
+        ShortestPathAlgoOnSelection(astar, biastar);
+    }
+
+    public void LandmarksOnSelection(){
+        DrawLandmarks();
+        ShortestPathAlgoOnSelection(landmarks);
+    }
+
+    public void ClearLandmarks(){
+        if(landmarksInstances != null){
+            foreach (var instance in landmarksInstances)
+            {
+                Destroy(instance);
+            }
         }
-        else
+    }
+
+    public void DrawLandmarks(){
+        var instances = new List<GameObject>();
+        for (int i = 0; i < graph.landmarks.Count; i++)
         {
-            algo.FindShortestPath(nodeA, nodeB);
+            Debug.Log("Drawing landmark " + i);
+            var landmark = graph.landmarks[i];
+            var node = graph.nodes[landmark.node_id];
+            var nodeCoords = node.Item1;
+            var landmarkInstance = Instantiate(landmarkSquare, new Vector3(nodeCoords[0], nodeCoords[1], 0), Quaternion.identity);
+            landmarkInstance.transform.localScale = new Vector3(circleSize * (Camera.main.orthographicSize / maxOrthoSize), circleSize * (Camera.main.orthographicSize / maxOrthoSize), 0);
+            instances.Add(landmarkInstance);
         }
+        this.landmarksInstances = instances;
     }
 
     public void FlipNodes()

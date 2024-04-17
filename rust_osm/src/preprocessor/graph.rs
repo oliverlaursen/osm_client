@@ -2,40 +2,41 @@ use crate::preprocessor::edge::*;
 use crate::preprocessor::preprocessor::*;
 
 use osmpbfreader::NodeId;
+use std::cmp::Reverse;
+use std::collections::BinaryHeap;
 use std::collections::HashMap;
 use std::collections::HashSet;
 
 pub struct Graph;
 
 impl Graph {
-    pub fn add_bidirectional_edges(
+    pub fn get_bidirectional_graph(
         graph: &HashMap<NodeId, Vec<Edge>>,
-    ) -> HashMap<NodeId, (Vec<Edge>, Vec<Edge>)> {
+    ) -> HashMap<NodeId, Vec<Edge>> {
         let nodes_pointing_to = Graph::find_nodes_pointing_to_node(graph);
-        let bidirectional_graph: HashMap<NodeId, (Vec<Edge>, Vec<Edge>)> = graph
+        let bidirectional_graph = nodes_pointing_to
             .iter()
-            .map(|(node_id, edges)| {
+            .map(|(to, from)| {
                 (
-                    *node_id,
-                    (edges.clone(),
-                    nodes_pointing_to
-                        .get(node_id)
-                        .unwrap_or(&Vec::new())
-                        .iter()
-                        .map(|nodeid| Edge {
-                            node: *nodeid,
-                            cost: graph
-                                .get(nodeid)
-                                .unwrap()
-                                .iter()
-                                .find(|x| x.node == *node_id)
-                                .unwrap()
-                                .cost,
+                    *to,
+                    from.iter()
+                        .map(|from| {
+                            Edge::new(
+                                *from,
+                                graph
+                                    .get(from)
+                                    .unwrap()
+                                    .iter()
+                                    .find(|x| x.node == *to)
+                                    .unwrap()
+                                    .cost,
+                            )
                         })
-                        .collect::<Vec<Edge>>(),
-                ))
+                        .collect(),
+                )
             })
-            .collect();
+            .collect::<HashMap<NodeId, Vec<Edge>>>();
+
         bidirectional_graph
     }
 
@@ -272,6 +273,11 @@ impl Graph {
                     Self::find_end_nodes(graph, &nodes_pointing_to_node);
             }
         }
+        // Remove duplicate edges
+        for (node, edges) in graph.iter_mut() {
+            edges.sort_by(|a, b| a.node.0.cmp(&b.node.0));
+            edges.dedup_by(|a, b| a.node == b.node);
+        }
     }
 
     fn update_edges_and_remove_node(
@@ -329,7 +335,7 @@ impl Graph {
                     let edge = Edge::new(node, distance);
                     graph.get_mut(&next_node).unwrap().push(edge);
                 }
-            }   
+            }
         }
         // Remove duplicate edges
         for (_, edges) in graph.iter_mut() {
@@ -338,6 +344,80 @@ impl Graph {
         }
 
         graph
+    }
+
+    pub fn get_random_nodes(graph: &HashMap<NodeId, Vec<Edge>>, n: i32) -> Vec<NodeId> {
+        /*
+           Returns n random node-ids
+        */
+        let mut landmarks = Vec::new();
+        let mut it = graph.iter();
+        for i in 0..n {
+            let node = it.next().unwrap();
+            landmarks.push(*node.0);
+        }
+        landmarks
+    }
+
+    pub fn add_landmarks(
+        graph: &HashMap<NodeId, Vec<Edge>>,
+        landmarks: Vec<NodeId>,
+    ) -> Vec<Landmark> {
+        let time = std::time::Instant::now();
+        let mut landmarks_with_distances = Vec::new();
+        for landmark in landmarks {
+            let distances = Graph::dijkstra_all(&graph, landmark);
+            landmarks_with_distances.push(Landmark {
+                node_id: landmark,
+                distances,
+            });
+        }
+        println!("Time to add landmarks: {:?}", time.elapsed());
+        landmarks_with_distances
+    }
+
+    pub fn dijkstra_all(graph: &HashMap<NodeId, Vec<Edge>>, start: NodeId) -> HashMap<NodeId, u32> {
+        // Initialize the distance map with infinite distances
+        let mut distances = HashMap::new();
+        for node in graph.keys() {
+            distances.insert(*node, u32::MAX);
+        }
+
+        // Use a binary heap as a priority queue where the smallest distances come out first
+        let mut heap = BinaryHeap::new();
+
+        // Initialize the distance of the start node to 0 and add it to the priority queue
+        distances.insert(start, 0.0 as u32);
+        heap.push(Edge {
+            cost: 0.0 as u32,
+            node: start,
+        });
+
+        // While there are nodes still to process...
+        while let Some(Edge { cost, node }) = heap.pop() {
+            // If we find a shorter path to the node, skip processing
+            if cost > distances[&node] {
+                continue;
+            }
+
+            // Process all adjacent edges
+            if let Some(edges) = graph.get(&node) {
+                for edge in edges {
+                    let next = Edge {
+                        cost: cost + edge.cost,
+                        node: edge.node,
+                    };
+
+                    // Only consider this new path if it's better
+                    if next.cost < distances[&next.node] {
+                        heap.push(next);
+                        distances.insert(next.node, next.cost);
+                    }
+                }
+            }
+        }
+
+        distances
     }
 }
 

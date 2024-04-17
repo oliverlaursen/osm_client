@@ -30,7 +30,7 @@ public class BiDijkstra : IPathfindingAlgorithm
 
         while (dijkstra1.queue.Count > 0 && dijkstra2.queue.Count > 0)
         {
-            if (dijkstra1.queue.Max.Item1 + dijkstra2.queue.Max.Item1 >= shortestDistance)
+            if (dijkstra1.queue.Min.Item1 + dijkstra2.queue.Min.Item1 >= shortestDistance)
             {
                 stopwatch.Stop();
                 MapController.DisplayStatistics(start, end, (float)shortestDistance, stopwatch.ElapsedMilliseconds, nodesVisited);
