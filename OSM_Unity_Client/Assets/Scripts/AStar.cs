@@ -9,38 +9,28 @@ public class AStar : MonoBehaviour, IPathfindingAlgorithm
 {
     public Graph graph;
     private FastPriorityQueue<PriorityQueueNode> openList;
+    private Dictionary<long, PriorityQueueNode> priorityQueueNodes;
     private HashSet<long> openSet;
     private HashSet<long> closedSet;
     private Dictionary<long, long> parent;
     private Dictionary<long, float> gScore;
     private Dictionary<long, float> fScore;
-    private Dictionary<long, PriorityQueueNode> priorityQueueNodes;
 
     public AStar(Graph graph)
     {
         this.graph = graph;
     }
 
-    public class PriorityQueueNode : FastPriorityQueueNode
-    {
-        public long Id { get; private set; }
-
-        public PriorityQueueNode(long id)
-        {
-            Id = id;
-        }
-    }
-
-    private void InitializeSearch(long start, long end)
+    public void InitializeSearch(long start, long end)
     {
         //openList = new SimplePriorityQueue<long, float>();
         openList = new FastPriorityQueue<PriorityQueueNode>(graph.nodes.Count);
+        priorityQueueNodes = new Dictionary<long, PriorityQueueNode>();
         openSet = new HashSet<long>();
         closedSet = new HashSet<long>();
         parent = new Dictionary<long, long>();
         gScore = new Dictionary<long, float>() { [start] = 0 };
         fScore = new Dictionary<long, float>() { [start] = HeuristicCostEstimate(start, end) };
-        priorityQueueNodes = new Dictionary<long, PriorityQueueNode>();
 
         PriorityQueueNode startNode = new PriorityQueueNode(start);
         openList.Enqueue(startNode, fScore[start]);
@@ -62,12 +52,13 @@ public class AStar : MonoBehaviour, IPathfindingAlgorithm
         }
     }
 
-    public IEnumerator FindShortestPathWithVisual(long start, long end)
+    public IEnumerator FindShortestPathWithVisual(long start, long end, int drawspeed)
     {
         InitializeSearch(start, end);
         var lineRenderer = Camera.main.GetComponent<GLLineRenderer>(); // Ensure Camera has GLLineRenderer component
         int nodesVisited = 0;
         var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+        var stopwatch2 = System.Diagnostics.Stopwatch.StartNew();
 
         while (openList.Count > 0)
         {
@@ -78,18 +69,23 @@ public class AStar : MonoBehaviour, IPathfindingAlgorithm
                 yield break;
             }
             UpdateNeighborsWithVisual(current, end, lineRenderer);
-            yield return null;
+            if (drawspeed == 0) yield return null;
+                else if (stopwatch2.ElapsedMilliseconds > drawspeed)
+                {
+                    stopwatch2.Restart();
+                    yield return null;
+                }
         }
     }
 
-    private long DequeueAndUpdateSets(FastPriorityQueue<PriorityQueueNode> openList, HashSet<long> openSet)
+    public static long DequeueAndUpdateSets(FastPriorityQueue<PriorityQueueNode> openList, HashSet<long> openSet)
     {
         var current = openList.Dequeue().Id;
         openSet.Remove(current);
         return current;
     }
 
-    private bool ProcessCurrentNode(long current, long start, long end, ref int nodesVisited, System.Diagnostics.Stopwatch stopwatch)
+    public bool ProcessCurrentNode(long current, long start, long end, ref int nodesVisited, System.Diagnostics.Stopwatch stopwatch)
     {
         nodesVisited++;
         if (current == end)

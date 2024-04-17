@@ -1,43 +1,54 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using Priority_Queue;
+using Unity.VisualScripting;
 
 public class Dijkstra : IPathfindingAlgorithm
 {
     public Graph graph;
-    public Material lineMaterial; // Ensure this is set in the Inspector
+    public FastPriorityQueue<PriorityQueueNode> queue;
+    private Dictionary<long, PriorityQueueNode> priorityQueueNodes;
+    private HashSet<long> queueSet;
+    public Dictionary<long, float> distances;
+    public Dictionary<long, long> previous;
+    public HashSet<long> visited;
+    public int nodesVisited = 0;
+    public Dictionary<(long, long), float> pairDistances = new Dictionary<(long, long), float>();
 
     public Dijkstra(Graph graph)
     {
         this.graph = graph;
+
     }
 
-    private void InitializeDijkstra(long start, out Dictionary<long, float> distances, out Dictionary<long, long> previous, out HashSet<long> visited, out SortedSet<(float, long)> queue)
+    public void InitializeDijkstra(long start, Graph graph)
     {
+        queue = new FastPriorityQueue<PriorityQueueNode>(graph.nodes.Count);
+        priorityQueueNodes = new Dictionary<long, PriorityQueueNode>();
+        queueSet = new HashSet<long>();
         distances = new Dictionary<long, float>();
         previous = new Dictionary<long, long>();
         visited = new HashSet<long>();
-        queue = new SortedSet<(float, long)>();
 
-        foreach (var node in graph.nodes.Keys)
-        {
-            distances[node] = float.MaxValue;
-            previous[node] = -1;
-        }
+        PriorityQueueNode startNode = new PriorityQueueNode(start);
+        queue.Enqueue(startNode, float.MaxValue);
+        priorityQueueNodes[start] = startNode;
+        queueSet.Add(start);
         distances[start] = 0;
-        queue.Add((0, start));
     }
 
     public void FindShortestPath(long start, long end)
     {
-        InitializeDijkstra(start, out var distances, out var previous, out var visited, out var queue);
+        InitializeDijkstra(start, graph);
         var stopwatch = System.Diagnostics.Stopwatch.StartNew();
-        int nodesVisited = 0;
 
         while (queue.Count > 0)
         {
-            var (distance, currentNode) = queue.Min;
-            queue.Remove(queue.Min);
+            var currentNode = queue.Dequeue().Id;
+            var distance = distances[currentNode];
+            queueSet.Remove(currentNode);
             if (!visited.Add(currentNode)) continue;
 
             if (currentNode == end)
@@ -48,23 +59,26 @@ public class Dijkstra : IPathfindingAlgorithm
                 return;
             }
 
-            UpdateNeighbors(currentNode, distance, graph.graph[currentNode], ref distances, ref previous, ref queue, ref nodesVisited, visited);
+            var neighbors = graph.graph[currentNode];
+            UpdateNeighbors(currentNode, distance, neighbors);
         }
 
         return;
     }
 
-    public IEnumerator FindShortestPathWithVisual(long start, long end)
+    public IEnumerator FindShortestPathWithVisual(long start, long end, int drawspeed)
     {
-        InitializeDijkstra(start, out var distances, out var previous, out var visited, out var queue);
+        InitializeDijkstra(start, graph);
         var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+        var stopwatch2 = System.Diagnostics.Stopwatch.StartNew();
         var lineRenderer = Camera.main.GetComponent<GLLineRenderer>(); // Ensure Camera has GLLineRenderer component
         int nodesVisited = 0;
 
         while (queue.Count > 0)
         {
-            var (distance, currentNode) = queue.Min;
-            queue.Remove(queue.Min);
+            var currentNode = queue.Dequeue().Id;
+            var distance = distances[currentNode];
+            queueSet.Remove(currentNode);
             if (!visited.Add(currentNode)) continue;
 
             if (currentNode == end)
@@ -76,23 +90,41 @@ public class Dijkstra : IPathfindingAlgorithm
                 yield break;
             }
 
-            UpdateNeighbors(currentNode, distance, graph.graph[currentNode], ref distances, ref previous, ref queue, ref nodesVisited, visited, lineRenderer);
-            yield return null; // Wait for next frame
+            var neighbors = graph.graph[currentNode];
+            UpdateNeighbors(currentNode, distance, neighbors, lineRenderer);
+            if (drawspeed == 0) yield return null;
+            else if (stopwatch2.ElapsedMilliseconds > drawspeed)
+            {
+                stopwatch2.Restart();
+                yield return null;
+            }
         }
     }
 
-    private void UpdateNeighbors(long currentNode, float distance, IEnumerable<Edge> neighbors, ref Dictionary<long, float> distances, ref Dictionary<long, long> previous, ref SortedSet<(float, long)> queue, ref int nodesVisited, HashSet<long> visited, GLLineRenderer lineRenderer = null)
+    public void UpdateNeighbors(long currentNode, float distance, IEnumerable<Edge> neighbors, GLLineRenderer lineRenderer = null)
     {
         foreach (var edge in neighbors)
         {
             nodesVisited++;
             var neighbor = edge.node;
             var newDistance = distance + edge.cost;
-            if (newDistance < distances[neighbor])
+            if (!distances.ContainsKey(neighbor) || newDistance < distances[neighbor])
             {
+                pairDistances[(currentNode, neighbor)] = distance;
                 distances[neighbor] = newDistance;
                 previous[neighbor] = currentNode;
-                queue.Add((newDistance, neighbor));
+                PriorityQueueNode neighborNode = new PriorityQueueNode(neighbor);
+                if (!queueSet.Contains(neighbor))
+                {
+                    queue.Enqueue(neighborNode, newDistance);
+                    priorityQueueNodes[neighbor] = neighborNode;
+                    queueSet.Add(neighbor);
+                }
+                else
+                {
+                    PriorityQueueNode nodeToUpdate = priorityQueueNodes[neighbor];
+                    queue.UpdatePriority(nodeToUpdate, newDistance);
+                }
 
                 if (lineRenderer != null)
                 {
