@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using Priority_Queue;
 using UnityEngine;
 using UnityEngine.Assertions;
@@ -15,10 +16,19 @@ public class AStar : IPathfindingAlgorithm
     private Dictionary<long, float> gScore;
     private Dictionary<long, float> fScore;
     private Dictionary<long, PriorityQueueNode> priorityQueueNodes;
+    private AStarHeuristic heuristic;
+    private IEnumerable<Landmark> landmarks;
 
-    public AStar(Graph graph)
+    public AStar(Graph graph, IEnumerable<Landmark> landmarks = null)
     {
         this.graph = graph;
+        this.heuristic = new HaversineHeuristic(graph);
+        this.landmarks = landmarks;
+    }
+
+    public void ChangeHeuristic(AStarHeuristic heuristic)
+    {
+        this.heuristic = heuristic;
     }
 
     public void InitializeSearch(long start, long end)
@@ -29,7 +39,7 @@ public class AStar : IPathfindingAlgorithm
         closedSet = new HashSet<long>();
         parent = new Dictionary<long, long>();
         gScore = new Dictionary<long, float>() { [start] = 0 };
-        fScore = new Dictionary<long, float>() { [start] = HeuristicCostEstimate(start, end) };
+        fScore = new Dictionary<long, float>() { [start] = heuristic.Calculate(start, end) };
         priorityQueueNodes = new Dictionary<long, PriorityQueueNode>();
 
         PriorityQueueNode startNode = new PriorityQueueNode(start);
@@ -49,6 +59,23 @@ public class AStar : IPathfindingAlgorithm
             long current = DequeueAndUpdateSets(openList, openSet);
             if (ProcessCurrentNode(current, start, end, ref nodesVisited, stopwatch)) return;
             UpdateNeighbors(current, end);
+            UpdateLandmarks(nodesVisited, current, end);
+
+        }
+    }
+
+    private void UpdateLandmarks(int nodesVisited, long start, long end, bool visual = false)
+    {
+        if (landmarks == null) return;
+        if (nodesVisited % 100 == 0)
+        {
+            Landmark[] bestLandmarks = Landmarks.FindBestLandmark(landmarks, start, end, 3);
+            if (visual)
+            {
+                Landmarks.MarkLandmarks(landmarks.ToArray(), Color.blue);
+                Landmarks.MarkLandmarks(bestLandmarks, Color.yellow);
+            }
+            ChangeHeuristic(new MultLandmarkHeuristic(bestLandmarks.Select(x => new LandmarkHeuristic(x)).ToArray()));
         }
     }
 
@@ -69,12 +96,13 @@ public class AStar : IPathfindingAlgorithm
                 yield break;
             }
             UpdateNeighborsWithVisual(current, end, lineRenderer);
+            UpdateLandmarks(nodesVisited, current, end);
             if (drawspeed == 0) yield return null;
-                else if (stopwatch2.ElapsedTicks > drawspeed)
-                {
-                    yield return null;
-                    stopwatch2.Restart();
-                }
+            else if (stopwatch2.ElapsedTicks > drawspeed)
+            {
+                yield return null;
+                stopwatch2.Restart();
+            }
         }
     }
 
@@ -133,7 +161,7 @@ public class AStar : IPathfindingAlgorithm
         {
             parent[neighbor.node] = current;
             gScore[neighbor.node] = tentativeGScore;
-            fScore[neighbor.node] = tentativeGScore + HeuristicCostEstimate(neighbor.node, end);
+            fScore[neighbor.node] = tentativeGScore + heuristic.Calculate(neighbor.node, end);
             PriorityQueueNode neighborNode = new PriorityQueueNode(neighbor.node);
             if (!openSet.Contains(neighbor.node))
             {
@@ -149,39 +177,5 @@ public class AStar : IPathfindingAlgorithm
             return true;
         }
         return false;
-    }
-
-    private float HeuristicCostEstimate(long start, long end)
-    {
-        var startCoords = graph.nodes[start];
-        double startLat = startCoords.Item2[0]; // Convert to radians
-        double startLon = startCoords.Item2[1]; // Convert to radians
-
-        double startLat_radians = startLat * (Math.PI / 180);
-        double startLon_radians = startLon * (Math.PI / 180);
-
-        var endCoords = graph.nodes[end];
-        double endLat = endCoords.Item2[0]; // Convert to radians
-        double endLon = endCoords.Item2[1]; // Convert to radians
-
-        double endLat_radians = endLat * (Math.PI / 180);
-        double endLon_radians = endLon * (Math.PI / 180);
-
-        double dLat = endLat_radians - startLat_radians;
-        double dLon = endLon_radians - startLon_radians;
-
-        double r = 6371000; //radius of the earth in meters
-
-        double a = (Math.Sin(dLat / 2) * Math.Sin(dLat / 2)) +
-                   (Math.Sin(dLon / 2) * Math.Sin(dLon / 2) * Math.Cos(startLat_radians) * Math.Cos(endLat_radians));
-        double c = 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
-
-        double dist = r * c;
-
-        var floatDist = (float)dist;
-
-        Assert.IsTrue(floatDist >= 0);
-
-        return (float)dist;
     }
 }

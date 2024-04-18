@@ -28,7 +28,7 @@ public class CameraControl : MonoBehaviour
     private Dijkstra dijkstra;
     private BiDijkstra bidijkstra;
     private Landmarks landmarks;
-    
+
     private Graph graph;
 
     public bool visual = true;
@@ -51,7 +51,8 @@ public class CameraControl : MonoBehaviour
         visual = !visual;
     }
 
-    public void ChangeBidirectional(){
+    public void ChangeBidirectional()
+    {
         bidirectional = !bidirectional;
     }
 
@@ -75,7 +76,7 @@ public class CameraControl : MonoBehaviour
                 instance.transform.localScale = 2 * new Vector3(circleSize * (Camera.main.orthographicSize / maxOrthoSize), circleSize * (Camera.main.orthographicSize / maxOrthoSize), 0);
             }
         }
-    
+
         zoomSpeed = Camera.main.orthographicSize * 0.4f;
         // Zoom
         float scroll = Input.GetAxis("Mouse ScrollWheel");
@@ -124,7 +125,7 @@ public class CameraControl : MonoBehaviour
         node_selection = selection;
     }
 
-    long ClosestNode(Vector2 position, Dictionary<long, (float[],double[])> nodes)
+    long ClosestNode(Vector2 position, Dictionary<long, (float[], double[])> nodes)
     {
         float minDistance = float.MaxValue;
         long closestNode = 0;
@@ -134,7 +135,7 @@ public class CameraControl : MonoBehaviour
             var y = node.Value.Item1[1];
             var dX = position.x - x;
             var dY = position.y - y;
-            var distance = dX*dX + dY*dY;
+            var distance = dX * dX + dY * dY;
             if (distance < minDistance)
             {
                 minDistance = distance;
@@ -150,14 +151,16 @@ public class CameraControl : MonoBehaviour
         ShortestPathAlgoOnSelection(dijkstra, bidijkstra);
     }
 
-    private void ShortestPathAlgoOnSelection(IPathfindingAlgorithm algo, IPathfindingAlgorithm bi_algo = null){
+    private void ShortestPathAlgoOnSelection(IPathfindingAlgorithm algo, IPathfindingAlgorithm bi_algo = null)
+    {
         StopAllCoroutines();
         var lineRenderer = Camera.main.gameObject.GetComponent<GLLineRenderer>();
         lineRenderer.ClearDiscoveryPath();
         lineRenderer.ClearPath();
         bi_algo ??= algo;
         IPathfindingAlgorithm chosen_algo = bidirectional ? bi_algo : algo;
-        if (visual) {
+        if (visual)
+        {
             StartCoroutine(chosen_algo.FindShortestPathWithVisual(nodeA, nodeB, drawspeed));
         }
         else
@@ -172,30 +175,37 @@ public class CameraControl : MonoBehaviour
         ShortestPathAlgoOnSelection(astar, biastar);
     }
 
-    public void LandmarksOnSelection(){
+    public void LandmarksOnSelection()
+    {
+        ClearLandmarks();
         DrawLandmarks();
         ShortestPathAlgoOnSelection(landmarks);
     }
 
-    public void ClearLandmarks(){
-        if(landmarksInstances != null){
+    public void ClearLandmarks()
+    {
+        if (landmarksInstances != null)
+        {
             foreach (var instance in landmarksInstances)
             {
                 Destroy(instance);
             }
+            landmarksInstances.Clear();
+
         }
     }
 
-    public void DrawLandmarks(){
+    public void DrawLandmarks()
+    {
         var instances = new List<GameObject>();
         for (int i = 0; i < graph.landmarks.Count; i++)
         {
-            Debug.Log("Drawing landmark " + i);
             var landmark = graph.landmarks[i];
             var node = graph.nodes[landmark.node_id];
             var nodeCoords = node.Item1;
             var landmarkInstance = Instantiate(landmarkSquare, new Vector3(nodeCoords[0], nodeCoords[1], 0), Quaternion.identity);
             landmarkInstance.transform.localScale = new Vector3(circleSize * (Camera.main.orthographicSize / maxOrthoSize), circleSize * (Camera.main.orthographicSize / maxOrthoSize), 0);
+            landmarkInstance.name = "Landmark " + landmark.node_id;
             instances.Add(landmarkInstance);
         }
         this.landmarksInstances = instances;
@@ -203,7 +213,7 @@ public class CameraControl : MonoBehaviour
 
     public void FlipNodes()
     {
-        if(nodeA == 0 || nodeB == 0) { return; }
+        if (nodeA == 0 || nodeB == 0) { return; }
         var temp_loc = circleBInstance.transform.position;
         circleBInstance.transform.position = circleAInstance.transform.position;
         circleAInstance.transform.position = temp_loc;
