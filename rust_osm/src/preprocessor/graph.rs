@@ -6,6 +6,7 @@ use std::cmp::Reverse;
 use std::collections::BinaryHeap;
 use std::collections::HashMap;
 use std::collections::HashSet;
+use std::hash::Hash;
 
 pub struct Graph;
 
@@ -361,15 +362,18 @@ impl Graph {
 
     pub fn add_landmarks(
         graph: &HashMap<NodeId, Vec<Edge>>,
+        bi_graph: &HashMap<NodeId, Vec<Edge>>,
         landmarks: Vec<NodeId>,
     ) -> Vec<Landmark> {
         let time = std::time::Instant::now();
         let mut landmarks_with_distances = Vec::new();
         for landmark in landmarks {
             let distances = Graph::dijkstra_all(&graph, landmark);
+            let bi_distances = Graph::dijkstra_all(&bi_graph, landmark);
             landmarks_with_distances.push(Landmark {
                 node_id: landmark,
                 distances,
+                bi_distances,
             });
         }
         println!("Time to add landmarks: {:?}", time.elapsed());

@@ -45,6 +45,7 @@ pub struct FullGraph {
 pub struct Landmark {
     pub node_id: NodeId,
     pub distances: HashMap<NodeId, u32>,
+    pub bi_distances: HashMap<NodeId, u32>
 }
 
 #[derive(Serialize)]
@@ -112,8 +113,8 @@ impl Preprocessor {
         println!("Time to minimize graph: {:?}", time.elapsed());
         
         let random_nodes = Graph::get_random_nodes(&graph, 16);
-        let landmarks = Graph::add_landmarks(&graph, random_nodes);
         let bi_graph = Graph::get_bidirectional_graph(&mut graph);
+        let landmarks = Graph::add_landmarks(&graph,&bi_graph, random_nodes);
 
         (graph, bi_graph, landmarks.to_vec())
     }

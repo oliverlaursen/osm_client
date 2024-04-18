@@ -69,13 +69,13 @@ public class AStar : IPathfindingAlgorithm
         if (landmarks == null) return;
         if (nodesVisited % 100 == 0)
         {
-            Landmark[] bestLandmarks = Landmarks.FindBestLandmark(landmarks, start, end, 3);
+            var bestLandmarks = Landmarks.FindBestLandmark(landmarks, start, end, 3);
             if (visual)
             {
                 Landmarks.MarkLandmarks(landmarks.ToArray(), Color.blue);
-                Landmarks.MarkLandmarks(bestLandmarks, Color.yellow);
+                Landmarks.MarkLandmarks(bestLandmarks.Select(x => x.Item1).ToArray(), Color.yellow);
             }
-            ChangeHeuristic(new MultLandmarkHeuristic(bestLandmarks.Select(x => new LandmarkHeuristic(x)).ToArray()));
+            ChangeHeuristic(new MultLandmarkHeuristic(bestLandmarks.Select(x => new LandmarkHeuristic(x.Item1,x.Item2)).ToArray()));
         }
     }
 
@@ -96,7 +96,7 @@ public class AStar : IPathfindingAlgorithm
                 yield break;
             }
             UpdateNeighborsWithVisual(current, end, lineRenderer);
-            UpdateLandmarks(nodesVisited, current, end);
+            UpdateLandmarks(nodesVisited, current, end, true);
             if (drawspeed == 0) yield return null;
             else if (stopwatch2.ElapsedTicks > drawspeed)
             {

@@ -74,6 +74,9 @@ public class Landmark{
     public long node_id { get; set; }
     [Key(1)]
     public Dictionary<long, long> distances { get; set; }
+    [Key(2)]
+    public Dictionary<long, long> bi_distances { get; set; }
+
 }
 
 [MessagePackObject]

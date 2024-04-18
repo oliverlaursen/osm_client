@@ -16,29 +16,29 @@ public class Landmarks : IPathfindingAlgorithm
         this.astar = new AStar(graph, graph.landmarks);
     }
 
-    public static Landmark[] FindBestLandmark(IEnumerable<Landmark> landmarks, long start, long end, int n)
+    public static (Landmark, bool)[] FindBestLandmark(IEnumerable<Landmark> landmarks, long start, long end, int n)
     {
-        List<(Landmark, float)> lowerBounds = new();
+        List<(Landmark, float, bool)> lowerBounds = new();
 
         foreach (Landmark landmark in landmarks)
         {
-            var a = landmark.distances[start];
-            var b = landmark.distances[end];
-            var c = a - b;
-            lowerBounds.Add((landmark, c));
+            var c_behind = landmark.distances[start] - landmark.distances[end];
+            lowerBounds.Add((landmark, c_behind, true));
+            var c_ahead = landmark.bi_distances[end] - landmark.bi_distances[start];
+            lowerBounds.Add((landmark, c_ahead, false));
         }
         lowerBounds.Sort((x, y) => x.Item2.CompareTo(y.Item2));
-        Landmark[] bestLandmarks = lowerBounds.Select(x => x.Item1).Take(n).ToArray();
+        var bestLandmarks = lowerBounds.Select(x => (x.Item1, x.Item3)).Take(n).ToArray();
         return bestLandmarks;
     }
 
     public void FindShortestPath(long start, long end)
     {
         // First select the 3 best landmark (landmarks with highest lower bound in triangle inequality)
-        Landmark[] bestLandmarks = FindBestLandmark(graph.landmarks, start, end, 3);
+        var bestLandmarks = FindBestLandmark(graph.landmarks, start, end, 3);
         MarkLandmarks(graph.landmarks.ToArray(), Color.blue);
-        MarkLandmarks(bestLandmarks, Color.yellow);
-        astar.ChangeHeuristic(new MultLandmarkHeuristic(bestLandmarks.Select(x => new LandmarkHeuristic(x)).ToArray()));
+        MarkLandmarks(bestLandmarks.Select(x => x.Item1).ToArray(), Color.yellow);
+        astar.ChangeHeuristic(new MultLandmarkHeuristic(bestLandmarks.Select(x => new LandmarkHeuristic(x.Item1, x.Item2)).ToArray()));
         astar.FindShortestPath(start, end);
     }
 
@@ -57,10 +57,10 @@ public class Landmarks : IPathfindingAlgorithm
 
     public IEnumerator FindShortestPathWithVisual(long start, long end, int drawspeed)
     {
-        Landmark[] bestLandmarks = FindBestLandmark(graph.landmarks, start, end, 3);
+        var bestLandmarks = FindBestLandmark(graph.landmarks, start, end, 3);
         MarkLandmarks(graph.landmarks.ToArray(), Color.blue);
-        MarkLandmarks(bestLandmarks, Color.yellow);
-        astar.ChangeHeuristic(new MultLandmarkHeuristic(bestLandmarks.Select(x => new LandmarkHeuristic(x)).ToArray()));
+        MarkLandmarks(bestLandmarks.Select(x => x.Item1).ToArray(), Color.yellow);
+        astar.ChangeHeuristic(new MultLandmarkHeuristic(bestLandmarks.Select(x => new LandmarkHeuristic(x.Item1, x.Item2)).ToArray()));
         return astar.FindShortestPathWithVisual(start, end, drawspeed);
     }
 }

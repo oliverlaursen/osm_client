@@ -1,16 +1,22 @@
+using System.Collections.Generic;
+using UnityEngine;
+
 public class LandmarkHeuristic : AStarHeuristic
 {
-    private Landmark landmark;
+    private readonly Dictionary<long, long> distances;
+    private bool behind;
+    private long id;
 
-    public LandmarkHeuristic(Landmark landmark)
+    public LandmarkHeuristic(Landmark landmark, bool behind)
     {
-        this.landmark = landmark;
+        distances = behind ? landmark.distances : landmark.bi_distances;
+        this.behind = behind;
+        id = landmark.node_id;
     }
 
-    public float Calculate(long node, long end)
+    public float Calculate(long start, long end)
     {
-        var a = landmark.distances[end];
-        var b = landmark.distances[node];
-        return a - b;
+        var value = behind ? (distances[end] - distances[start]) : (distances[start] - distances[end]);
+        return value;
     }
 }
