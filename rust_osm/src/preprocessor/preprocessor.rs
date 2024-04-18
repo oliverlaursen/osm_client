@@ -112,9 +112,10 @@ impl Preprocessor {
         Graph::minimize_graph(&mut graph, true);
         println!("Time to minimize graph: {:?}", time.elapsed());
         
-        let random_nodes = Graph::get_random_nodes(&graph, 16);
         let bi_graph = Graph::get_bidirectional_graph(&mut graph);
-        let landmarks = Graph::add_landmarks(&graph,&bi_graph, random_nodes);
+        //let landmark_nodes = Graph::get_random_nodes(&graph, 16);
+        //let landmarks = Graph::add_landmarks(&graph,&bi_graph, landmark_nodes);
+        let landmarks = Graph::farthest_nodes(&graph, &bi_graph, 16);
 
         (graph, bi_graph, landmarks.to_vec())
     }

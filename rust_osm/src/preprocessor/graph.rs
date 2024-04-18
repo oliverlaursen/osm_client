@@ -380,6 +380,50 @@ impl Graph {
         landmarks_with_distances
     }
 
+    pub fn farthest_nodes(
+        graph: &HashMap<NodeId, Vec<Edge>>,
+        bi_graph: &HashMap<NodeId, Vec<Edge>>,
+        n: u32,
+    ) -> Vec<Landmark> {
+        let mut landmarks = Vec::new();
+    
+        // Select an initial random node
+        let mut current = *graph.keys().next().unwrap();
+    
+        for _ in 0..n {
+            // Compute distances from the current node
+            let distances = Graph::dijkstra_all(graph, current);
+            let bi_distances = Graph::dijkstra_all(bi_graph, current);
+    
+            // Store the current landmark
+            landmarks.push(Landmark {
+                node_id: current,
+                distances: distances.clone(),
+                bi_distances,
+            });
+    
+            // Find the node farthest from all current landmarks
+            let mut max_dist = 0;
+            let mut next_node = current;
+    
+            for &node in graph.keys() {
+                let min_dist_to_landmarks = landmarks.iter()
+                    .map(|landmark| landmark.distances.get(&node).unwrap_or(&u32::MAX))
+                    .min()
+                    .unwrap();
+    
+                if *min_dist_to_landmarks > max_dist && *min_dist_to_landmarks != u32::MAX{
+                    max_dist = *min_dist_to_landmarks;
+                    next_node = node;
+                }
+            }
+    
+            current = next_node;  // Update the current node to the next landmark
+        }
+    
+        landmarks
+    }
+
     pub fn dijkstra_all(graph: &HashMap<NodeId, Vec<Edge>>, start: NodeId) -> HashMap<NodeId, u32> {
         // Initialize the distance map with infinite distances
         let mut distances = HashMap::new();
