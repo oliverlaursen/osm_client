@@ -156,7 +156,7 @@ public class CameraControl : MonoBehaviour
         lineRenderer.ClearDiscoveryPath();
         lineRenderer.ClearPath();
         bi_algo ??= algo;
-        IPathfindingAlgorithm chosen_algo = bidirectional ? algo : bi_algo;
+        IPathfindingAlgorithm chosen_algo = bidirectional ? bi_algo : algo;
         if (visual) {
             StartCoroutine(chosen_algo.FindShortestPathWithVisual(nodeA, nodeB, drawspeed));
         }

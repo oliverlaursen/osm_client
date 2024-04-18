@@ -89,10 +89,10 @@ public class Dijkstra : IPathfindingAlgorithm
             var neighbors = graph.graph[currentNode];
             UpdateNeighbors(currentNode, distance, neighbors, ref nodesVisited, lineRenderer);
             if (drawspeed == 0) yield return null;
-                else if (stopwatch2.ElapsedMilliseconds > drawspeed)
+                else if (stopwatch2.ElapsedTicks > drawspeed)
                 {
-                    stopwatch2.Restart();
                     yield return null;
+                    stopwatch2.Restart();
                 }
         }
     }
