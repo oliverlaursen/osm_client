@@ -10,12 +10,12 @@ public class AStar : IPathfindingAlgorithm
 {
     public Graph graph;
     private FastPriorityQueue<PriorityQueueNode> openList;
+    private Dictionary<long, PriorityQueueNode> priorityQueueNodes;
     private HashSet<long> openSet;
     private HashSet<long> closedSet;
     private Dictionary<long, long> parent;
     private Dictionary<long, float> gScore;
     private Dictionary<long, float> fScore;
-    private Dictionary<long, PriorityQueueNode> priorityQueueNodes;
     private AStarHeuristic heuristic;
     private IEnumerable<Landmark> landmarks;
 
@@ -35,12 +35,12 @@ public class AStar : IPathfindingAlgorithm
     {
         //openList = new SimplePriorityQueue<long, float>();
         openList = new FastPriorityQueue<PriorityQueueNode>(graph.nodes.Count);
+        priorityQueueNodes = new Dictionary<long, PriorityQueueNode>();
         openSet = new HashSet<long>();
         closedSet = new HashSet<long>();
         parent = new Dictionary<long, long>();
         gScore = new Dictionary<long, float>() { [start] = 0 };
         fScore = new Dictionary<long, float>() { [start] = heuristic.Calculate(start, end) };
-        priorityQueueNodes = new Dictionary<long, PriorityQueueNode>();
 
         PriorityQueueNode startNode = new PriorityQueueNode(start);
         openList.Enqueue(startNode, fScore[start]);
