@@ -91,7 +91,7 @@ public class MapController : MonoBehaviour
             }
             bi_graph[node.id] = bi_edges.ToArray();
         }
-        var full_graph = new Graph { nodes = nodes, graph = graph, bi_graph = bi_graph };
+        var full_graph = new Graph { nodes = nodes, graph = graph, bi_graph = bi_graph, landmarks = deserialized.landmarks };
         return full_graph;
     }
 

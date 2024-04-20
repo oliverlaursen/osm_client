@@ -1,7 +1,6 @@
-using System.Collections;
 using System.Collections.Generic;
-using TMPro;
-using UnityEditor.UI;
+using System.Linq;
+using Unity.VisualScripting;
 using UnityEngine;
 
 public class CameraControl : MonoBehaviour
@@ -17,7 +16,9 @@ public class CameraControl : MonoBehaviour
     public long nodeB = 0;
     public GameObject circleA;
     public GameObject circleB;
+    public GameObject landmarkSquare;
 
+    private List<GameObject> landmarksInstances;
     private GameObject circleAInstance;
     private GameObject circleBInstance;
     private float circleSize = 300f;
@@ -26,7 +27,8 @@ public class CameraControl : MonoBehaviour
     private BiAStar biastar;
     private Dijkstra dijkstra;
     private BiDijkstra bidijkstra;
-    
+    private Landmarks landmarks;
+
     private Graph graph;
 
     public bool visual = true;
@@ -41,6 +43,7 @@ public class CameraControl : MonoBehaviour
         biastar = new BiAStar(graph);
         dijkstra = new Dijkstra(graph);
         bidijkstra = new BiDijkstra(graph);
+        landmarks = new Landmarks(graph);
     }
 
     public void ChangeVisual()
@@ -48,7 +51,8 @@ public class CameraControl : MonoBehaviour
         visual = !visual;
     }
 
-    public void ChangeBidirectional(){
+    public void ChangeBidirectional()
+    {
         bidirectional = !bidirectional;
     }
 
@@ -65,6 +69,14 @@ public class CameraControl : MonoBehaviour
         {
             circleBInstance.transform.localScale = new Vector3(circleSize * (Camera.main.orthographicSize / maxOrthoSize), circleSize * (Camera.main.orthographicSize / maxOrthoSize), 0);
         }
+        if (landmarksInstances != null && landmarksInstances.Count > 0)
+        {
+            foreach (var instance in landmarksInstances)
+            {
+                instance.transform.localScale = 2 * new Vector3(circleSize * (Camera.main.orthographicSize / maxOrthoSize), circleSize * (Camera.main.orthographicSize / maxOrthoSize), 0);
+            }
+        }
+
         zoomSpeed = Camera.main.orthographicSize * 0.4f;
         // Zoom
         float scroll = Input.GetAxis("Mouse ScrollWheel");
@@ -113,7 +125,7 @@ public class CameraControl : MonoBehaviour
         node_selection = selection;
     }
 
-    long ClosestNode(Vector2 position, Dictionary<long, (float[],double[])> nodes)
+    long ClosestNode(Vector2 position, Dictionary<long, (float[], double[])> nodes)
     {
         float minDistance = float.MaxValue;
         long closestNode = 0;
@@ -123,7 +135,7 @@ public class CameraControl : MonoBehaviour
             var y = node.Value.Item1[1];
             var dX = position.x - x;
             var dY = position.y - y;
-            var distance = dX*dX + dY*dY;
+            var distance = dX * dX + dY * dY;
             if (distance < minDistance)
             {
                 minDistance = distance;
@@ -135,42 +147,73 @@ public class CameraControl : MonoBehaviour
 
     public void DijkstraOnSelection()
     {
-
-        StopAllCoroutines();
-        var lineRenderer = Camera.main.gameObject.GetComponent<GLLineRenderer>();
-        lineRenderer.ClearDiscoveryPath();
-        lineRenderer.ClearPath();
-        IPathfindingAlgorithm algo = bidirectional ? bidijkstra : dijkstra;
-        if (visual) {
-            StartCoroutine(algo.FindShortestPathWithVisual(nodeA, nodeB, drawspeed));
-        }
-        else
-        {
-            algo.FindShortestPath(nodeA, nodeB);
-        }
+        ClearLandmarks();
+        ShortestPathAlgoOnSelection(dijkstra, bidijkstra);
     }
 
-
-
-    public void AstarOnSelection()
+    private void ShortestPathAlgoOnSelection(IPathfindingAlgorithm algo, IPathfindingAlgorithm bi_algo = null)
     {
         StopAllCoroutines();
         var lineRenderer = Camera.main.gameObject.GetComponent<GLLineRenderer>();
         lineRenderer.ClearDiscoveryPath();
         lineRenderer.ClearPath();
-        IPathfindingAlgorithm algo = bidirectional ? biastar : astar;
-        if (visual) {
-            StartCoroutine(algo.FindShortestPathWithVisual(nodeA, nodeB, drawspeed));
+        bi_algo ??= algo;
+        IPathfindingAlgorithm chosen_algo = bidirectional ? bi_algo : algo;
+        if (visual)
+        {
+            StartCoroutine(chosen_algo.FindShortestPathWithVisual(nodeA, nodeB, drawspeed));
         }
         else
         {
-            algo.FindShortestPath(nodeA, nodeB);
+            chosen_algo.FindShortestPath(nodeA, nodeB);
         }
+    }
+
+    public void AstarOnSelection()
+    {
+        ClearLandmarks();
+        ShortestPathAlgoOnSelection(astar, biastar);
+    }
+
+    public void LandmarksOnSelection()
+    {
+        ClearLandmarks();
+        DrawLandmarks();
+        ShortestPathAlgoOnSelection(landmarks);
+    }
+
+    public void ClearLandmarks()
+    {
+        if (landmarksInstances != null)
+        {
+            foreach (var instance in landmarksInstances)
+            {
+                Destroy(instance);
+            }
+            landmarksInstances.Clear();
+
+        }
+    }
+
+    public void DrawLandmarks()
+    {
+        var instances = new List<GameObject>();
+        for (int i = 0; i < graph.landmarks.Count; i++)
+        {
+            var landmark = graph.landmarks[i];
+            var node = graph.nodes[landmark.node_id];
+            var nodeCoords = node.Item1;
+            var landmarkInstance = Instantiate(landmarkSquare, new Vector3(nodeCoords[0], nodeCoords[1], 0), Quaternion.identity);
+            landmarkInstance.transform.localScale = new Vector3(circleSize * (Camera.main.orthographicSize / maxOrthoSize), circleSize * (Camera.main.orthographicSize / maxOrthoSize), 0);
+            landmarkInstance.name = "Landmark " + landmark.node_id;
+            instances.Add(landmarkInstance);
+        }
+        this.landmarksInstances = instances;
     }
 
     public void FlipNodes()
     {
-        if(nodeA == 0 || nodeB == 0) { return; }
+        if (nodeA == 0 || nodeB == 0) { return; }
         var temp_loc = circleBInstance.transform.position;
         circleBInstance.transform.position = circleAInstance.transform.position;
         circleAInstance.transform.position = temp_loc;

@@ -125,10 +125,10 @@ public class BiDijkstra : IPathfindingAlgorithm
             {
                 UpdateBiNeighbors(currentNode, ref shortestDistance, distance, currentNode2, distance2, lineRenderer);
                 if (drawspeed == 0) yield return null;
-                else if (stopwatch2.ElapsedMilliseconds > drawspeed)
+                else if (stopwatch2.ElapsedTicks > drawspeed)
                 {
-                    stopwatch2.Restart();
                     yield return null;
+                    stopwatch2.Restart();
                 }
             }
         }

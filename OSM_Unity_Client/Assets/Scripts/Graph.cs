@@ -34,51 +34,66 @@ public class Node
 
 public class Edge
 {
-    public long node {get; set;}
-    public int cost {get; set;}
+    public long node { get; set; }
+    public int cost { get; set; }
 }
 
 public class Graph
 {
-    public Dictionary<long,Edge[]> graph {get; set;}
+    public Dictionary<long, Edge[]> graph { get; set; }
     public Dictionary<long, Edge[]> bi_graph { get; set; }
-    public Dictionary<long, (float[],double[])> nodes {get; set;}
-
+    public Dictionary<long, (float[], double[])> nodes { get; set; }
+    public List<Landmark> landmarks { get; set; }
     public Edge[] GetNeighbors(long node)
+    {
+        if (graph.ContainsKey(node))
+        {
+            return graph[node];
+        }
+        else
+        {
+            // Log a warning message to help with debugging
+            Debug.LogWarning("Node " + node + " does not exist in the graph");
+            return new Edge[0];
+        }
+    }
+}
+
+[MessagePackObject]
+public class GraphReadFormat
 {
-    if (graph.ContainsKey(node))
-    {
-        return graph[node];
-    }
-    else
-    {
-        // Log a warning message to help with debugging
-        Debug.LogWarning("Node " + node + " does not exist in the graph");
-        return new Edge[0];
-    }
-}
-}
-
-[MessagePackObject]
-public class GraphReadFormat {
     [Key(0)]
-    public NodeReadFormat[] nodes {get; set;}
-}
-
-[MessagePackObject]
-public class NodeReadFormat {
-    [Key(0)]
-    public long id {get; set;}
+    public NodeReadFormat[] nodes { get; set; }
     [Key(1)]
-    public float x {get; set;}
+    public List<Landmark> landmarks { get; set; }
+}
+
+[MessagePackObject]
+public class Landmark{
+    [Key(0)]
+    public long node_id { get; set; }
+    [Key(1)]
+    public Dictionary<long, long> distances { get; set; }
     [Key(2)]
-    public float y {get; set;}
+    public Dictionary<long, long> bi_distances { get; set; }
+
+}
+
+[MessagePackObject]
+public class NodeReadFormat
+{
+    [Key(0)]
+    public long id { get; set; }
+    [Key(1)]
+    public float x { get; set; }
+    [Key(2)]
+    public float y { get; set; }
     [Key(3)]
     public double lat { get; set; }
     [Key(4)]
     public double lon { get; set; }
     [Key(5)]
-    public (long, int)[] neighbours {get; set;}
+    public (long, int)[] neighbours { get; set; }
     [Key(6)]
     public (long, int)[] bi_neighbours { get; set; }
 }

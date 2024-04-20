@@ -36,8 +36,16 @@ pub struct Preprocessor {
 }
 
 #[derive(Serialize)]
-pub struct GraphWriteFormat {
+pub struct FullGraph {
     pub nodes: Vec<NodeWriteFormat>,
+    pub landmarks: Vec<Landmark>,
+}
+
+#[derive(Serialize, Clone)]
+pub struct Landmark {
+    pub node_id: NodeId,
+    pub distances: HashMap<NodeId, u32>,
+    pub bi_distances: HashMap<NodeId, u32>
 }
 
 #[derive(Serialize)]
@@ -89,36 +97,48 @@ impl Preprocessor {
             && !tags.contains_key("area")
     }
 
-    pub fn build_graph(&mut self) -> HashMap<NodeId, (Vec<Edge>, Vec<Edge>)> {
+    pub fn build_graph(
+        &mut self,
+    ) -> (
+        HashMap<NodeId, Vec<Edge>>,
+        HashMap<NodeId, Vec<Edge>>,
+        Vec<Landmark>,
+    ) {
         let time = std::time::Instant::now();
         let mut graph = Graph::build_graph(&self.nodes, &self.roads);
         self.roads = Vec::new(); // Clear the roads since we don't need them anymore
         println!("Time to build graph: {:?}", time.elapsed());
         let time = std::time::Instant::now();
         Graph::minimize_graph(&mut graph, true);
-        let full_graph = Graph::add_bidirectional_edges(&mut graph);
         println!("Time to minimize graph: {:?}", time.elapsed());
-        full_graph
+        
+        let bi_graph = Graph::get_bidirectional_graph(&mut graph);
+        //let landmark_nodes = Graph::get_random_nodes(&graph, 16);
+        //let landmarks = Graph::add_landmarks(&graph,&bi_graph, landmark_nodes);
+        let landmarks = Graph::farthest_nodes(&graph, &bi_graph, 16);
+
+        (graph, bi_graph, landmarks.to_vec())
     }
 
-    pub fn write_graph(
+    pub fn build_full_graph(
         &self,
-        projected_points: HashMap<NodeId, (f32, f32)>,
-        graph: HashMap<NodeId, (Vec<Edge>, Vec<Edge>)>,
-        filename: &str,
-    ) {
-        /*
-           Format:
-           nodeId x y neighbour cost neighbour cost \n
-        */
-        let filename = "../OSM_Unity_Client/Assets/Maps/".to_owned() + filename;
-        let result = GraphWriteFormat {
+        graph: &HashMap<NodeId, Vec<Edge>>,
+        bi_graph: &HashMap<NodeId, Vec<Edge>>,
+        landmarks: Vec<Landmark>,
+        projected_points: &HashMap<NodeId, (f32, f32)>,
+    ) -> FullGraph {
+        FullGraph {
             nodes: graph
                 .iter()
-                .map(|(node_id, (edges, bi_edges))| {
+                .map(|(node_id, edges)| {
                     let (x, y) = projected_points.get(node_id).unwrap();
                     let neighbours = edges.iter().map(|edge| (edge.node, edge.cost)).collect();
-                    let bi_neighbours = bi_edges.iter().map(|edge| (edge.node, edge.cost)).collect();
+                    let bi_neighbours = bi_graph
+                        .get(node_id)
+                        .unwrap()
+                        .iter()
+                        .map(|edge| (edge.node, edge.cost))
+                        .collect();
 
                     let node = self.nodes.get(node_id).unwrap();
                     NodeWriteFormat {
@@ -128,13 +148,25 @@ impl Preprocessor {
                         lat: node.coord.lat,
                         lon: node.coord.lon,
                         neighbours,
-                        bi_neighbours
+                        bi_neighbours,
                     }
                 })
                 .collect(),
-        };
+            landmarks,
+        }
+    }
+
+    pub fn write_graph(full_graph: FullGraph, filename: &str) {
+        /*
+           Format:
+           nodeId x y neighbour cost neighbour cost \n
+        */
+        let filename = "../OSM_Unity_Client/Assets/Maps/".to_owned() + filename;
+
         let mut buf = Vec::new();
-        result.serialize(&mut Serializer::new(&mut buf)).unwrap();
+        full_graph
+            .serialize(&mut Serializer::new(&mut buf))
+            .unwrap();
         std::fs::write(filename, buf).unwrap();
     }
 
