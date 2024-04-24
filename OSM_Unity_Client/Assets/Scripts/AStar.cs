@@ -48,7 +48,7 @@ public class AStar : IPathfindingAlgorithm
         openSet.Add(start);
     }
 
-    public void FindShortestPath(long start, long end)
+    public PathResult FindShortestPath(long start, long end)
     {
         InitializeSearch(start, end);
         int nodesVisited = 0;
@@ -57,11 +57,13 @@ public class AStar : IPathfindingAlgorithm
         while (openList.Count > 0)
         {
             long current = DequeueAndUpdateSets(openList, openSet);
-            if (ProcessCurrentNode(current, start, end, ref nodesVisited, stopwatch)) return;
+            if (ProcessCurrentNode(current, start, end, ref nodesVisited, stopwatch)){
+                return new PathResult(start, end, gScore[end], stopwatch.ElapsedMilliseconds, nodesVisited, MapController.ReconstructPath(parent, start, end));
+            }
             UpdateNeighbors(current, end);
             UpdateLandmarks(nodesVisited, current, end);
-
         }
+        return null;
     }
 
     private void UpdateLandmarks(int nodesVisited, long start, long end, bool visual = false)
@@ -93,6 +95,8 @@ public class AStar : IPathfindingAlgorithm
             if (ProcessCurrentNode(current, start, end, ref nodesVisited, stopwatch))
             {
                 lineRenderer.ClearDiscoveryPath();
+                var result = new PathResult(start, end, gScore[end], stopwatch.ElapsedMilliseconds, nodesVisited, MapController.ReconstructPath(parent, start, end));
+                result.DisplayAndDrawPath(graph);
                 yield break;
             }
             UpdateNeighborsWithVisual(current, end, lineRenderer);
@@ -119,17 +123,11 @@ public class AStar : IPathfindingAlgorithm
         if (current == end)
         {
             stopwatch.Stop();
-            DisplayPathFound(start, end, gScore[current], stopwatch.ElapsedMilliseconds, nodesVisited);
             return true;
         }
         return false;
     }
 
-    private void DisplayPathFound(long start, long end, float cost, long elapsedMs, int nodesVisited)
-    {
-        MapController.DisplayStatistics(start, end, cost, elapsedMs, nodesVisited);
-        GameObject.Find("Map").GetComponent<MapController>().DrawPath(graph.nodes, MapController.ReconstructPath(parent, start, end));
-    }
 
     private void UpdateNeighbors(long current, long end)
     {

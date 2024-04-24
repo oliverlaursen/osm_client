@@ -37,9 +37,10 @@ public class Dijkstra : IPathfindingAlgorithm
         priorityQueueNodes[start] = startNode;
         queueSet.Add(start);
         distances[start] = 0;
+        nodesVisited = 0;
     }
 
-    public void FindShortestPath(long start, long end)
+    public PathResult FindShortestPath(long start, long end)
     {
         InitializeDijkstra(start, graph);
         var stopwatch = System.Diagnostics.Stopwatch.StartNew();
@@ -54,16 +55,14 @@ public class Dijkstra : IPathfindingAlgorithm
             if (currentNode == end)
             {
                 stopwatch.Stop();
-                MapController.DisplayStatistics(start, end, distance, stopwatch.ElapsedMilliseconds, nodesVisited);
-                GameObject.Find("Map").GetComponent<MapController>().DrawPath(graph.nodes, MapController.ReconstructPath(previous, start, end));
-                return;
+                return new PathResult(start, end, distance, stopwatch.ElapsedMilliseconds, nodesVisited, MapController.ReconstructPath(previous, start, end));
             }
 
             var neighbors = graph.graph[currentNode];
             UpdateNeighbors(currentNode, distance, neighbors);
         }
 
-        return;
+        return null;
     }
 
     public IEnumerator FindShortestPathWithVisual(long start, long end, int drawspeed)
@@ -72,7 +71,6 @@ public class Dijkstra : IPathfindingAlgorithm
         var stopwatch = System.Diagnostics.Stopwatch.StartNew();
         var stopwatch2 = System.Diagnostics.Stopwatch.StartNew();
         var lineRenderer = Camera.main.GetComponent<GLLineRenderer>(); // Ensure Camera has GLLineRenderer component
-        int nodesVisited = 0;
 
         while (queue.Count > 0)
         {
@@ -84,9 +82,9 @@ public class Dijkstra : IPathfindingAlgorithm
             if (currentNode == end)
             {
                 stopwatch.Stop();
-                MapController.DisplayStatistics(start, end, distance, stopwatch.ElapsedMilliseconds, nodesVisited);
                 lineRenderer.ClearDiscoveryPath();
-                GameObject.Find("Map").GetComponent<MapController>().DrawPath(graph.nodes, MapController.ReconstructPath(previous, start, end));
+                var result = new PathResult(start, end, distance, stopwatch.ElapsedMilliseconds, nodesVisited, MapController.ReconstructPath(previous, start, end));
+                result.DisplayAndDrawPath(graph);
                 yield break;
             }
 

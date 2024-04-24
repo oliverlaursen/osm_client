@@ -12,7 +12,7 @@ public class BiAStar : IPathfindingAlgorithm
         this.graph = graph;
     }
 
-    public void FindShortestPath(long start, long end)
+    public PathResult FindShortestPath(long start, long end)
     {
         var astar1 = new AStar(graph);
         var astar2 = new AStar(graph);
@@ -27,7 +27,7 @@ public class BiAStar : IPathfindingAlgorithm
         while(openList.Count > 0)
         {
             long current = AStar.DequeueAndUpdateSets(openList, openSet);
-            if (astar1.ProcessCurrentNode(current, start, end, ref nodesVisited, stopwatch)) return;
+            if (astar1.ProcessCurrentNode(current, start, end, ref nodesVisited, stopwatch)) return null;
             
         }
 

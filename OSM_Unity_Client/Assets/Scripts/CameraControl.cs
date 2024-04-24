@@ -165,7 +165,8 @@ public class CameraControl : MonoBehaviour
         }
         else
         {
-            chosen_algo.FindShortestPath(nodeA, nodeB);
+            var result = chosen_algo.FindShortestPath(nodeA, nodeB);
+            result.DisplayAndDrawPath(graph);
         }
     }
 

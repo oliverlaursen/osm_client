@@ -19,14 +19,17 @@ public class BiDijkstra : IPathfindingAlgorithm
         dijkstra2 = new Dijkstra(graph);
     }
 
-    public void FindShortestPath(long start, long end)
+    public void InitializeSearch(){
+        
+    }
+
+    public PathResult FindShortestPath(long start, long end)
     {
         var stopwatch = System.Diagnostics.Stopwatch.StartNew();
         dijkstra1.InitializeDijkstra(start, graph);
         dijkstra2.InitializeDijkstra(end, graph);
 
         double shortestDistance = double.PositiveInfinity;
-        int nodesVisited = 0;
 
         while (dijkstra1.queue.Count > 0 && dijkstra2.queue.Count > 0)
         {
@@ -39,13 +42,13 @@ public class BiDijkstra : IPathfindingAlgorithm
             if (distance + distance2 >= shortestDistance)
             {
                 stopwatch.Stop();
-                MapController.DisplayStatistics(start, end, (float)shortestDistance, stopwatch.ElapsedMilliseconds, nodesVisited);
                 var allPrev = MergePrevious(dijkstra1.previous, dijkstra2.previous, meetingNode);
-                GameObject.Find("Map").GetComponent<MapController>().DrawPath(graph.nodes, MapController.ReconstructPath(allPrev, start, end));
-                return;
+                int nodesVisited = dijkstra1.nodesVisited + dijkstra2.nodesVisited;
+                return new PathResult(start, end, (float)shortestDistance, stopwatch.ElapsedMilliseconds, nodesVisited, MapController.ReconstructPath(allPrev, start, end));
             }
             UpdateBiNeighbors(currentNode, ref shortestDistance, distance, currentNode2, distance2, null);
         }
+        return null;
     }
 
     public void UpdateBiNeighbors(long currentNode, ref double shortestDistance, float distance, long currentNode2, float distance2, GLLineRenderer lineRenderer)
@@ -97,12 +100,10 @@ public class BiDijkstra : IPathfindingAlgorithm
         var stopwatch2 = System.Diagnostics.Stopwatch.StartNew();
 
         double shortestDistance = double.PositiveInfinity;
-        int nodesVisited = 0;
         dijkstra1.InitializeDijkstra(start, graph);
         dijkstra2.InitializeDijkstra(end, graph);
         var lineRenderer = Camera.main.GetComponent<GLLineRenderer>();
 
-        long meetingNode = -1;
 
         while (dijkstra1.queue.Count > 0 && dijkstra2.queue.Count > 0)
         {
@@ -115,10 +116,11 @@ public class BiDijkstra : IPathfindingAlgorithm
             if (distance + distance2 >= shortestDistance)
             {
                 stopwatch.Stop();
-                MapController.DisplayStatistics(start, end, (float)shortestDistance, stopwatch.ElapsedMilliseconds, nodesVisited);
                 var allPrev = MergePrevious(dijkstra1.previous, dijkstra2.previous, meetingNode);
                 lineRenderer.ClearDiscoveryPath();
-                GameObject.Find("Map").GetComponent<MapController>().DrawPath(graph.nodes, MapController.ReconstructPath(allPrev, start, end));
+                int nodesVisited = dijkstra1.nodesVisited + dijkstra2. nodesVisited;
+                var result = new PathResult(start, end, (float)shortestDistance, stopwatch.ElapsedMilliseconds, nodesVisited, MapController.ReconstructPath(allPrev, start, end));
+                result.DisplayAndDrawPath(graph);
                 yield break;
             }
             else

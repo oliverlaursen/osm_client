@@ -32,14 +32,14 @@ public class Landmarks : IPathfindingAlgorithm
         return bestLandmarks;
     }
 
-    public void FindShortestPath(long start, long end)
+    public PathResult FindShortestPath(long start, long end)
     {
         // First select the 3 best landmark (landmarks with highest lower bound in triangle inequality)
         var bestLandmarks = FindBestLandmark(graph.landmarks, start, end, 3);
         MarkLandmarks(graph.landmarks.ToArray(), Color.blue);
         MarkLandmarks(bestLandmarks.Select(x => x.Item1).ToArray(), Color.yellow);
         astar.ChangeHeuristic(new MultLandmarkHeuristic(bestLandmarks.Select(x => new LandmarkHeuristic(x.Item1, x.Item2)).ToArray()));
-        astar.FindShortestPath(start, end);
+        return astar.FindShortestPath(start, end);
     }
 
     public static void MarkLandmark(Landmark landmark, Color color)
