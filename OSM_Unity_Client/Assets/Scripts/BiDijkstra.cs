@@ -33,7 +33,6 @@ public class BiDijkstra : IPathfindingAlgorithm
 
         while (dijkstra1.queue.Count > 0 && dijkstra2.queue.Count > 0)
         {
-            var x = dijkstra1.queue.First().Priority;
             var currentNode = dijkstra1.queue.Dequeue().Id;
             var distance = dijkstra1.distances[currentNode];
             var currentNode2 = dijkstra2.queue.Dequeue().Id;
