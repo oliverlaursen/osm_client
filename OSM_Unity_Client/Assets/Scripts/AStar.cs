@@ -48,6 +48,7 @@ public class AStar : IPathfindingAlgorithm
         openSet.Add(start);
     }
 
+
     public PathResult FindShortestPath(long start, long end)
     {
         InitializeSearch(start, end);
@@ -69,7 +70,7 @@ public class AStar : IPathfindingAlgorithm
     private void UpdateLandmarks(int nodesVisited, long start, long end, bool visual = false)
     {
         if (landmarks == null) return;
-        if (nodesVisited % 100 == 0)
+        if (nodesVisited % 300 == 0)
         {
             var bestLandmarks = Landmarks.FindBestLandmark(landmarks, start, end, 3);
             if (visual)

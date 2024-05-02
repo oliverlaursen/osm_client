@@ -279,6 +279,7 @@ impl Graph {
             edges.sort_by(|a, b| a.node.0.cmp(&b.node.0));
             edges.dedup_by(|a, b| a.node == b.node);
         }
+        
     }
 
     fn update_edges_and_remove_node(
@@ -435,7 +436,7 @@ impl Graph {
         let mut heap = BinaryHeap::new();
 
         // Initialize the distance of the start node to 0 and add it to the priority queue
-        distances.insert(start, 0.0 as u32);
+        distances.insert(start, 0.0 as u32); 
         heap.push(Edge {
             cost: 0.0 as u32,
             node: start,
