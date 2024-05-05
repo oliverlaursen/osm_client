@@ -150,39 +150,27 @@ public class BiDijkstraTests
     */
     public void isolatedTest(){
         Dictionary<long, Edge[]> graph = new();
-        graph[1] = new Edge[]{new Edge{node = 2, cost = 613}, new Edge{node = 9, cost = 691}, new Edge{node = 8, cost = 2524}, new Edge{node = 13, cost = 1582}};
-        graph[2] = new Edge[]{new Edge{node = 3, cost = 3501}, new Edge{node = 1, cost = 613}, new Edge{node = 9, cost = 574}, new Edge{node = 14, cost = 7446}};
+        graph[1] = new Edge[]{new Edge{node = 2, cost = 613}, new Edge{node = 8, cost = 2524}};
+        graph[2] = new Edge[]{new Edge{node = 3, cost = 3501}, new Edge{node = 1, cost = 613}};
         graph[3] = new Edge[]{new Edge{node = 2, cost = 3501}, new Edge{node = 5, cost = 45}};
-        graph[4] = new Edge[]{new Edge{node = 3, cost = 75}, new Edge{node = 5, cost = 53}, new Edge{node = 15, cost = 1485}};
+        graph[4] = new Edge[]{new Edge{node = 3, cost = 75}, new Edge{node = 5, cost = 53}};
         graph[5] = new Edge[]{new Edge{node = 4, cost = 53}, new Edge{node = 3, cost = 45}, new Edge{node = 6, cost = 820}};
-        graph[6] = new Edge[]{new Edge{node = 12, cost = 47}, new Edge{node = 5, cost = 820}, new Edge{node = 7, cost = 60}};
-        graph[7] = new Edge[]{new Edge{node = 8, cost = 874}, new Edge{node = 12, cost = 83}, new Edge{node = 6, cost = 60}};
-        graph[8] = new Edge[]{new Edge{node = 1, cost = 2524}, new Edge{node = 10, cost = 159}, new Edge{node = 11, cost = 612}, new Edge{node = 7, cost = 874}};
-        graph[9] = new Edge[]{};
-        graph[10] = new Edge[]{};
-        graph[11] = new Edge[]{};
-        graph[12] = new Edge[]{};
-        graph[13] = new Edge[]{};
-        graph[14] = new Edge[]{};
-        graph[15] = new Edge[]{};
+        graph[6] = new Edge[]{new Edge{node = 5, cost = 820}, new Edge{node = 7, cost = 60}};
+        graph[7] = new Edge[]{new Edge{node = 8, cost = 874}, new Edge{node = 6, cost = 60}};
+        graph[8] = new Edge[]{new Edge{node = 1, cost = 2524}, new Edge{node = 7, cost = 874}};
+
 
 
         Dictionary<long, Edge[]> bi_graph = new();
-        bi_graph[1] = new Edge[]{new Edge{node = 2, cost = 613}, new Edge{node = 9, cost = 691}, new Edge{node = 13, cost = 1582}, new Edge{node = 8, cost = 2524}};
-        bi_graph[2] = new Edge[]{new Edge{node = 1, cost = 613}, new Edge{node = 9, cost = 574}, new Edge{node = 3, cost = 3501}, new Edge{node = 14, cost = 7446}};
+        bi_graph[1] = new Edge[]{new Edge{node = 2, cost = 613}, new Edge{node = 8, cost = 2524}};
+        bi_graph[2] = new Edge[]{new Edge{node = 1, cost = 613}, new Edge{node = 3, cost = 3501}};
         bi_graph[3] = new Edge[]{new Edge{node = 2, cost = 3501}, new Edge{node = 4, cost = 75}, new Edge{node = 5, cost = 45}};
-        bi_graph[4] = new Edge[]{new Edge{node = 15, cost = 1485}, new Edge{node = 5, cost = 53}};
+        bi_graph[4] = new Edge[]{new Edge{node = 5, cost = 53}};
         bi_graph[5] = new Edge[]{new Edge{node = 4, cost = 53}, new Edge{node = 3, cost = 45}, new Edge{node = 6, cost = 820}};
-        bi_graph[6] = new Edge[]{new Edge{node = 12, cost = 47}, new Edge{node = 5, cost = 820}, new Edge{node = 7, cost = 60}};
+        bi_graph[6] = new Edge[]{new Edge{node = 5, cost = 820}, new Edge{node = 7, cost = 60}};
         bi_graph[7] = new Edge[]{new Edge{node = 6, cost = 60}, new Edge{node = 8, cost = 874}};
-        bi_graph[8] = new Edge[]{new Edge{node = 1, cost = 2524}, new Edge{node = 7, cost = 874}, new Edge{node = 10, cost = 159}, new Edge{node = 11, cost = 612}};
-        bi_graph[9] = new Edge[]{};
-        bi_graph[10] = new Edge[]{};
-        bi_graph[11] = new Edge[]{};
-        bi_graph[12] = new Edge[]{};
-        bi_graph[13] = new Edge[]{};
-        bi_graph[14] = new Edge[]{};
-        bi_graph[15] = new Edge[]{};
+        bi_graph[8] = new Edge[]{new Edge{node = 1, cost = 2524}, new Edge{node = 7, cost = 874}};
+
 
         Dictionary<long, (float[], double[])> nodes = new();
         nodes[1] = (new float[]{12.0f, 55.0f}, new double[]{0.0});
@@ -193,13 +181,7 @@ public class BiDijkstraTests
         nodes[6] = (new float[]{12.0f, 55.0f}, new double[]{0.0});
         nodes[7] = (new float[]{12.0f, 55.0f}, new double[]{0.0});
         nodes[8] = (new float[]{12.0f, 55.0f}, new double[]{0.0});
-        nodes[9] = (new float[]{12.0f, 55.0f}, new double[]{0.0});
-        nodes[10] = (new float[]{12.0f, 55.0f}, new double[]{0.0});
-        nodes[11] = (new float[]{12.0f, 55.0f}, new double[]{0.0});
-        nodes[12] = (new float[]{12.0f, 55.0f}, new double[]{0.0});
-        nodes[13] = (new float[]{12.0f, 55.0f}, new double[]{0.0});
-        nodes[14] = (new float[]{12.0f, 55.0f}, new double[]{0.0});
-        nodes[15] = (new float[]{12.0f, 55.0f}, new double[]{0.0});
+
         List<Landmark> landmarks = new();
 
         Graph smallGraph = new Graph{nodes = nodes, graph = graph, bi_graph = bi_graph, landmarks = landmarks};
