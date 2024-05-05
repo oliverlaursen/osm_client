@@ -14,31 +14,16 @@ impl Graph {
     pub fn get_bidirectional_graph(
         graph: &HashMap<NodeId, Vec<Edge>>,
     ) -> HashMap<NodeId, Vec<Edge>> {
-        let nodes_pointing_to = Graph::find_nodes_pointing_to_node(graph);
-        let bidirectional_graph = nodes_pointing_to
-            .iter()
-            .map(|(to, from)| {
-                (
-                    *to,
-                    from.iter()
-                        .map(|from| {
-                            Edge::new(
-                                *from,
-                                graph
-                                    .get(from)
-                                    .unwrap()
-                                    .iter()
-                                    .find(|x| x.node == *to)
-                                    .unwrap()
-                                    .cost,
-                            )
-                        })
-                        .collect(),
-                )
-            })
-            .collect::<HashMap<NodeId, Vec<Edge>>>();
-
-        bidirectional_graph
+        let mut bi_graph: HashMap<NodeId, Vec<Edge>> = HashMap::new();
+        for (node, edges) in graph.iter() {
+            for edge in edges {
+                bi_graph
+                    .entry(edge.node)
+                    .or_insert_with(Vec::new)
+                    .push(Edge::new(*node, edge.cost));
+            }
+        }
+        bi_graph
     }
 
     pub fn find_intermediate_nodes(
