@@ -63,7 +63,7 @@ public class BiDijkstra : MonoBehaviour, IPathfindingAlgorithm
         return new PathResult(start, end, -1, stopwatch.ElapsedMilliseconds, forwardDijkstra.nodesVisited + backwardDijkstra.nodesVisited, new long[] { });
     }
 
-    private bool ProcessQueue(Dijkstra activeDijkstra, Dijkstra otherDijkstra, ref long meetingNode, ref float minDistance, bool isForward)
+    private bool ProcessQueue(Dijkstra activeDijkstra, Dijkstra otherDijkstra, ref long meetingNode, ref float minDistance, bool isForward, GLLineRenderer lineRenderer = null)
     {
         // Dequeue the closest node
         var currentNode = activeDijkstra.DequeueAndUpdateSets();
@@ -92,6 +92,12 @@ public class BiDijkstra : MonoBehaviour, IPathfindingAlgorithm
                     meetingNode = neighbor;
                 }
             }
+            if (lineRenderer != null)
+                {
+                    var startCoord = graph.nodes[currentNode];
+                    var endCoord = graph.nodes[neighbor];
+                    lineRenderer.AddDiscoveryPath(new List<Vector3> { new(startCoord.Item1[0], startCoord.Item1[1], 0), new(endCoord.Item1[0], endCoord.Item1[1], 0) });
+                }
         }
 
         return false;
@@ -100,7 +106,50 @@ public class BiDijkstra : MonoBehaviour, IPathfindingAlgorithm
 
     public IEnumerator FindShortestPathWithVisual(long start, long end, int drawspeed)
     {
-        throw new NotImplementedException();
+        startNode = start;
+        endNode = end;
+        Initialize(start, end, graph);
+        var lineRenderer = Camera.main.GetComponent<GLLineRenderer>(); // Ensure Camera has GLLineRenderer component
+        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+        var stopwatch2 = System.Diagnostics.Stopwatch.StartNew();
+
+        // Initialize both searches
+        forwardDijkstra.InitializeSearch(start, graph);
+        backwardDijkstra.InitializeSearch(end, graph);
+
+        while (forwardDijkstra.queue.Count > 0 && backwardDijkstra.queue.Count > 0)
+        {
+            // Process forward direction
+            if (ProcessQueue(forwardDijkstra, backwardDijkstra, ref meetingNode, ref minDistance, true, lineRenderer))
+            {
+                stopwatch.Stop();
+                lineRenderer.ClearDiscoveryPath();
+                var path = MergePrevious(forwardDijkstra.previous, backwardDijkstra.previous, meetingNode);
+                var result = new PathResult(start, end, minDistance, stopwatch.ElapsedMilliseconds, forwardDijkstra.nodesVisited + backwardDijkstra.nodesVisited, MapController.ReconstructPath(path, start, end));
+                result.DisplayAndDrawPath(graph);
+                yield break;
+            }
+
+            // Process backward direction
+            if (ProcessQueue(backwardDijkstra, forwardDijkstra, ref meetingNode, ref minDistance, false, lineRenderer))
+            {
+                stopwatch.Stop();
+                lineRenderer.ClearDiscoveryPath();
+                var path = MergePrevious(forwardDijkstra.previous, backwardDijkstra.previous, meetingNode);
+                var result = new PathResult(start, end, minDistance, stopwatch.ElapsedMilliseconds, forwardDijkstra.nodesVisited + backwardDijkstra.nodesVisited, MapController.ReconstructPath(path, start, end));
+                result.DisplayAndDrawPath(graph);
+                yield break;
+            }
+            if (drawspeed == 0) yield return null;
+                else if (stopwatch2.ElapsedTicks > drawspeed)
+                {
+                    yield return null;
+                    stopwatch2.Restart();
+                }
+        }
+
+        stopwatch.Stop();
+        yield return null;
     }
 
     private Dictionary<long, long> MergePrevious(Dictionary<long, long> previous, Dictionary<long, long> previous2, long meetingPoint)
