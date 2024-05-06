@@ -48,4 +48,19 @@ public class AstarTests
             Assert.AreEqual(dijkstraPathResult.path, astarPathResult.path);
         }
     }
+
+    [Test]
+    public void GivenRouteAstar()
+    {
+        var dachGraph = MapController.DeserializeGraph("Assets/Maps/dach.graph");
+        long startNode = 192296425;
+        long endNode = 1456141185;
+
+        AStar astar = new AStar(dachGraph);
+        Dijkstra dijkstra = new Dijkstra(dachGraph);
+        var astarPathResult = astar.FindShortestPath(startNode, endNode);
+        var dijkstraPathResult = dijkstra.FindShortestPath(startNode, endNode);
+        Assert.AreEqual(dijkstraPathResult.path, astarPathResult.path);
+        Assert.AreEqual(dijkstraPathResult.distance, astarPathResult.distance);
+    }
 }

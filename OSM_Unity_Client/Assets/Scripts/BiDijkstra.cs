@@ -64,7 +64,7 @@ public class BiDijkstra : MonoBehaviour, IPathfindingAlgorithm
         }
 
         stopwatch.Stop();
-        return new PathResult(start, end, -1, stopwatch.ElapsedMilliseconds, forwardDijkstra.nodesVisited + backwardDijkstra.nodesVisited, new long[] { });
+        return null;
     }
 
     private bool ProcessQueue(Dijkstra activeDijkstra, Dijkstra otherDijkstra, ref long meetingNode, ref float minDistance, bool isForward, GLLineRenderer lineRenderer = null)
