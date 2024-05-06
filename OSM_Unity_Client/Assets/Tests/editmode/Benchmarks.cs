@@ -70,7 +70,7 @@ public class Benchmarks
         csv.AppendLine("StartNode,EndNode,Distance,Time,Nodes visited");
         foreach (var result in results)
         {
-            csv.AppendLine(result.start + "," + result.end + "," + result.distance + "," + result.miliseconds + "," + result.nodesVisited);
+            csv.AppendLine(result.start + "," + result.end + "," + result.distance.ToString().Replace(",",".") + "," + result.miliseconds + "," + result.nodesVisited);
         }
         System.IO.File.WriteAllText(filePath, csv.ToString());
         return results;

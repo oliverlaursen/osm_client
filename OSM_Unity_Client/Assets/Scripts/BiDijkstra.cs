@@ -55,20 +55,11 @@ public class BiDijkstra : MonoBehaviour, IPathfindingAlgorithm
             }
 
             // Process forward direction
-            if (ProcessQueue(forwardDijkstra, backwardDijkstra, ref meetingNode, ref minDistance, true))
-            {
-                stopwatch.Stop();
-                var path = MergePrevious(forwardDijkstra.previous, backwardDijkstra.previous, meetingNode);
-                return new PathResult(start, end, minDistance, stopwatch.ElapsedMilliseconds, forwardDijkstra.nodesVisited + backwardDijkstra.nodesVisited, MapController.ReconstructPath(path, start, end));
-            }
-
+            ProcessQueue(forwardDijkstra, backwardDijkstra, ref meetingNode, ref minDistance, true);
+            
             // Process backward direction
-            if (ProcessQueue(backwardDijkstra, forwardDijkstra, ref meetingNode, ref minDistance, false))
-            {
-                stopwatch.Stop();
-                var path = MergePrevious(forwardDijkstra.previous, backwardDijkstra.previous, meetingNode);
-                return new PathResult(start, end, minDistance, stopwatch.ElapsedMilliseconds, forwardDijkstra.nodesVisited + backwardDijkstra.nodesVisited, MapController.ReconstructPath(path, start, end));
-            }
+            ProcessQueue(backwardDijkstra, forwardDijkstra, ref meetingNode, ref minDistance, false);
+            
         }
 
         stopwatch.Stop();
