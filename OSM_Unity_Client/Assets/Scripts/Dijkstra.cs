@@ -10,7 +10,7 @@ public class Dijkstra : IPathfindingAlgorithm
     public Graph graph;
     public FastPriorityQueue<PriorityQueueNode> queue;
     private Dictionary<long, PriorityQueueNode> priorityQueueNodes;
-    private HashSet<long> queueSet;
+    public HashSet<long> queueSet;
     public Dictionary<long, float> distances;
     public Dictionary<long, long> previous;
     public HashSet<long> visited;
@@ -23,7 +23,7 @@ public class Dijkstra : IPathfindingAlgorithm
 
     }
 
-    public void InitializeDijkstra(long start, Graph graph)
+    public void InitializeSearch(long start, Graph graph)
     {
         queue = new FastPriorityQueue<PriorityQueueNode>(graph.nodes.Count);
         priorityQueueNodes = new Dictionary<long, PriorityQueueNode>();
@@ -40,16 +40,22 @@ public class Dijkstra : IPathfindingAlgorithm
         nodesVisited = 0;
     }
 
+    public long DequeueAndUpdateSets()
+    {
+        var node = queue.Dequeue().Id;
+        queueSet.Remove(node);
+        return node;
+    }
+
     public PathResult FindShortestPath(long start, long end)
     {
-        InitializeDijkstra(start, graph);
+        InitializeSearch(start, graph);
         var stopwatch = System.Diagnostics.Stopwatch.StartNew();
 
         while (queue.Count > 0)
         {
-            var currentNode = queue.Dequeue().Id;
+            var currentNode = DequeueAndUpdateSets();
             var distance = distances[currentNode];
-            queueSet.Remove(currentNode);
             if (!visited.Add(currentNode)) continue;
 
             if (currentNode == end)
@@ -67,7 +73,7 @@ public class Dijkstra : IPathfindingAlgorithm
 
     public IEnumerator FindShortestPathWithVisual(long start, long end, int drawspeed)
     {
-        InitializeDijkstra(start, graph);
+        InitializeSearch(start, graph);
         var stopwatch = System.Diagnostics.Stopwatch.StartNew();
         var stopwatch2 = System.Diagnostics.Stopwatch.StartNew();
         var lineRenderer = Camera.main.GetComponent<GLLineRenderer>(); // Ensure Camera has GLLineRenderer component

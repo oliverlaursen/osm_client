@@ -142,6 +142,16 @@ public class CameraControl : MonoBehaviour
                 closestNode = node.Key;
             }
         }
+        Debug.Log("Edges for " + closestNode + ":");
+        for (int i = 0; i < graph.graph[closestNode].Length; i++)
+        {
+            Debug.Log("Node: " + graph.graph[closestNode][i].node + " Cost: " + graph.graph[closestNode][i].cost);
+        }
+        Debug.Log("Bi-Edges for " + closestNode + ": ");
+        for (int i = 0; i < graph.bi_graph[closestNode].Length; i++)
+        {
+            Debug.Log("Node: " + graph.bi_graph[closestNode][i].node + " Cost: " + graph.bi_graph[closestNode][i].cost);
+        }
         return closestNode;
     }
 
