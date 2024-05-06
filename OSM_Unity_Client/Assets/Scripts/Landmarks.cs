@@ -9,11 +9,13 @@ public class Landmarks : IPathfindingAlgorithm
 {
     private Graph graph;
     private AStar astar;
+    private bool showLandmarks;
 
-    public Landmarks(Graph graph)
+    public Landmarks(Graph graph, bool showLandmarks = true)
     {
         this.graph = graph;
         this.astar = new AStar(graph, graph.landmarks);
+        this.showLandmarks = showLandmarks;
     }
 
     public static (Landmark, bool)[] FindBestLandmark(IEnumerable<Landmark> landmarks, long start, long end, int n)
@@ -36,8 +38,11 @@ public class Landmarks : IPathfindingAlgorithm
     {
         // First select the 3 best landmark (landmarks with highest lower bound in triangle inequality)
         var bestLandmarks = FindBestLandmark(graph.landmarks, start, end, 3);
-        MarkLandmarks(graph.landmarks.ToArray(), Color.blue);
-        MarkLandmarks(bestLandmarks.Select(x => x.Item1).ToArray(), Color.yellow);
+        if (showLandmarks)
+        {
+            MarkLandmarks(graph.landmarks.ToArray(), Color.blue);
+            MarkLandmarks(bestLandmarks.Select(x => x.Item1).ToArray(), Color.yellow);
+        }
         astar.ChangeHeuristic(new MultLandmarkHeuristic(bestLandmarks.Select(x => new LandmarkHeuristic(x.Item1, x.Item2)).ToArray()));
         return astar.FindShortestPath(start, end);
     }
@@ -58,8 +63,11 @@ public class Landmarks : IPathfindingAlgorithm
     public IEnumerator FindShortestPathWithVisual(long start, long end, int drawspeed)
     {
         var bestLandmarks = FindBestLandmark(graph.landmarks, start, end, 3);
-        MarkLandmarks(graph.landmarks.ToArray(), Color.blue);
-        MarkLandmarks(bestLandmarks.Select(x => x.Item1).ToArray(), Color.yellow);
+        if (showLandmarks)
+        {
+            MarkLandmarks(graph.landmarks.ToArray(), Color.blue);
+            MarkLandmarks(bestLandmarks.Select(x => x.Item1).ToArray(), Color.yellow);
+        }
         astar.ChangeHeuristic(new MultLandmarkHeuristic(bestLandmarks.Select(x => new LandmarkHeuristic(x.Item1, x.Item2)).ToArray()));
         return astar.FindShortestPathWithVisual(start, end, drawspeed);
     }
