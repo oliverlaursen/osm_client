@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 public class BiDijkstra : MonoBehaviour, IPathfindingAlgorithm
@@ -42,8 +43,15 @@ public class BiDijkstra : MonoBehaviour, IPathfindingAlgorithm
             if (topf + topr >= minDistance)
             {
                 stopwatch.Stop();
-                var path = MergePrevious(forwardDijkstra.previous, backwardDijkstra.previous, meetingNode);
-                return new PathResult(start, end, minDistance, stopwatch.ElapsedMilliseconds, forwardDijkstra.nodesVisited + backwardDijkstra.nodesVisited, MapController.ReconstructPath(path, start, end));
+                var allPrev = MergePrevious(forwardDijkstra.previous, backwardDijkstra.previous, meetingNode);
+                var path = MapController.ReconstructPath(allPrev, start, end);
+                // Recaculate distance from path
+                var distance = 0f;
+                for (int i = 0; i < path.Length - 1; i++)
+                {
+                    distance += Array.Find(graph.graph[path[i]], edge => edge.node == path[i + 1]).cost;
+                }
+                return new PathResult(start, end, distance, stopwatch.ElapsedMilliseconds, forwardDijkstra.nodesVisited + backwardDijkstra.nodesVisited, path);
             }
 
             // Process forward direction

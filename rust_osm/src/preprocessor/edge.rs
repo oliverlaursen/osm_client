@@ -1,28 +1,46 @@
 use osmpbfreader::NodeId;
 use serde::Serialize;
 use std::cmp::Ordering;
+use std::hash::{Hash, Hasher};
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Copy, Hash)]
+#[derive(Clone, Debug, Serialize, Copy)]
 pub struct Edge {
     pub node: NodeId,
-    pub cost: u32, // This could be distance, time, etc.
+    pub cost: f64,
 }
 
 impl Edge {
-    pub fn new(node: NodeId, cost: u32) -> Self {
+    pub fn new(node: NodeId, cost: f64) -> Self {
         Edge { node, cost }
     }
 }
 
 impl Ord for Edge {
     fn cmp(&self, other: &Self) -> Ordering {
-        // Notice we flip the ordering here because BinaryHeap is a max heap by default
-        other.cost.cmp(&self.cost)
+        other
+            .cost
+            .partial_cmp(&self.cost)
+            .unwrap_or(Ordering::Equal)
     }
 }
 
 impl PartialOrd for Edge {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
+        other.cost.partial_cmp(&self.cost)
+    }
+}
+
+impl PartialEq for Edge {
+    fn eq(&self, other: &Self) -> bool {
+        self.cost.to_bits() == other.cost.to_bits()
+    }
+}
+
+impl Eq for Edge {}
+
+impl Hash for Edge {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.node.hash(state);
+        self.cost.to_bits().hash(state);
     }
 }

@@ -190,6 +190,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "ordered-float"
+version = "4.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a76df7075c7d4d01fdcb46c912dd17fba5b60c78ea480b475f2b6ab6f666584e"
+dependencies = [
+ "num-traits",
+]
+
+[[package]]
 name = "osmpbfreader"
 version = "0.16.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -389,6 +398,7 @@ name = "rust_osm"
 version = "0.1.0"
 dependencies = [
  "bincode",
+ "ordered-float",
  "osmpbfreader",
  "prost-types",
  "rand",

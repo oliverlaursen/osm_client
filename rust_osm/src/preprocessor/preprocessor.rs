@@ -44,8 +44,8 @@ pub struct FullGraph {
 #[derive(Serialize, Clone)]
 pub struct Landmark {
     pub node_id: NodeId,
-    pub distances: HashMap<NodeId, u32>,
-    pub bi_distances: HashMap<NodeId, u32>
+    pub distances: HashMap<NodeId, f64>,
+    pub bi_distances: HashMap<NodeId, f64>
 }
 
 #[derive(Serialize)]
@@ -55,8 +55,8 @@ pub struct NodeWriteFormat {
     pub y: f32,
     pub lat: f64,
     pub lon: f64,
-    pub neighbours: Vec<(NodeId, u32)>,
-    pub bi_neighbours: Vec<(NodeId, u32)>,
+    pub neighbours: Vec<(NodeId, f64)>,
+    pub bi_neighbours: Vec<(NodeId, f64)>,
 }
 
 fn create_blacklist() -> HashSet<&'static str> {

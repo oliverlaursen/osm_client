@@ -35,7 +35,7 @@ public class Node
 public class Edge
 {
     public long node { get; set; }
-    public int cost { get; set; }
+    public float cost { get; set; }
 }
 
 public class Graph
@@ -73,9 +73,9 @@ public class Landmark{
     [Key(0)]
     public long node_id { get; set; }
     [Key(1)]
-    public Dictionary<long, long> distances { get; set; }
+    public Dictionary<long, float> distances { get; set; }
     [Key(2)]
-    public Dictionary<long, long> bi_distances { get; set; }
+    public Dictionary<long, float> bi_distances { get; set; }
 
 }
 
@@ -93,7 +93,7 @@ public class NodeReadFormat
     [Key(4)]
     public double lon { get; set; }
     [Key(5)]
-    public (long, int)[] neighbours { get; set; }
+    public (long, float)[] neighbours { get; set; }
     [Key(6)]
-    public (long, int)[] bi_neighbours { get; set; }
+    public (long, float)[] bi_neighbours { get; set; }
 }

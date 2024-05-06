@@ -33,12 +33,13 @@ public class BiDijkstraTests
         var denmarkGraph = MapController.DeserializeGraph("Assets/Maps/denmark.graph");
         long startNode = 280276691;
         long endNode = 896780523;
-        float expectedDistance = 324741;
 
         BiDijkstra biDijkstra = new BiDijkstra(denmarkGraph);
+        Dijkstra dijkstra = new Dijkstra(denmarkGraph);
+        var dijkstraResult = dijkstra.FindShortestPath(startNode, endNode);
         var pathResult = biDijkstra.FindShortestPath(startNode, endNode);
         var distance = pathResult.distance;
-        Assert.AreEqual(expectedDistance, distance);
+        Assert.AreEqual(dijkstraResult.distance, distance);
     }
     
     [Test]

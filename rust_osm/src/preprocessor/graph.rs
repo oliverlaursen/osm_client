@@ -7,6 +7,7 @@ use std::collections::BinaryHeap;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::hash::Hash;
+use ordered_float::OrderedFloat;
 
 pub struct Graph;
 
@@ -278,12 +279,12 @@ impl Graph {
             .unwrap_or_else(|| panic!("Could not get edges from {:?}", &pred))
             .clone();
         pred_edges.retain(|x| x.node != node);
-        if pred_edges.iter().any(|x| x.node == new_edge.node) {
-            let edge = pred_edges
-                .iter_mut()
-                .find(|x| x.node == new_edge.node)
-                .unwrap();
-            edge.cost = std::cmp::min(edge.cost, new_edge.cost);
+        if let Some(edge) = pred_edges.iter_mut().find(|x| x.node == new_edge.node) {
+            if let Some(cmp) = edge.cost.partial_cmp(&new_edge.cost) {
+                if cmp == std::cmp::Ordering::Greater {
+                    edge.cost = new_edge.cost;
+                }
+            }
         } else {
             pred_edges.push(new_edge);
         }
@@ -315,7 +316,7 @@ impl Graph {
             for win in road.node_refs.windows(2) {
                 let node = win[0];
                 let next_node = win[1];
-                let distance = nodes[&node].coord.distance_to(nodes[&next_node].coord) as u32;
+                let distance = nodes[&node].coord.distance_to(nodes[&next_node].coord);
                 let edge = Edge::new(next_node, distance);
                 graph.get_mut(&node).unwrap().push(edge);
                 if road.direction == CarDirection::Twoway {
@@ -389,20 +390,23 @@ impl Graph {
             });
     
             // Find the node farthest from all current landmarks
-            let mut max_dist = 0;
+            let mut max_dist = 0.0;
             let mut next_node = current;
-    
+
             for &node in graph.keys() {
                 let min_dist_to_landmarks = landmarks.iter()
-                    .map(|landmark| landmark.distances.get(&node).unwrap_or(&u32::MAX))
+                    .map(|landmark| landmark.distances.get(&node).unwrap_or(&f64::MAX))
+                    .map(|&dist| OrderedFloat(dist)) // Convert f64 to OrderedFloat<f64>
                     .min()
-                    .unwrap();
-    
-                if *min_dist_to_landmarks > max_dist && *min_dist_to_landmarks != u32::MAX{
-                    max_dist = *min_dist_to_landmarks;
+                    .unwrap()
+                    .into_inner(); // Convert OrderedFloat<f64> back to f64
+
+                if min_dist_to_landmarks > max_dist && min_dist_to_landmarks != f64::MAX {
+                    max_dist = min_dist_to_landmarks;
                     next_node = node;
                 }
             }
+
     
             current = next_node;  // Update the current node to the next landmark
         }
@@ -410,20 +414,20 @@ impl Graph {
         landmarks
     }
 
-    pub fn dijkstra_all(graph: &HashMap<NodeId, Vec<Edge>>, start: NodeId) -> HashMap<NodeId, u32> {
+    pub fn dijkstra_all(graph: &HashMap<NodeId, Vec<Edge>>, start: NodeId) -> HashMap<NodeId, f64> {
         // Initialize the distance map with infinite distances
         let mut distances = HashMap::new();
         for node in graph.keys() {
-            distances.insert(*node, u32::MAX);
+            distances.insert(*node, f64::MAX);
         }
 
         // Use a binary heap as a priority queue where the smallest distances come out first
         let mut heap = BinaryHeap::new();
 
         // Initialize the distance of the start node to 0 and add it to the priority queue
-        distances.insert(start, 0.0 as u32); 
+        distances.insert(start, 0.0); 
         heap.push(Edge {
-            cost: 0.0 as u32,
+            cost: 0.0,
             node: start,
         });
 
