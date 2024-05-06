@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using log4net.Config;
 using Unity.VisualScripting;
 using UnityEngine;
 
@@ -90,18 +91,15 @@ public class CameraControl : MonoBehaviour
                 var worldPosition = Camera.main.ScreenToWorldPoint(clickPosition);
                 var nodes = GameObject.Find("Map").GetComponent<MapController>().graph.nodes;
                 long closestNode = ClosestNode(worldPosition, nodes);
-                float[] nodeCoords = nodes[closestNode].Item1;
                 if (node_selection == 0)
                 {
-                    nodeA = closestNode;
-                    Destroy(circleAInstance);
-                    circleAInstance = Instantiate(circleA, new Vector3(nodeCoords[0], nodeCoords[1], 0), Quaternion.identity);
+                    MapController.ChangeTextFieldHelper(GameObject.Find("StartField"), closestNode.ToString());
+                    SelectNodeA();
                 }
                 else
                 {
-                    nodeB = closestNode;
-                    Destroy(circleBInstance);
-                    circleBInstance = Instantiate(circleB, new Vector3(nodeCoords[0], nodeCoords[1], 0), Quaternion.identity);
+                    MapController.ChangeTextFieldHelper(GameObject.Find("EndField"), closestNode.ToString());
+                    SelectNodeB();
                 }
             }
 
@@ -118,6 +116,23 @@ public class CameraControl : MonoBehaviour
                 lastPosition = Camera.main.ScreenToWorldPoint(Input.mousePosition);
             }
         }
+    }
+
+    public void SelectNodeA(){
+        var node = long.Parse(GameObject.Find("StartField").GetComponent<TMPro.TMP_InputField>().text);
+        var nodes = GameObject.Find("Map").GetComponent<MapController>().graph.nodes;
+        float[] nodeCoords = nodes[node].Item1;
+        nodeA = node;
+        Destroy(circleAInstance);
+        circleAInstance = Instantiate(circleA, new Vector3(nodeCoords[0], nodeCoords[1], 0), Quaternion.identity);
+    }
+    public void SelectNodeB(){
+        var node = long.Parse(GameObject.Find("EndField").GetComponent<TMPro.TMP_InputField>().text);
+        var nodes = GameObject.Find("Map").GetComponent<MapController>().graph.nodes;
+        float[] nodeCoords = nodes[node].Item1;
+        nodeB = node;
+        Destroy(circleBInstance);
+        circleBInstance = Instantiate(circleB, new Vector3(nodeCoords[0], nodeCoords[1], 0), Quaternion.identity);
     }
 
     public void SetNodeSelection(int selection)

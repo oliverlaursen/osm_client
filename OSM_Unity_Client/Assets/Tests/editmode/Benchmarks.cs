@@ -12,13 +12,13 @@ public class Benchmarks
 {
     Graph denmarkGraph;
     (long, long)[] stPairs;
-    int ROUTE_AMOUNT = 10; //amount of routes to benchmark
+    int ROUTE_AMOUNT = 100; //amount of routes to benchmark
 
     [SetUp]
     public void TestInitialize()
     {
         var random = new System.Random();
-        denmarkGraph = MapController.DeserializeGraph("Assets/Maps/denmark.graph");
+        denmarkGraph = MapController.DeserializeGraph("Assets/Maps/dach.graph");
 
         var stPairs = new (long, long)[ROUTE_AMOUNT];
         for (int i = 0; i < ROUTE_AMOUNT; i++)
@@ -58,18 +58,18 @@ public class Benchmarks
             var startNode = pair.Item1;
             var endNode = pair.Item2;
             var pathResult = algorithm.FindShortestPath(startNode, endNode);
+            if (pathResult == null) continue;   // If no path is found, skip the result
             results.Add(pathResult);
             if (expectedDistances != null)
             {
                 var expectedDistance = expectedDistances[Array.IndexOf(stPairs, pair)];
-                Assert.AreEqual(expectedDistance, pathResult.distance);
+                Assert.AreEqual(expectedDistance, pathResult.distance, message: "Distance mismatch for " + startNode + " -> " + endNode);
             }
         }
         var csv = new System.Text.StringBuilder();
         csv.AppendLine("StartNode,EndNode,Distance,Time,Nodes visited");
         foreach (var result in results)
         {
-            if (result == null) continue; // If no path is found, skip the result
             csv.AppendLine(result.start + "," + result.end + "," + result.distance + "," + result.miliseconds + "," + result.nodesVisited);
         }
         System.IO.File.WriteAllText(filePath, csv.ToString());

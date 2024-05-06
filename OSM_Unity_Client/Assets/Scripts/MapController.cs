@@ -43,14 +43,14 @@ public class MapController : MonoBehaviour
 
     public static void DisplayStatistics(long start, long end, float distance, long timeElapsed, int nodesVisited)
     {
-        var startText = GameObject.Find("Start");
-        var endText = GameObject.Find("End");
+        var startText = GameObject.Find("StartField");
+        var endText = GameObject.Find("EndField");
         var distanceText = GameObject.Find("Distance");
         var nodesVisitedText = GameObject.Find("NodesVisited");
         var timeText = GameObject.Find("TimeText");
 
-        ChangeTextHelper(startText, "Start: " + start);
-        ChangeTextHelper(endText, "End: " + end);
+        ChangeTextFieldHelper(startText, start.ToString());
+        ChangeTextFieldHelper(endText,  end.ToString());
         ChangeTextHelper(distanceText, "Distance: " + distance);
         ChangeTextHelper(timeText, "Time (ms): " + timeElapsed);
         ChangeTextHelper(nodesVisitedText, "Nodes visited: " + nodesVisited);
@@ -60,6 +60,11 @@ public class MapController : MonoBehaviour
     public static void ChangeTextHelper(GameObject gameObject, string text)
     {
         gameObject.GetComponent<TMPro.TMP_Text>().text = text;
+    }
+
+    public static void ChangeTextFieldHelper(GameObject gameObject, string text)
+    {
+        gameObject.GetComponent<TMPro.TMP_InputField>().text = text;
     }
 
     public static Graph DeserializeGraph(string mapFile)
