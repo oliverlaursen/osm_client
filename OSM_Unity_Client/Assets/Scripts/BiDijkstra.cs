@@ -2,74 +2,137 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.ExceptionServices;
-using PlasticPipe.PlasticProtocol.Messages;
-using Unity.Plastic.Antlr3.Runtime;
-using Unity.VisualScripting;
 using UnityEngine;
 
-public class BiDijkstra : IPathfindingAlgorithm
+public class BiDijkstra : MonoBehaviour, IPathfindingAlgorithm
 {
     public Graph graph;
-    private Dijkstra dijkstra1;
-    private Dijkstra dijkstra2;
-    private long joinNode; //node where the forward dijkstra and the backward dijkstra meet
-    private float shortestDistance; //shortest distance seen so far
+    private Dictionary<long, float> forwardDistances;
+    private Dictionary<long, float> backwardDistances;
+    private Dictionary<long, long> forwardPrevious;
+    private Dictionary<long, long> backwardPrevious;
+    private SortedSet<Node> forwardQueue;
+    private SortedSet<Node> backwardQueue;
+    private long forwardMeetingNode, backwardMeetingNode;
+    private float minDistance;
+    private long startNode, endNode;
 
     public BiDijkstra(Graph graph)
     {
         this.graph = graph;
-        dijkstra1 = new Dijkstra(graph);
-        dijkstra2 = new Dijkstra(graph);
+        Reset();
     }
 
-    public void InitializeSearch(long start, long end)
+    private void Reset()
     {
-        dijkstra1.InitializeSearch(start, graph);
-        dijkstra2.InitializeSearch(end, graph);
-
-        joinNode = -1;
-        shortestDistance = float.PositiveInfinity;
-
+        forwardDistances = new Dictionary<long, float>();
+        backwardDistances = new Dictionary<long, float>();
+        forwardPrevious = new Dictionary<long, long>();
+        backwardPrevious = new Dictionary<long, long>();
+        forwardQueue = new SortedSet<Node>();
+        backwardQueue = new SortedSet<Node>();
+        minDistance = float.PositiveInfinity;
+        forwardMeetingNode = backwardMeetingNode = -1;
     }
 
     public PathResult FindShortestPath(long start, long end)
     {
-        InitializeSearch(start, end);
+        startNode = start;
+        endNode = end;
+        Reset();
         var stopwatch = System.Diagnostics.Stopwatch.StartNew();
 
-        while (dijkstra1.queue.Count > 0 && dijkstra2.queue.Count > 0)
-        {
-            var firstForward = dijkstra1.queue.First.Id;
-            var firstBackward = dijkstra2.queue.First.Id;
-            var forwardDist = dijkstra1.distances[firstForward];
-            var backwardDist = dijkstra2.distances[firstBackward];
+        // Initialize both searches
+        forwardQueue.Add(new Node(start, 0));
+        forwardDistances[start] = 0;
+        backwardQueue.Add(new Node(end, 0));
+        backwardDistances[end] = 0;
 
-            var stopCond = forwardDist + backwardDist >= shortestDistance;
-            if (stopCond)
+        while (forwardQueue.Count > 0 && backwardQueue.Count > 0)
+        {
+            // Process forward direction
+            if (ProcessQueue(forwardQueue, forwardDistances, backwardDistances, forwardPrevious, ref forwardMeetingNode, ref minDistance, true))
             {
                 stopwatch.Stop();
-                var nodesVisited = dijkstra1.nodesVisited + dijkstra2.nodesVisited;
-                var mergedPath = MergePrevious(dijkstra1.previous, dijkstra2.previous, joinNode);
-                return new PathResult(start, end, shortestDistance, stopwatch.ElapsedMilliseconds, nodesVisited, MapController.ReconstructPath(mergedPath, start, end));
+                var path = ConstructPath(forwardMeetingNode, forwardPrevious, backwardPrevious);
+                return new PathResult(start, end, minDistance, stopwatch.ElapsedMilliseconds, forwardDistances.Count + backwardDistances.Count, MapController.ReconstructPath(path, start, end));
             }
 
-            long currentNode;
-            float dist;
-            if (forwardDist < backwardDist)
+            // Process backward direction
+            if (ProcessQueue(backwardQueue, backwardDistances, forwardDistances, backwardPrevious, ref backwardMeetingNode, ref minDistance, false))
             {
-                currentNode = dijkstra1.DequeueAndUpdateSets();
-                dist = dijkstra1.distances[currentNode];
-                UpdateBiNeighbors(currentNode, dist, true);
-            }
-            else
-            {
-                currentNode = dijkstra2.DequeueAndUpdateSets();
-                dist = dijkstra2.distances[currentNode];
-                UpdateBiNeighbors(currentNode, dist, false);
+                stopwatch.Stop();
+                var path = ConstructPath(backwardMeetingNode, forwardPrevious, backwardPrevious);
+                return new PathResult(start, end, minDistance, stopwatch.ElapsedMilliseconds, forwardDistances.Count + backwardDistances.Count, MapController.ReconstructPath(path, start, end));
             }
         }
-        return null;
+
+        stopwatch.Stop();
+        return new PathResult(start, end, -1, stopwatch.ElapsedMilliseconds, forwardDistances.Count + backwardDistances.Count, new long[]{});
+    }
+
+    private bool ProcessQueue(SortedSet<Node> queue, Dictionary<long, float> distances, Dictionary<long, float> otherDistances, Dictionary<long, long> previous, ref long meetingNode, ref float minDistance, bool isForward)
+    {
+        // Dequeue the closest node
+        var current = queue.Min;
+        queue.Remove(current);
+
+        // If the current node's distance is greater than or equal to the minimum known distance, stop
+        if (current.Distance >= minDistance)
+        {
+            return true;
+        }
+
+        // Get neighbors based on direction
+        var neighbors = isForward ? graph.graph[current.Id] : graph.bi_graph[current.Id];
+
+        // Process all neighbors
+        foreach (var edge in neighbors)
+        {
+            var newDist = current.Distance + edge.cost;
+
+            // If this path is shorter, update the distance and queue
+            if (newDist < distances.GetValueOrDefault(edge.node, float.PositiveInfinity))
+            {
+                distances[edge.node] = newDist;
+                previous[edge.node] = current.Id;
+                queue.Add(new Node(edge.node, newDist));
+
+                // If the node was reached by the other search, update the minimum distance
+                if (otherDistances.ContainsKey(edge.node))
+                {
+                    var potentialMinDistance = newDist + otherDistances[edge.node];
+                    if (potentialMinDistance < minDistance)
+                    {
+                        minDistance = potentialMinDistance;
+                        meetingNode = edge.node;
+                    }
+                }
+            }
+        }
+
+        return false;
+    }
+
+    private Dictionary<long, long> ConstructPath(long meetingNode, Dictionary<long, long> forwardPrev, Dictionary<long, long> backwardPrev)
+    {
+        var merged = new Dictionary<long, long>();
+        long current = meetingNode;
+
+        while (forwardPrev.ContainsKey(current))
+        {
+            merged[forwardPrev[current]] = current;
+            current = forwardPrev[current];
+        }
+
+        current = meetingNode;
+        while (backwardPrev.ContainsKey(current))
+        {
+            merged[current] = backwardPrev[current];
+            current = backwardPrev[current];
+        }
+
+        return merged;
     }
 
     public IEnumerator FindShortestPathWithVisual(long start, long end, int drawspeed)
@@ -77,46 +140,21 @@ public class BiDijkstra : IPathfindingAlgorithm
         throw new NotImplementedException();
     }
 
-    public void UpdateBiNeighbors(long currentNode, float dist, bool forward)
+    private class Node : IComparable<Node>
     {
-        if (forward)
-        {
-            if (!dijkstra1.visited.Add(currentNode)) return;
-            if (dijkstra2.visited.Contains(currentNode) && dist + dijkstra2.distances[currentNode] < shortestDistance)
-            {
-                shortestDistance = dist + dijkstra2.distances[currentNode];
-                joinNode = currentNode;
-            }
-            var neighbors = graph.graph[currentNode];
-            dijkstra1.UpdateNeighbors(currentNode, dist, neighbors);
-        }
-        else
-        {
-            if (!dijkstra2.visited.Add(currentNode)) return;
-            if (dijkstra1.visited.Contains(currentNode) && dist + dijkstra1.distances[currentNode] < shortestDistance)
-            {
-                shortestDistance = dist + dijkstra1.distances[currentNode];
-                joinNode = currentNode;
-            }
-            var neighbors = graph.bi_graph[currentNode];
-            dijkstra2.UpdateNeighbors(currentNode, dist, neighbors);
-        }
-    }
+        public long Id { get; }
+        public float Distance { get; }
 
-    private Dictionary<long, long> MergePrevious(Dictionary<long, long> previous, Dictionary<long, long> previous2, long meetingPoint)
-    {
-        var merged = new Dictionary<long, long>(previous);
-
-        // Start with the meeting point and work backwards towards the end
-        long current = meetingPoint;
-        while (previous2.ContainsKey(current) && previous2[current] != -1)
+        public Node(long id, float distance)
         {
-            long next = previous2[current];
-            // Invert the direction for the second half of the path
-            merged[next] = current;
-            current = next;
+            Id = id;
+            Distance = distance;
         }
 
-        return merged;
+        public int CompareTo(Node other)
+        {
+            var result = Distance.CompareTo(other.Distance);
+            return result == 0 ? Id.CompareTo(other.Id) : result;
+        }
     }
 }
