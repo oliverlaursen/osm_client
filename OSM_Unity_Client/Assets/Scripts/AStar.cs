@@ -69,7 +69,8 @@ public class AStar : IPathfindingAlgorithm
             if (ProcessCurrentNode(current, start, end, ref nodesVisited, stopwatch)){
                 return new PathResult(start, end, gScore[end], stopwatch.ElapsedMilliseconds, nodesVisited, MapController.ReconstructPath(parent, start, end));
             }
-            //closedSet.Add(current);
+            nodesVisited++;
+            closedSet.Add(current);
             var neighbors = graph.GetNeighbors(current);
             UpdateNeighbors(current, end, neighbors);
             UpdateLandmarks(nodesVisited, current, end);
@@ -96,7 +97,6 @@ public class AStar : IPathfindingAlgorithm
     {
         InitializeSearch(start, end);
         var lineRenderer = Camera.main.GetComponent<GLLineRenderer>(); // Ensure Camera has GLLineRenderer component
-        int nodesVisited = 0;
         var stopwatch = System.Diagnostics.Stopwatch.StartNew();
         var stopwatch2 = System.Diagnostics.Stopwatch.StartNew();
 
@@ -110,7 +110,9 @@ public class AStar : IPathfindingAlgorithm
                 result.DisplayAndDrawPath(graph);
                 yield break;
             }
-            UpdateNeighborsWithVisual(current, end, lineRenderer);
+            nodesVisited++;
+            var neighbors = graph.GetNeighbors(current);
+            UpdateNeighborsWithVisual(current, end, neighbors, lineRenderer);
             UpdateLandmarks(nodesVisited, current, end, true);
             if (drawspeed == 0) yield return null;
             else if (stopwatch2.ElapsedTicks > drawspeed)
@@ -123,7 +125,6 @@ public class AStar : IPathfindingAlgorithm
 
     public bool ProcessCurrentNode(long current, long start, long end, ref int nodesVisited, System.Diagnostics.Stopwatch stopwatch)
     {
-        nodesVisited++;
         if (current == end)
         {
             stopwatch.Stop();
@@ -137,18 +138,20 @@ public class AStar : IPathfindingAlgorithm
     {
         foreach (var neighbor in neighbors)
         {
-            if (closedSet.Contains(neighbor.node)) continue;
+            nodesVisited++;
+            //if (closedSet.Contains(neighbor.node)) continue;
             TryEnqueueNeighbor(neighbor, current, end);
         }
     }
 
-    private void UpdateNeighborsWithVisual(long current, long end, GLLineRenderer lineRenderer)
+    public void UpdateNeighborsWithVisual(long current, long end, IEnumerable<Edge> neighbors, GLLineRenderer lineRenderer)
     {
-        foreach (var neighbor in graph.GetNeighbors(current))
+        foreach (var neighbor in neighbors)
         {
-            if (closedSet.Contains(neighbor.node)) continue;
+            //if (closedSet.Contains(neighbor.node)) continue;
             if (TryEnqueueNeighbor(neighbor, current, end))
             {
+                nodesVisited++;
                 var startCoord = graph.nodes[current];
                 var endCoord = graph.nodes[neighbor.node];
                 lineRenderer.AddDiscoveryPath(new List<Vector3> { new(startCoord.Item1[0], startCoord.Item1[1], 0), new(endCoord.Item1[0], endCoord.Item1[1], 0) });
