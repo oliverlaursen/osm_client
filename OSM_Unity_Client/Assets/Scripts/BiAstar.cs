@@ -40,10 +40,10 @@ public class BiAStar : IPathfindingAlgorithm
 
         while (forwardAstar.openList.Count > 0 && backwardAstar.openList.Count > 0)
         {
-            var distForward = forwardAstar.openList.First.Priority;
-            var distBackward = backwardAstar.openList.First.Priority;
             var currentForward = forwardAstar.DequeueAndUpdateSets();
             var currentBackward = backwardAstar.DequeueAndUpdateSets();
+            var distForward = forwardAstar.gScore[currentForward];
+            var distBackward = backwardAstar.gScore[currentBackward];
 
             if (distForward + distBackward >= minDistance)
             {

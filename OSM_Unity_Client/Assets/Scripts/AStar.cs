@@ -69,7 +69,7 @@ public class AStar : IPathfindingAlgorithm
             if (ProcessCurrentNode(current, start, end, ref nodesVisited, stopwatch)){
                 return new PathResult(start, end, gScore[end], stopwatch.ElapsedMilliseconds, nodesVisited, MapController.ReconstructPath(parent, start, end));
             }
-            closedSet.Add(current);
+            //closedSet.Add(current);
             var neighbors = graph.GetNeighbors(current);
             UpdateNeighbors(current, end, neighbors);
             UpdateLandmarks(nodesVisited, current, end);
