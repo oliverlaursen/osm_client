@@ -9,15 +9,16 @@ using UnityEngine.Assertions;
 public class AStar : IPathfindingAlgorithm
 {
     public Graph graph;
-    private FastPriorityQueue<PriorityQueueNode> openList;
+    public FastPriorityQueue<PriorityQueueNode> openList;
     private Dictionary<long, PriorityQueueNode> priorityQueueNodes;
     private HashSet<long> openSet;
-    private HashSet<long> closedSet;
-    private Dictionary<long, long> parent;
-    private Dictionary<long, float> gScore;
-    private Dictionary<long, float> fScore;
+    public HashSet<long> closedSet;
+    public Dictionary<long, long> parent;
+    public Dictionary<long, float> gScore;
+    public Dictionary<long, float> fScore;
     private AStarHeuristic heuristic;
     private IEnumerable<Landmark> landmarks;
+    public int nodesVisited;
 
     public AStar(Graph graph, IEnumerable<Landmark> landmarks = null)
     {
@@ -46,22 +47,31 @@ public class AStar : IPathfindingAlgorithm
         openList.Enqueue(startNode, fScore[start]);
         priorityQueueNodes[start] = startNode;
         openSet.Add(start);
+        nodesVisited = 0;
+    }
+
+    public long DequeueAndUpdateSets()
+    {
+        var node = openList.Dequeue().Id;
+        openSet.Remove(node);
+        return node;
     }
 
 
     public PathResult FindShortestPath(long start, long end)
     {
         InitializeSearch(start, end);
-        int nodesVisited = 0;
         var stopwatch = System.Diagnostics.Stopwatch.StartNew();
 
         while (openList.Count > 0)
         {
-            long current = DequeueAndUpdateSets(openList, openSet);
+            long current = DequeueAndUpdateSets();
             if (ProcessCurrentNode(current, start, end, ref nodesVisited, stopwatch)){
                 return new PathResult(start, end, gScore[end], stopwatch.ElapsedMilliseconds, nodesVisited, MapController.ReconstructPath(parent, start, end));
             }
-            UpdateNeighbors(current, end);
+            closedSet.Add(current);
+            var neighbors = graph.GetNeighbors(current);
+            UpdateNeighbors(current, end, neighbors);
             UpdateLandmarks(nodesVisited, current, end);
         }
         return null;
@@ -92,7 +102,7 @@ public class AStar : IPathfindingAlgorithm
 
         while (openList.Count > 0)
         {
-            long current = DequeueAndUpdateSets(openList, openSet);
+            long current = DequeueAndUpdateSets();
             if (ProcessCurrentNode(current, start, end, ref nodesVisited, stopwatch))
             {
                 lineRenderer.ClearDiscoveryPath();
@@ -111,13 +121,6 @@ public class AStar : IPathfindingAlgorithm
         }
     }
 
-    public static long DequeueAndUpdateSets(FastPriorityQueue<PriorityQueueNode> openList, HashSet<long> openSet)
-    {
-        var current = openList.Dequeue().Id;
-        openSet.Remove(current);
-        return current;
-    }
-
     public bool ProcessCurrentNode(long current, long start, long end, ref int nodesVisited, System.Diagnostics.Stopwatch stopwatch)
     {
         nodesVisited++;
@@ -130,9 +133,9 @@ public class AStar : IPathfindingAlgorithm
     }
 
 
-    private void UpdateNeighbors(long current, long end)
+    public void UpdateNeighbors(long current, long end, IEnumerable<Edge> neighbors)
     {
-        foreach (var neighbor in graph.GetNeighbors(current))
+        foreach (var neighbor in neighbors)
         {
             if (closedSet.Contains(neighbor.node)) continue;
             TryEnqueueNeighbor(neighbor, current, end);
