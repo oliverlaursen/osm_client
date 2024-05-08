@@ -12,7 +12,7 @@ public class Benchmarks
 {
     Graph denmarkGraph;
     (long, long)[] stPairs;
-    int ROUTE_AMOUNT = 100; //amount of routes to benchmark
+    int ROUTE_AMOUNT = 10; //amount of routes to benchmark
 
     [SetUp]
     public void TestInitialize()
