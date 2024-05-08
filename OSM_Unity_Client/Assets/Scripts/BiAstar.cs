@@ -64,7 +64,7 @@ public class BiAStar : IPathfindingAlgorithm
             forwardAstar.closedSet.Add(currentForward);
             ProcessQueue(forwardAstar, backwardAstar, currentForward, end, true);
             backwardAstar.closedSet.Add(currentBackward);
-            ProcessQueue(backwardAstar, forwardAstar, currentBackward, end, false);
+            ProcessQueue(backwardAstar, forwardAstar, currentBackward, start, false);
         }
 
         stopwatch.Stop();
@@ -107,7 +107,7 @@ public class BiAStar : IPathfindingAlgorithm
             forwardAstar.closedSet.Add(currentForward);
             ProcessQueue(forwardAstar, backwardAstar, currentForward, end, true, lineRenderer);
             backwardAstar.closedSet.Add(currentBackward);
-            ProcessQueue(backwardAstar, forwardAstar, currentBackward, end, false, lineRenderer);
+            ProcessQueue(backwardAstar, forwardAstar, currentBackward, start, false, lineRenderer);
         }
 
         stopwatch.Stop();

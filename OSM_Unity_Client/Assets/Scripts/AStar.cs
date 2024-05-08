@@ -19,7 +19,6 @@ public class AStar : IPathfindingAlgorithm
     private AStarHeuristic heuristic;
     private IEnumerable<Landmark> landmarks;
     public int nodesVisited;
-
     public AStar(Graph graph, IEnumerable<Landmark> landmarks = null)
     {
         this.graph = graph;
