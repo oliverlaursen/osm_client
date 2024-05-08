@@ -401,7 +401,7 @@ impl Graph {
                     .unwrap()
                     .into_inner(); // Convert OrderedFloat<f64> back to f64
 
-                if min_dist_to_landmarks > max_dist && min_dist_to_landmarks != f64::MAX {
+                if min_dist_to_landmarks > max_dist && min_dist_to_landmarks != f64::MAX && min_dist_to_landmarks != 0.0 {
                     max_dist = min_dist_to_landmarks;
                     next_node = node;
                 }

@@ -24,12 +24,13 @@ public class Landmarks : IPathfindingAlgorithm
 
         foreach (Landmark landmark in landmarks)
         {
-            var c_behind = landmark.distances[start] - landmark.distances[end];
+            var c_behind = landmark.distances[end] - landmark.distances[start];
             lowerBounds.Add((landmark, c_behind, true));
-            var c_ahead = landmark.bi_distances[end] - landmark.bi_distances[start];
+            var c_ahead = landmark.bi_distances[start] - landmark.bi_distances[end];
             lowerBounds.Add((landmark, c_ahead, false));
         }
         lowerBounds.Sort((x, y) => x.Item2.CompareTo(y.Item2));
+        lowerBounds.Reverse();
         var bestLandmarks = lowerBounds.Select(x => (x.Item1, x.Item3)).Take(n).ToArray();
         return bestLandmarks;
     }

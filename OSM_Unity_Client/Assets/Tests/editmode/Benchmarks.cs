@@ -64,7 +64,7 @@ public class Benchmarks
             {
                 var expectedDistance = expectedDistances[Array.IndexOf(stPairs, pair)];
                 Assert.AreEqual(expectedDistance, pathResult.distance, message: "Distance mismatch for " + startNode + " -> " + endNode);
-            }
+            }   
         }
         var csv = new System.Text.StringBuilder();
         csv.AppendLine("StartNode,EndNode,Distance,Time,Nodes visited");
