@@ -12,7 +12,7 @@ public class Benchmarks
 {
     Graph denmarkGraph;
     (long, long)[] stPairs;
-    int ROUTE_AMOUNT = 100; //amount of routes to benchmark
+    int ROUTE_AMOUNT = 10; //amount of routes to benchmark
 
     [SetUp]
     public void TestInitialize()
@@ -84,9 +84,11 @@ public class Benchmarks
         var dijkstraDistances = dijkstraResults.Select(x => x.distance).ToArray();
 
         var biDijkstra = new BiDijkstra(denmarkGraph);
+        var biAstar = new BiAStar(denmarkGraph);
         var aStar = new AStar(denmarkGraph);
         var landmarks = new Landmarks(denmarkGraph, showLandmarks: false);
         BenchmarkAlgorithm(stPairs, biDijkstra, "biDijkstra", expectedDistances: dijkstraDistances);
+        BenchmarkAlgorithm(stPairs, biAstar, "biAstar", expectedDistances: dijkstraDistances);
         BenchmarkAlgorithm(stPairs, aStar, "aStar", expectedDistances: dijkstraDistances);
         BenchmarkAlgorithm(stPairs, landmarks, "landmarks", expectedDistances: dijkstraDistances);
     }
