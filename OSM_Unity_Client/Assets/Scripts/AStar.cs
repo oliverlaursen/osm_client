@@ -149,9 +149,10 @@ public class AStar : IPathfindingAlgorithm
         foreach (var neighbor in neighbors)
         {
             //if (closedSet.Contains(neighbor.node)) continue;
-            if (TryEnqueueNeighbor(neighbor, current, end))
+            nodesVisited++;
+            var result = TryEnqueueNeighbor(neighbor, current, end);
+            if (result)
             {
-                nodesVisited++;
                 var startCoord = graph.nodes[current];
                 var endCoord = graph.nodes[neighbor.node];
                 lineRenderer.AddDiscoveryPath(new List<Vector3> { new(startCoord.Item1[0], startCoord.Item1[1], 0), new(endCoord.Item1[0], endCoord.Item1[1], 0) });

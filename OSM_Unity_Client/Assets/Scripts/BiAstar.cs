@@ -33,10 +33,10 @@ public class BiAStar : IPathfindingAlgorithm
 
     public PathResult FindShortestPath(long start, long end)
     {
+        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
         startNode = start;
         endNode = end;
         InitializeSearch(startNode, endNode);
-        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
 
         while (forwardAstar.openList.Count > 0 && backwardAstar.openList.Count > 0)
         {
@@ -71,35 +71,13 @@ public class BiAStar : IPathfindingAlgorithm
         return null;
     }
 
-    private void ProcessQueue(AStar activeAstar, AStar otherAstar, long current, long end, bool isForward, GLLineRenderer lineRenderer = null)
-    {
-        // Get neighbors based on direction
-        var neighbors = isForward ? graph.graph[current] : graph.bi_graph[current];
-        if (lineRenderer == null)
-        {
-            activeAstar.UpdateNeighbors(current, end, neighbors);
-        } else {
-            activeAstar.UpdateNeighborsWithVisual(current, end, neighbors, lineRenderer);
-        }
-
-        if (!otherAstar.closedSet.Contains(current)) return;
-
-        var totalDist = activeAstar.gScore[current] + otherAstar.gScore[current];
-        if (totalDist < minDistance)
-        {
-            minDistance = totalDist;
-            meetingNode = current;
-        }
-    }
-
-
     public IEnumerator FindShortestPathWithVisual(long start, long end, int drawspeed)
     {
         var lineRenderer = Camera.main.GetComponent<GLLineRenderer>();
+        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
         startNode = start;
         endNode = end;
         InitializeSearch(startNode, endNode);
-        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
 
         while (forwardAstar.openList.Count > 0 && backwardAstar.openList.Count > 0)
         {
@@ -122,7 +100,9 @@ public class BiAStar : IPathfindingAlgorithm
                 {
                     distance += Array.Find(graph.graph[path[i]], edge => edge.node == path[i + 1]).cost;
                 }
-                yield return new PathResult(start, end, distance, stopwatch.ElapsedMilliseconds, forwardAstar.nodesVisited + backwardAstar.nodesVisited, path);
+                var result = new PathResult(start, end, distance, stopwatch.ElapsedMilliseconds, forwardAstar.nodesVisited + backwardAstar.nodesVisited, path);
+                result.DisplayAndDrawPath(graph);
+                yield break;
             }
             forwardAstar.closedSet.Add(currentForward);
             ProcessQueue(forwardAstar, backwardAstar, currentForward, end, true, lineRenderer);
@@ -133,6 +113,29 @@ public class BiAStar : IPathfindingAlgorithm
         stopwatch.Stop();
         yield return null;
     }
+
+    private void ProcessQueue(AStar activeAstar, AStar otherAstar, long current, long end, bool isForward, GLLineRenderer lineRenderer = null)
+    {
+        // Get neighbors based on direction
+        var neighbors = isForward ? graph.graph[current] : graph.bi_graph[current];
+        if (lineRenderer == null)
+        {
+            activeAstar.UpdateNeighbors(current, end, neighbors);
+        } else {
+            activeAstar.UpdateNeighborsWithVisual(current, end, neighbors, lineRenderer);
+        }
+
+        if (!otherAstar.closedSet.Contains(current)) return;
+
+        var totalDist = activeAstar.gScore[current] + otherAstar.gScore[current];
+        if (totalDist < minDistance)
+        {
+            minDistance = totalDist;
+            meetingNode = current;
+        }
+    }
+
+
 
     private Dictionary<long, long> MergePrevious(Dictionary<long, long> previous, Dictionary<long, long> previous2, long meetingPoint)
     {
