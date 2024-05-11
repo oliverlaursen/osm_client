@@ -12,7 +12,7 @@ public class Benchmarks
 {
     Graph denmarkGraph;
     (long, long)[] stPairs;
-    int ROUTE_AMOUNT = 10; //amount of routes to benchmark
+    int ROUTE_AMOUNT = 200; //amount of routes to benchmark
 
     [SetUp]
     public void TestInitialize()
@@ -49,7 +49,7 @@ public class Benchmarks
     * 
     * The method returns a list of PathResults, which contain the results of the benchmark for each start-target pair.
     */
-    public List<PathResult> BenchmarkAlgorithm((long, long)[] stPairs, IPathfindingAlgorithm algorithm, string fileout, float[] expectedDistances = null)
+    public List<PathResult> BenchmarkAlgorithm((long, long)[] stPairs, IPathfindingAlgorithm algorithm, string fileout, List<PathResult> expectedResults = null)
     {
         var filePath = Application.dataPath + "/../BenchmarkData/" + fileout + ".csv";
         var results = new List<PathResult>();
@@ -60,17 +60,17 @@ public class Benchmarks
             var pathResult = algorithm.FindShortestPath(startNode, endNode);
             if (pathResult == null) continue;   // If no path is found, skip the result
             results.Add(pathResult);
-            if (expectedDistances != null)
+            if (expectedResults != null)
             {
-                var expectedDistance = expectedDistances[Array.IndexOf(stPairs, pair)];
+                var expectedDistance = expectedResults.First(x => x.start == startNode && x.end == endNode).distance;
                 Assert.AreEqual(expectedDistance, pathResult.distance, message: "Distance mismatch for " + startNode + " -> " + endNode);
             }   
         }
         var csv = new System.Text.StringBuilder();
-        csv.AppendLine("StartNode,EndNode,Distance,Time,Nodes visited");
+        csv.AppendLine("StartNode;EndNode;Distance;Time;Nodes visited");
         foreach (var result in results)
         {
-            csv.AppendLine(result.start + "," + result.end + "," + result.distance + "," + result.miliseconds + "," + result.nodesVisited);
+            csv.AppendLine(result.start + ";" + result.end + ";" + result.distance + ";" + result.miliseconds + ";" + result.nodesVisited);
         }
         System.IO.File.WriteAllText(filePath, csv.ToString());
         return results;
@@ -81,15 +81,17 @@ public class Benchmarks
     {
         var dijkstra = new Dijkstra(denmarkGraph);
         var dijkstraResults = BenchmarkAlgorithm(stPairs, dijkstra, "dijkstra");
-        var dijkstraDistances = dijkstraResults.Select(x => x.distance).ToArray();
 
         var biDijkstra = new BiDijkstra(denmarkGraph);
         var biAstar = new BiAStar(denmarkGraph);
         var aStar = new AStar(denmarkGraph);
         var landmarks = new Landmarks(denmarkGraph, showLandmarks: false);
-        BenchmarkAlgorithm(stPairs, biDijkstra, "biDijkstra", expectedDistances: dijkstraDistances);
-        BenchmarkAlgorithm(stPairs, biAstar, "biAstar", expectedDistances: dijkstraDistances);
-        BenchmarkAlgorithm(stPairs, aStar, "aStar", expectedDistances: dijkstraDistances);
-        BenchmarkAlgorithm(stPairs, landmarks, "landmarks", expectedDistances: dijkstraDistances);
+        var landmarks_300 = new Landmarks(denmarkGraph, showLandmarks: false, updateLandmarks: 300);
+        BenchmarkAlgorithm(stPairs, biDijkstra, "biDijkstra", expectedResults: dijkstraResults);
+        BenchmarkAlgorithm(stPairs, biAstar, "biAstar", expectedResults: dijkstraResults);
+        BenchmarkAlgorithm(stPairs, aStar, "aStar", expectedResults: dijkstraResults);
+        BenchmarkAlgorithm(stPairs, landmarks, "landmarks", expectedResults: dijkstraResults);
+        BenchmarkAlgorithm(stPairs, landmarks_300, "landmarks_300", expectedResults: dijkstraResults);
+
     }
 }

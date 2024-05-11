@@ -11,10 +11,10 @@ public class Landmarks : IPathfindingAlgorithm
     private AStar astar;
     private bool showLandmarks;
 
-    public Landmarks(Graph graph, bool showLandmarks = true)
+    public Landmarks(Graph graph, bool showLandmarks = true, int updateLandmarks = 0)
     {
         this.graph = graph;
-        this.astar = new AStar(graph, graph.landmarks);
+        this.astar = new AStar(graph, graph.landmarks, updateLandmarks);
         this.showLandmarks = showLandmarks;
     }
 

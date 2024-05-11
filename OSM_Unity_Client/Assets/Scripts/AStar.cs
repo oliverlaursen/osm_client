@@ -18,12 +18,14 @@ public class AStar : IPathfindingAlgorithm
     public Dictionary<long, float> fScore;
     private AStarHeuristic heuristic;
     private IEnumerable<Landmark> landmarks;
+    private int updateLandmarks;
     public int nodesVisited;
-    public AStar(Graph graph, IEnumerable<Landmark> landmarks = null)
+    public AStar(Graph graph, IEnumerable<Landmark> landmarks = null, int updateLandmarks = 0)
     {
         this.graph = graph;
         this.heuristic = new HaversineHeuristic(graph);
         this.landmarks = landmarks;
+        this.updateLandmarks = updateLandmarks;
     }
 
     public void ChangeHeuristic(AStarHeuristic heuristic)
@@ -79,8 +81,8 @@ public class AStar : IPathfindingAlgorithm
 
     private void UpdateLandmarks(int nodesVisited, long start, long end, bool visual = false)
     {
-        if (landmarks == null) return;
-        if (nodesVisited % 300 == 0)
+        if (landmarks == null || updateLandmarks == 0) return;
+        if (nodesVisited % updateLandmarks == 0)
         {
             var bestLandmarks = Landmarks.FindBestLandmark(landmarks, start, end, 3);
             if (visual)
