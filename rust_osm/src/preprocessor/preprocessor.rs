@@ -44,19 +44,19 @@ pub struct FullGraph {
 #[derive(Serialize, Clone)]
 pub struct Landmark {
     pub node_id: NodeId,
-    pub distances: HashMap<NodeId, f64>,
-    pub bi_distances: HashMap<NodeId, f64>
+    pub distances: HashMap<NodeId, f32>,
+    pub bi_distances: HashMap<NodeId, f32>,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize,Debug)]
 pub struct NodeWriteFormat {
     pub node_id: NodeId,
     pub x: f32,
     pub y: f32,
     pub lat: f64,
     pub lon: f64,
-    pub neighbours: Vec<(NodeId, f64)>,
-    pub bi_neighbours: Vec<(NodeId, f64)>,
+    pub neighbours: Vec<(NodeId, f32)>,
+    pub bi_neighbours: Vec<(NodeId, f32)>,
 }
 
 fn create_blacklist() -> HashSet<&'static str> {
@@ -113,7 +113,6 @@ impl Preprocessor {
         println!("Time to minimize graph: {:?}", time.elapsed());
 
         Preprocessor::rewrite_ids(&mut self.nodes, &mut graph);
-         
 
         let bi_graph = Graph::get_bidirectional_graph(&graph);
         //let landmark_nodes = Graph::get_random_nodes(&graph, 16);
@@ -123,14 +122,10 @@ impl Preprocessor {
         (graph, bi_graph, landmarks.to_vec())
     }
 
-    pub fn rewrite_ids(
-        nodes: &mut HashMap<NodeId, Coord>,
-        graph: &mut HashMap<NodeId,Vec<Edge>>,
-    ) {
+    pub fn rewrite_ids(nodes: &mut HashMap<NodeId, Coord>, graph: &mut HashMap<NodeId, Vec<Edge>>) {
         let mut new_id = 0;
         let mut old_to_new: HashMap<NodeId, NodeId> = HashMap::new();
 
-       
         let mut new_graph = HashMap::new();
         for (node, edges) in graph.iter_mut() {
             let mut new_edges = Vec::new();
@@ -171,33 +166,32 @@ impl Preprocessor {
         landmarks: Vec<Landmark>,
         projected_points: &HashMap<NodeId, (f32, f32)>,
     ) -> FullGraph {
-        FullGraph {
-            nodes: graph
-                .iter()
-                .map(|(node_id, edges)| {
-                    let (x, y) = projected_points.get(node_id).unwrap();
-                    let neighbours = edges.iter().map(|edge| (edge.node, edge.cost)).collect();
-                    let bi_neighbours = bi_graph
-                        .get(node_id)
-                        .unwrap()
-                        .iter()
-                        .map(|edge| (edge.node, edge.cost))
-                        .collect();
+        let mut nodes: Vec<NodeWriteFormat> = graph
+            .iter()
+            .map(|(node_id, edges)| {
+                let (x, y) = projected_points.get(node_id).unwrap();
+                let neighbours = edges.iter().map(|edge| (edge.node, edge.cost)).collect();
+                let bi_neighbours = bi_graph
+                    .get(node_id)
+                    .unwrap()
+                    .iter()
+                    .map(|edge| (edge.node, edge.cost))
+                    .collect();
 
-                    let node = self.nodes.get(node_id).unwrap();
-                    NodeWriteFormat {
-                        node_id: *node_id,
-                        x: *x,
-                        y: *y,
-                        lat: node.lat,
-                        lon: node.lon,
-                        neighbours,
-                        bi_neighbours,
-                    }
-                })
-                .collect(),
-            landmarks,
-        }
+                let node = self.nodes.get(node_id).unwrap();
+                NodeWriteFormat {
+                    node_id: *node_id,
+                    x: *x,
+                    y: *y,
+                    lat: node.lat,
+                    lon: node.lon,
+                    neighbours,
+                    bi_neighbours,
+                }
+            })
+            .collect();
+        nodes.sort_by(|a, b| a.node_id.cmp(&b.node_id));
+        FullGraph { nodes, landmarks }
     }
 
     pub fn write_graph(full_graph: FullGraph, filename: &str) {

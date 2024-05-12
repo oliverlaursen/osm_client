@@ -394,13 +394,13 @@ impl Graph {
 
             for &node in graph.keys() {
                 let min_dist_to_landmarks = landmarks.iter()
-                    .map(|landmark| landmark.distances.get(&node).unwrap_or(&f64::MAX))
+                    .map(|landmark| landmark.distances.get(&node).unwrap_or(&f32::MAX))
                     .map(|&dist| OrderedFloat(dist)) // Convert f64 to OrderedFloat<f64>
                     .min()
                     .unwrap()
                     .into_inner(); // Convert OrderedFloat<f64> back to f64
 
-                if min_dist_to_landmarks > max_dist && min_dist_to_landmarks != f64::MAX && min_dist_to_landmarks != 0.0 {
+                if min_dist_to_landmarks > max_dist && min_dist_to_landmarks != f32::MAX && min_dist_to_landmarks != 0.0 {
                     max_dist = min_dist_to_landmarks;
                     next_node = node;
                 }
@@ -413,11 +413,11 @@ impl Graph {
         landmarks
     }
 
-    pub fn dijkstra_all(graph: &HashMap<NodeId, Vec<Edge>>, start: NodeId) -> HashMap<NodeId, f64> {
+    pub fn dijkstra_all(graph: &HashMap<NodeId, Vec<Edge>>, start: NodeId) -> HashMap<NodeId, f32> {
         // Initialize the distance map with infinite distances
         let mut distances = HashMap::new();
         for node in graph.keys() {
-            distances.insert(*node, f64::MAX);
+            distances.insert(*node, f32::MAX);
         }
 
         // Use a binary heap as a priority queue where the smallest distances come out first

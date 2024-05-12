@@ -77,35 +77,24 @@ public class MapController : MonoBehaviour
         var input = File.ReadAllBytes(mapFile);
         var deserialized = MessagePack.MessagePackSerializer.Deserialize<GraphReadFormat>(input);
         var nodes = new Dictionary<long, (float[],double[])>();
-        var graph = new Dictionary<long, Edge[]>();
-        var bi_graph = new Dictionary<long, Edge[]>();
+        var graph = new Edge[deserialized.nodes.Length][];
+        var bi_graph = new Edge[deserialized.nodes.Length][];
         foreach (var node in deserialized.nodes)
         {
             nodes[node.id] = (new float[] {node.x, node.y}, new double[] {node.lat, node.lon});
-            var edges = new List<Edge>();
-            for (int i = 0; i < node.neighbours.Length; i++)
-            {
-                edges.Add(new Edge { node = node.neighbours[i].Item1, cost = node.neighbours[i].Item2 });
-            }
-            graph[node.id] = edges.ToArray();
-
-            var bi_edges = new List<Edge>();
-            for(int i=0; i<node.bi_neighbours.Length; i++)
-            {
-                bi_edges.Add(new Edge { node = node.bi_neighbours[i].Item1, cost = node.bi_neighbours[i].Item2 });
-            }
-            bi_graph[node.id] = bi_edges.ToArray();
+            graph[node.id] = node.neighbours.Select(neighbour => new Edge { node = neighbour.Item1, cost = neighbour.Item2 }).ToArray();
+            bi_graph[node.id] = node.bi_neighbours.Select(neighbour => new Edge { node = neighbour.Item1, cost = neighbour.Item2 }).ToArray();
         }
         var full_graph = new Graph { nodes = nodes, graph = graph, bi_graph = bi_graph, landmarks = deserialized.landmarks };
         return full_graph;
     }
 
-    public void DrawAllEdges(Dictionary<long, (float[],double[])> nodes, Dictionary<long, Edge[]> graph)
+    public void DrawAllEdges(Dictionary<long, (float[],double[])> nodes, Edge[][] graph)
     {
         var meshGenerator = GetComponent<MeshGenerator>();
-        foreach (var element in graph)
+        foreach (var element in graph.Select((Value, Index) => new { Value, Index }))
         {
-            var startNode = element.Key;
+            var startNode = element.Index;
             var startPos = nodes[startNode];
             var startCoord = new Vector3(startPos.Item1[0], startPos.Item1[1], 0);
             var edges = element.Value;

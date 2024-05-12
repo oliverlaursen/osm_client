@@ -40,13 +40,13 @@ public class Edge
 
 public class Graph
 {
-    public Dictionary<long, Edge[]> graph { get; set; }
-    public Dictionary<long, Edge[]> bi_graph { get; set; }
+    public Edge[][] graph { get; set; }
+    public Edge[][] bi_graph { get; set; }
     public Dictionary<long, (float[], double[])> nodes { get; set; }
     public List<Landmark> landmarks { get; set; }
     public Edge[] GetNeighbors(long node)
     {
-        if (graph.ContainsKey(node))
+        if (node < graph.Length && graph[node] != null)
         {
             return graph[node];
         }

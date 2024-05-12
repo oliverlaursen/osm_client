@@ -6,11 +6,11 @@ use std::hash::{Hash, Hasher};
 #[derive(Clone, Debug, Serialize, Copy)]
 pub struct Edge {
     pub node: NodeId,
-    pub cost: f64,
+    pub cost: f32,
 }
 
 impl Edge {
-    pub fn new(node: NodeId, cost: f64) -> Self {
+    pub fn new(node: NodeId, cost: f32) -> Self {
         Edge { node, cost }
     }
 }

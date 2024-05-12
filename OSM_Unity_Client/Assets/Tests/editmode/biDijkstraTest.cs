@@ -151,7 +151,7 @@ public class BiDijkstraTests
 
     */
     public void IsolatedTest(){
-        Dictionary<long, Edge[]> graph = new();
+        Edge[][] graph = new Edge[9][];
         graph[1] = new Edge[]{new Edge{node = 2, cost = 613}, new Edge{node = 8, cost = 2524}};
         graph[2] = new Edge[]{new Edge{node = 3, cost = 3501}, new Edge{node = 1, cost = 613}};
         graph[3] = new Edge[]{new Edge{node = 2, cost = 3501}, new Edge{node = 5, cost = 45}};
@@ -163,7 +163,7 @@ public class BiDijkstraTests
 
 
 
-        Dictionary<long, Edge[]> bi_graph = new();
+        Edge[][] bi_graph = new Edge[9][];
         bi_graph[1] = new Edge[]{new Edge{node = 2, cost = 613}, new Edge{node = 8, cost = 2524}};
         bi_graph[2] = new Edge[]{new Edge{node = 1, cost = 613}, new Edge{node = 3, cost = 3501}};
         bi_graph[3] = new Edge[]{new Edge{node = 2, cost = 3501}, new Edge{node = 4, cost = 75}, new Edge{node = 5, cost = 45}};

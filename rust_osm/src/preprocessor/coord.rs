@@ -7,7 +7,7 @@ pub struct Coord {
 }
 
 impl Coord {
-    pub fn distance_to(&self, end: Coord) -> f64 {
+    pub fn distance_to(&self, end: Coord) -> f32 {
         let r: f64 = 6_378_100.0;
 
         let dlon: f64 = (end.lon - self.lon).to_radians();
@@ -19,6 +19,6 @@ impl Coord {
             + ((dlon / 2.0).sin()) * ((dlon / 2.0).sin()) * (lat1.cos()) * (lat2.cos());
         let c: f64 = 2.0 * ((a.sqrt()).atan2((1.0 - a).sqrt()));
 
-        r * c
+        (r * c) as f32
     }
 }
