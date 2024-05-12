@@ -4,7 +4,7 @@ using UnityEngine;
 using UnityEngine.PlayerLoop;
 using MessagePack;
 
-public class Coord
+public struct Coord
 {
     public float lon;
     public float lat;
@@ -26,13 +26,13 @@ public class Coord
     }
 }
 
-public class Node
+public struct Node
 {
     public long id;
     public Coord coord;
 }
 
-public class Edge
+public struct Edge
 {
     public long node { get; set; }
     public float cost { get; set; }
