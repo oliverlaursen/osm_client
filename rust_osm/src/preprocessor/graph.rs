@@ -1,12 +1,11 @@
 use crate::preprocessor::edge::*;
 use crate::preprocessor::preprocessor::*;
+use crate::Coord;
 
 use osmpbfreader::NodeId;
-use std::cmp::Reverse;
 use std::collections::BinaryHeap;
 use std::collections::HashMap;
 use std::collections::HashSet;
-use std::hash::Hash;
 use ordered_float::OrderedFloat;
 
 pub struct Graph;
@@ -305,18 +304,18 @@ impl Graph {
     }
 
     pub fn build_graph(
-        nodes: &HashMap<NodeId, Node>,
+        nodes: &HashMap<NodeId, Coord>,
         roads: &Vec<Road>,
     ) -> HashMap<NodeId, Vec<Edge>> {
         let mut graph: HashMap<NodeId, Vec<Edge>> = HashMap::new();
-        for node in nodes.values() {
-            graph.insert(node.id, Vec::new());
+        for node in nodes.keys() {
+            graph.insert(*node, Vec::new());
         }
         for road in roads {
             for win in road.node_refs.windows(2) {
                 let node = win[0];
                 let next_node = win[1];
-                let distance = nodes[&node].coord.distance_to(nodes[&next_node].coord);
+                let distance = nodes[&node].distance_to(nodes[&next_node]);
                 let edge = Edge::new(next_node, distance);
                 graph.get_mut(&node).unwrap().push(edge);
                 if road.direction == CarDirection::Twoway {

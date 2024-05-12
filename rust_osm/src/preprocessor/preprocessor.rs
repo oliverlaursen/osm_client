@@ -31,7 +31,7 @@ pub enum CarDirection {
 #[derive(Clone)]
 pub struct Preprocessor {
     pub nodes_to_keep: HashSet<NodeId>,
-    pub nodes: HashMap<NodeId, Node>,
+    pub nodes: HashMap<NodeId, Coord>,
     pub roads: Vec<Road>,
 }
 
@@ -111,13 +111,57 @@ impl Preprocessor {
         let time = std::time::Instant::now();
         Graph::minimize_graph(&mut graph, true);
         println!("Time to minimize graph: {:?}", time.elapsed());
-        
-        let bi_graph = Graph::get_bidirectional_graph(&mut graph);
+
+        Preprocessor::rewrite_ids(&mut self.nodes, &mut graph);
+         
+
+        let bi_graph = Graph::get_bidirectional_graph(&graph);
         //let landmark_nodes = Graph::get_random_nodes(&graph, 16);
         //let landmarks = Graph::add_landmarks(&graph,&bi_graph, landmark_nodes);
         let landmarks = Graph::farthest_nodes(&graph, &bi_graph, 16);
 
         (graph, bi_graph, landmarks.to_vec())
+    }
+
+    pub fn rewrite_ids(
+        nodes: &mut HashMap<NodeId, Coord>,
+        graph: &mut HashMap<NodeId,Vec<Edge>>,
+    ) {
+        let mut new_id = 0;
+        let mut old_to_new: HashMap<NodeId, NodeId> = HashMap::new();
+
+       
+        let mut new_graph = HashMap::new();
+        for (node, edges) in graph.iter_mut() {
+            let mut new_edges = Vec::new();
+            if !old_to_new.contains_key(node) {
+                old_to_new.insert(*node, NodeId(new_id));
+                new_id += 1;
+            }
+            for edge in edges.iter_mut() {
+                if !old_to_new.contains_key(&edge.node) {
+                    old_to_new.insert(edge.node, NodeId(new_id));
+                    new_id += 1;
+                }
+
+                new_edges.push(Edge {
+                    node: old_to_new[&edge.node],
+                    cost: edge.cost,
+                });
+            }
+            new_graph.insert(old_to_new[node], new_edges);
+        }
+        *graph = new_graph;
+
+        let mut new_nodes = HashMap::new();
+        for (node, coord) in nodes.iter() {
+            if !old_to_new.contains_key(node) {
+                old_to_new.insert(*node, NodeId(new_id));
+                new_id += 1;
+            }
+            new_nodes.insert(old_to_new[node], coord.clone());
+        }
+        *nodes = new_nodes;
     }
 
     pub fn build_full_graph(
@@ -145,8 +189,8 @@ impl Preprocessor {
                         node_id: *node_id,
                         x: *x,
                         y: *y,
-                        lat: node.coord.lat,
-                        lon: node.coord.lon,
+                        lat: node.lat,
+                        lon: node.lon,
                         neighbours,
                         bi_neighbours,
                     }
@@ -200,9 +244,9 @@ impl Preprocessor {
         let nodes_to_keep_hashset = HashSet::from_par_iter(nodes_to_keep);
 
         let nodes = self.get_nodes(filename, &nodes_to_keep_hashset);
-        let nodes_hashmap: HashMap<NodeId, Node> = nodes
+        let nodes_hashmap: HashMap<NodeId, Coord> = nodes
             .par_iter()
-            .map(|node| (node.id, node.clone()))
+            .map(|node| (node.id, node.coord.clone()))
             .collect();
         self.nodes_to_keep = nodes_to_keep_hashset;
         self.nodes = nodes_hashmap;
@@ -241,7 +285,7 @@ impl Preprocessor {
 
     pub fn project_nodes_to_2d(&self) -> HashMap<NodeId, (f32, f32)> {
         let center_point = self.nodes.iter().fold((0.0, 0.0), |acc, (_, node)| {
-            (acc.0 + node.coord.lat, acc.1 + node.coord.lon)
+            (acc.0 + node.lat, acc.1 + node.lon)
         });
         let center_point = (
             center_point.0 / self.nodes.len() as f64,
@@ -252,7 +296,7 @@ impl Preprocessor {
             .nodes
             .par_iter()
             .map(|(nodeid, node)| {
-                let (x, y) = azimuthal_equidistant_projection(node.coord, center_point);
+                let (x, y) = azimuthal_equidistant_projection(*node, center_point);
                 (*nodeid, (x as f32, y as f32))
             })
             .collect();
