@@ -139,8 +139,8 @@ public class AStar : IPathfindingAlgorithm
     {
         foreach (var neighbor in neighbors)
         {
-            nodesVisited++;
             if (closedSet.Contains(neighbor.node)) continue;
+            nodesVisited++;
             TryEnqueueNeighbor(neighbor, current, end);
         }
     }

@@ -45,11 +45,11 @@ public class BiAStar : IPathfindingAlgorithm
             var currentForward = forwardAstar.DequeueAndUpdateSets();
             var currentBackward = backwardAstar.DequeueAndUpdateSets();
 
-            var max = Math.Max(distForward, distBackward);
+            var distSum = distBackward + distForward;
+            var backwardsHeuristic = backwardAstar.heuristic.Calculate(currentBackward, startNode);
 
-            if (max >= minDistance)
+            if (distSum >= minDistance + backwardsHeuristic)
             {
-                Debug.Log("dist" + max);
                 stopwatch.Stop();
                 var allPrev = MergePrevious(forwardAstar.parent, backwardAstar.parent, meetingNode);
                 var path = MapController.ReconstructPath(allPrev, start, end);
