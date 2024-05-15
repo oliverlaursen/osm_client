@@ -1,7 +1,6 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
 using UnityEngine;
 
 public class BiDijkstra : MonoBehaviour, IPathfindingAlgorithm
@@ -78,7 +77,7 @@ public class BiDijkstra : MonoBehaviour, IPathfindingAlgorithm
     private bool ProcessQueue(Dijkstra activeDijkstra, Dijkstra otherDijkstra, ref long meetingNode, ref float minDistance, bool isForward, GLLineRenderer lineRenderer = null)
     {
         // Dequeue the closest node
-        var currentNode = activeDijkstra.DequeueAndUpdateSets();
+        var currentNode = activeDijkstra.queue.Dequeue().Id;
 
         // If the current node's distance is greater than or equal to the minimum known distance, stop
         if (activeDijkstra.distances[currentNode] >= minDistance)

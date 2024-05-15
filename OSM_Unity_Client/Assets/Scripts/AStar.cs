@@ -1,10 +1,8 @@
-using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using Priority_Queue;
 using UnityEngine;
-using UnityEngine.Assertions;
 
 public class AStar : IPathfindingAlgorithm
 {
@@ -67,7 +65,8 @@ public class AStar : IPathfindingAlgorithm
         while (openList.Count > 0)
         {
             long current = DequeueAndUpdateSets();
-            if (ProcessCurrentNode(current, start, end, ref nodesVisited, stopwatch)){
+            if (current == end){
+                stopwatch.Stop();
                 return new PathResult(start, end, gScore[end], stopwatch.ElapsedMilliseconds, nodesVisited, MapController.ReconstructPath(parent, start, end));
             }
             nodesVisited++;
@@ -104,8 +103,9 @@ public class AStar : IPathfindingAlgorithm
         while (openList.Count > 0)
         {
             long current = DequeueAndUpdateSets();
-            if (ProcessCurrentNode(current, start, end, ref nodesVisited, stopwatch))
+            if (current == end)
             {
+                stopwatch.Stop();
                 lineRenderer.ClearDiscoveryPath();
                 var result = new PathResult(start, end, gScore[end], stopwatch.ElapsedMilliseconds, nodesVisited, MapController.ReconstructPath(parent, start, end));
                 result.DisplayAndDrawPath(graph);
@@ -122,16 +122,6 @@ public class AStar : IPathfindingAlgorithm
                 stopwatch2.Restart();
             }
         }
-    }
-
-    public bool ProcessCurrentNode(long current, long start, long end, ref int nodesVisited, System.Diagnostics.Stopwatch stopwatch)
-    {
-        if (current == end)
-        {
-            stopwatch.Stop();
-            return true;
-        }
-        return false;
     }
 
 
