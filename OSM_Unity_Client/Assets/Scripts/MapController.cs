@@ -5,12 +5,17 @@ using System;
 using System.Linq;
 
 using System.IO;
+using System.Threading.Tasks;
+using Unity.Plastic.Antlr3.Runtime;
+using UnityEngine.PlayerLoop;
+using UnityEngine.VFX;
 
 public class MapController : MonoBehaviour
 {
     public Graph graph;
     public string mapFileName = "andorra.graph";
     public GameObject mapText;
+    public GameObject loadingText;
 
     public static long[] ReconstructPath(Dictionary<long, long> previous, long start, long end)
     {
@@ -50,7 +55,7 @@ public class MapController : MonoBehaviour
         var timeText = GameObject.Find("TimeText");
 
         ChangeTextFieldHelper(startText, start.ToString());
-        ChangeTextFieldHelper(endText,  end.ToString());
+        ChangeTextFieldHelper(endText, end.ToString());
         ChangeTextHelper(distanceText, "Distance: " + distance);
         ChangeTextHelper(timeText, "Time (ms): " + timeElapsed);
         ChangeTextHelper(nodesVisitedText, "Nodes visited: " + nodesVisited);
@@ -67,31 +72,53 @@ public class MapController : MonoBehaviour
         gameObject.GetComponent<TMPro.TMP_InputField>().text = text;
     }
 
-    public static Graph DeserializeGraph(string mapFile)
+    public static async Task<Graph> DeserializeGraphAsync(string mapFile, GameObject loadingText = null)
     {
-        /**
-           Format:
-           nodeId x y neighbour cost neighbour cost
-           long float float long int long int
-        */
-        var input = File.ReadAllBytes(mapFile);
-        var deserialized = MessagePack.MessagePackSerializer.Deserialize<GraphReadFormat>(input);
-        var n = deserialized.nodes.Length;
-
-        var nodes = new (float[],double[])[n];
-        var graph = new Edge[n][];
-        var bi_graph = new Edge[n][];
-        foreach (var node in deserialized.nodes)
-        {
-            nodes[node.id] = (new float[] {node.x, node.y}, new double[] {node.lat, node.lon});
-            graph[node.id] = node.neighbours.Select(neighbour => new Edge { node = neighbour.Item1, cost = neighbour.Item2 }).ToArray();
-            bi_graph[node.id] = node.bi_neighbours.Select(neighbour => new Edge { node = neighbour.Item1, cost = neighbour.Item2 }).ToArray();
+        if (loadingText != null){
+            loadingText.SetActive(true);
         }
-        var full_graph = new Graph { nodes = nodes, graph = graph, bi_graph = bi_graph, landmarks = deserialized.landmarks };
-        return full_graph;
+        // Using stream and async deserialization
+        using (var stream = File.OpenRead(mapFile))
+        {
+            var deserialized = await MessagePack.MessagePackSerializer.DeserializeAsync<GraphReadFormat>(stream);
+
+            var n = deserialized.nodes.Length;
+            var graph = new Edge[n][];
+            var bi_graph = new Edge[n][];
+            var nodes = new (float[],double[])[n];
+
+            foreach (var node in deserialized.nodes)
+            {
+                int index = (int)node.id;  // Ensure this casting is valid based on your node ID generation logic.
+                nodes[index] = (new float[] {node.x, node.y}, new double[] {node.lat, node.lon});
+                graph[index] = node.neighbours;
+                bi_graph[index] = node.bi_neighbours;
+            }
+
+            var full_graph = new Graph
+            {
+                nodes = nodes,
+                graph = graph,
+                bi_graph = bi_graph,
+                landmarks = deserialized.landmarks
+            };
+
+            if (loadingText != null){
+                loadingText.SetActive(false);
+            }
+
+            return full_graph;
+        }
     }
 
-    public void DrawAllEdges((float[],double[])[] nodes, Edge[][] graph)
+    public static Graph DeserializeGraph(string mapFile)
+    {
+        var task = DeserializeGraphAsync(mapFile);
+        task.Wait();
+        return task.Result;
+    }
+
+    public void DrawAllEdges((float[], double[])[] nodes, Edge[][] graph)
     {
         var meshGenerator = GetComponent<MeshGenerator>();
         foreach (var element in graph.Select((Value, Index) => new { Value, Index }))
@@ -112,14 +139,14 @@ public class MapController : MonoBehaviour
         meshGenerator.UpdateMesh();
     }
 
-    public void DrawPath((float[],double[])[] nodes, long[] path)
+    public void DrawPath((float[], double[])[] nodes, long[] path)
     {
         var lineRenderer = Camera.main.gameObject.GetComponent<GLLineRenderer>();
         var coords = Array.ConvertAll(path, node => new Vector3(nodes[node].Item1[0], nodes[node].Item1[1], 0)).ToList();
         lineRenderer.AddPath(coords);
     }
 
-    public float GetHeight((float[],double[])[] nodes)
+    public float GetHeight((float[], double[])[] nodes)
     {
         var min = float.MaxValue;
         var max = float.MinValue;
@@ -131,12 +158,12 @@ public class MapController : MonoBehaviour
         return max - min;
     }
 
-    void Start()
+    async void Start()
     {
         mapText.GetComponent<TMPro.TMP_Text>().text = mapFileName;
         var time = new Stopwatch();
         time.Start();
-        var graph = DeserializeGraph("Assets/Maps/" + mapFileName);
+        var graph = await DeserializeGraphAsync("Assets/Maps/" + mapFileName, loadingText: loadingText);
         UnityEngine.Debug.Log("Deserialization time: " + time.ElapsedMilliseconds + "ms");
         time.Reset();
         time.Start();

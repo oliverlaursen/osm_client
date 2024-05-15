@@ -32,9 +32,12 @@ public struct Node
     public Coord coord;
 }
 
+[MessagePackObject]
 public struct Edge
 {
+    [Key(0)]
     public long node { get; set; }
+    [Key(1)]
     public float cost { get; set; }
 }
 
@@ -93,7 +96,7 @@ public class NodeReadFormat
     [Key(4)]
     public double lon { get; set; }
     [Key(5)]
-    public (long, float)[] neighbours { get; set; }
+    public Edge[] neighbours { get; set; }
     [Key(6)]
-    public (long, float)[] bi_neighbours { get; set; }
+    public Edge[] bi_neighbours { get; set; }
 }

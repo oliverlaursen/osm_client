@@ -18,7 +18,7 @@ public class Benchmarks
     public void TestInitialize()
     {
         var random = new System.Random();
-        denmarkGraph = MapController.DeserializeGraph("Assets/Maps/dach.graph");
+        var denmarkGraph = MapController.DeserializeGraph("Assets/Maps/dach.graph");
 
         var stPairs = new (long, long)[ROUTE_AMOUNT];
         for (int i = 0; i < ROUTE_AMOUNT; i++)
