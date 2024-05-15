@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Threading.Tasks;
 using NUnit.Framework;
 using NUnit.Framework.Constraints;
 using UnityEngine;
@@ -14,11 +15,12 @@ public class Benchmarks
     (long, long)[] stPairs;
     int ROUTE_AMOUNT = 200; //amount of routes to benchmark
 
-    [SetUp]
+    [OneTimeSetUp]
     public void TestInitialize()
     {
         var random = new System.Random();
-        var denmarkGraph = MapController.DeserializeGraph("Assets/Maps/dach.graph");
+
+         var denmarkGraph = MapController.DeserializeGraph("Assets/Maps/denmark.graph"); 
 
         var stPairs = new (long, long)[ROUTE_AMOUNT];
         for (int i = 0; i < ROUTE_AMOUNT; i++)

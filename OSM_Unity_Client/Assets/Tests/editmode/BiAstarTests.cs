@@ -12,7 +12,7 @@ public class BiAstarTests
     Dijkstra dijkstra;
     BiAStar biAstar;
 
-    [SetUp]
+    [OneTimeSetUp]
     public void InitializeTest()
     {
         denmarkGraph = MapController.DeserializeGraph("Assets/Maps/denmark.graph");
@@ -36,7 +36,7 @@ public class BiAstarTests
             if (dijkstraPathResult == null) continue;   // If no path is found, skip the test
             var astarPathResult = biAstar.FindShortestPath(startNode, endNode);
 
-            Assert.AreEqual(dijkstraPathResult.distance, astarPathResult.distance);
+            Assert.AreEqual(dijkstraPathResult.distance, astarPathResult.distance, message: "Distance mismatch for " + startNode + " -> " + endNode);
             Assert.AreEqual(dijkstraPathResult.path, astarPathResult.path);
         }
     }

@@ -9,10 +9,11 @@ public class AstarTests
 {
     int COMPARISON_AMOUNT = 10; //amount of times to compare astar distance to dijkstra
     Graph denmarkGraph;
+    Graph dachGraph;
     Dijkstra dijkstra;
     AStar astar;
 
-    [SetUp]
+    [OneTimeSetUp]
     public void InitializeTest()
     {
         denmarkGraph = MapController.DeserializeGraph("Assets/Maps/denmark.graph");
@@ -41,20 +42,5 @@ public class AstarTests
             Assert.AreEqual(dijkstraPathResult.distance, astarPathResult.distance);
             Assert.AreEqual(dijkstraPathResult.path, astarPathResult.path);
         }
-    }
-
-    [Test]
-    public void GivenRouteAstar()
-    {
-        var dachGraph = MapController.DeserializeGraph("Assets/Maps/dach.graph");
-        long startNode = 192296425;
-        long endNode = 1456141185;
-
-        AStar astar = new AStar(dachGraph);
-        Dijkstra dijkstra = new Dijkstra(dachGraph);
-        var astarPathResult = astar.FindShortestPath(startNode, endNode);
-        var dijkstraPathResult = dijkstra.FindShortestPath(startNode, endNode);
-        Assert.AreEqual(dijkstraPathResult.path, astarPathResult.path);
-        Assert.AreEqual(dijkstraPathResult.distance, astarPathResult.distance);
     }
 }

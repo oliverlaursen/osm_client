@@ -1,8 +1,4 @@
-using System.Collections;
-using System.Collections.Generic;
 using NUnit.Framework;
-using UnityEngine;
-using UnityEngine.TestTools;
 
 public class LandmarksTest
 {
@@ -11,7 +7,7 @@ public class LandmarksTest
     Dijkstra dijkstra;
     Landmarks landmarks;
 
-    [SetUp]
+    [OneTimeSetUp]
     public void InitializeTest()
     {
         denmarkGraph = MapController.DeserializeGraph("Assets/Maps/dach.graph");

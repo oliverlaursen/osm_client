@@ -6,9 +6,7 @@ using System.Linq;
 
 using System.IO;
 using System.Threading.Tasks;
-using Unity.Plastic.Antlr3.Runtime;
-using UnityEngine.PlayerLoop;
-using UnityEngine.VFX;
+using System.Collections;
 
 public class MapController : MonoBehaviour
 {
@@ -111,12 +109,45 @@ public class MapController : MonoBehaviour
         }
     }
 
-    public static Graph DeserializeGraph(string mapFile)
+    public static Graph DeserializeGraph(string mapFile, GameObject loadingText = null)
     {
-        var task = DeserializeGraphAsync(mapFile);
-        task.Wait();
-        return task.Result;
+        if (loadingText != null){
+            loadingText.SetActive(true);
+        }
+        // Using stream and async deserialization
+        using (var stream = File.OpenRead(mapFile))
+        {
+            var deserialized = MessagePack.MessagePackSerializer.Deserialize<GraphReadFormat>(stream);
+
+            var n = deserialized.nodes.Length;
+            var graph = new Edge[n][];
+            var bi_graph = new Edge[n][];
+            var nodes = new (float[],double[])[n];
+
+            foreach (var node in deserialized.nodes)
+            {
+                int index = (int)node.id;  // Ensure this casting is valid based on your node ID generation logic.
+                nodes[index] = (new float[] {node.x, node.y}, new double[] {node.lat, node.lon});
+                graph[index] = node.neighbours;
+                bi_graph[index] = node.bi_neighbours;
+            }
+
+            var full_graph = new Graph
+            {
+                nodes = nodes,
+                graph = graph,
+                bi_graph = bi_graph,
+                landmarks = deserialized.landmarks
+            };
+
+            if (loadingText != null){
+                loadingText.SetActive(false);
+            }
+
+            return full_graph;
+        }
     }
+
 
     public void DrawAllEdges((float[], double[])[] nodes, Edge[][] graph)
     {

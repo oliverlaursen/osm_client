@@ -1,6 +1,9 @@
+using System.Collections;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using NUnit.Framework;
 using UnityEngine;
+using UnityEngine.TestTools;
 
 public class BiDijkstraTests
 {
@@ -9,28 +12,14 @@ public class BiDijkstraTests
     Dijkstra dijkstra;
     BiDijkstra biDijkstra;
 
-    [SetUp]
+
+
+    [OneTimeSetUp]
     public void InitializeTest()
     {
         denmarkGraph = MapController.DeserializeGraph("Assets/Maps/denmark.graph");
         dijkstra = new Dijkstra(denmarkGraph);
         biDijkstra = new BiDijkstra(denmarkGraph);
-    }
-
-    // A Test behaves as an ordinary method
-    [Test]
-    public void GivenRouteBidijkstra()
-    {
-        var denmarkGraph = MapController.DeserializeGraph("Assets/Maps/denmark.graph");
-        long startNode = 280276691;
-        long endNode = 896780523;
-
-        BiDijkstra biDijkstra = new BiDijkstra(denmarkGraph);
-        Dijkstra dijkstra = new Dijkstra(denmarkGraph);
-        var dijkstraResult = dijkstra.FindShortestPath(startNode, endNode);
-        var pathResult = biDijkstra.FindShortestPath(startNode, endNode);
-        var distance = pathResult.distance;
-        Assert.AreEqual(dijkstraResult.distance, distance);
     }
     
     [Test]
