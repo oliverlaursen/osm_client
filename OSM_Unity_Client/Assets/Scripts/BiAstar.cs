@@ -123,6 +123,7 @@ public class BiAStar : IPathfindingAlgorithm
 
     private void ProcessQueue(AStar activeAstar, AStar otherAstar, long current, long end, bool isForward, GLLineRenderer lineRenderer = null)
     {
+
         // Get neighbors based on direction
         var neighbors = isForward ? graph.graph[current] : graph.bi_graph[current];
         if (lineRenderer == null)

@@ -39,7 +39,6 @@ public class BiDijkstraTests
             var biDijkstraPathResult = biDijkstra.FindShortestPath(startNode, endNode);
 
             Assert.AreEqual(dijkstraPathResult.distance, biDijkstraPathResult.distance);
-            Debug.Log(i);
         }
     }
 

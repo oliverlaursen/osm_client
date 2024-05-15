@@ -54,36 +54,21 @@ public class BiDijkstra : MonoBehaviour, IPathfindingAlgorithm
             }
 
             // Process forward direction
-            if (ProcessQueue(forwardDijkstra, backwardDijkstra, ref meetingNode, ref minDistance, true))
-            {
-                stopwatch.Stop();
-                var path = MergePrevious(forwardDijkstra.previous, backwardDijkstra.previous, meetingNode);
-                return new PathResult(start, end, minDistance, stopwatch.ElapsedMilliseconds, forwardDijkstra.nodesVisited + backwardDijkstra.nodesVisited, MapController.ReconstructPath(path, start, end));
-            }
+            ProcessQueue(forwardDijkstra, backwardDijkstra, ref meetingNode, ref minDistance, true);
 
             // Process backward direction
-            if (ProcessQueue(backwardDijkstra, forwardDijkstra, ref meetingNode, ref minDistance, false))
-            {
-                stopwatch.Stop();
-                var path = MergePrevious(forwardDijkstra.previous, backwardDijkstra.previous, meetingNode);
-                return new PathResult(start, end, minDistance, stopwatch.ElapsedMilliseconds, forwardDijkstra.nodesVisited + backwardDijkstra.nodesVisited, MapController.ReconstructPath(path, start, end));
-            }
+            ProcessQueue(backwardDijkstra, forwardDijkstra, ref meetingNode, ref minDistance, false);
+            
         }
 
         stopwatch.Stop();
         return null;
     }
 
-    private bool ProcessQueue(Dijkstra activeDijkstra, Dijkstra otherDijkstra, ref long meetingNode, ref float minDistance, bool isForward, GLLineRenderer lineRenderer = null)
+    private void ProcessQueue(Dijkstra activeDijkstra, Dijkstra otherDijkstra, ref long meetingNode, ref float minDistance, bool isForward, GLLineRenderer lineRenderer = null)
     {
         // Dequeue the closest node
         var currentNode = activeDijkstra.queue.Dequeue().Id;
-
-        // If the current node's distance is greater than or equal to the minimum known distance, stop
-        if (activeDijkstra.distances[currentNode] >= minDistance)
-        {
-            return true;
-        }
 
         // Get neighbors based on direction
         var neighbors = isForward ? graph.graph[currentNode] : graph.bi_graph[currentNode];
@@ -110,8 +95,6 @@ public class BiDijkstra : MonoBehaviour, IPathfindingAlgorithm
                 lineRenderer.AddDiscoveryPath(new List<Vector3> { new Vector3(startCoord.Item1[0], startCoord.Item1[1], 0), new Vector3(endCoord.Item1[0], endCoord.Item1[1], 0) });
             }
         }
-
-        return false;
     }
 
     public IEnumerator FindShortestPathWithVisual(long start, long end, int drawspeed)
@@ -139,26 +122,12 @@ public class BiDijkstra : MonoBehaviour, IPathfindingAlgorithm
             }
 
             // Process forward direction
-            if (ProcessQueue(forwardDijkstra, backwardDijkstra, ref meetingNode, ref minDistance, true, lineRenderer))
-            {
-                stopwatch.Stop();
-                lineRenderer.ClearDiscoveryPath();
-                var path = MergePrevious(forwardDijkstra.previous, backwardDijkstra.previous, meetingNode);
-                var result = new PathResult(start, end, minDistance, stopwatch.ElapsedMilliseconds, forwardDijkstra.nodesVisited + backwardDijkstra.nodesVisited, MapController.ReconstructPath(path, start, end));
-                result.DisplayAndDrawPath(graph);
-                yield break;
-            }
+            ProcessQueue(forwardDijkstra, backwardDijkstra, ref meetingNode, ref minDistance, true, lineRenderer);
+
 
             // Process backward direction
-            if (ProcessQueue(backwardDijkstra, forwardDijkstra, ref meetingNode, ref minDistance, false, lineRenderer))
-            {
-                stopwatch.Stop();
-                lineRenderer.ClearDiscoveryPath();
-                var path = MergePrevious(forwardDijkstra.previous, backwardDijkstra.previous, meetingNode);
-                var result = new PathResult(start, end, minDistance, stopwatch.ElapsedMilliseconds, forwardDijkstra.nodesVisited + backwardDijkstra.nodesVisited, MapController.ReconstructPath(path, start, end));
-                result.DisplayAndDrawPath(graph);
-                yield break;
-            }
+            ProcessQueue(backwardDijkstra, forwardDijkstra, ref meetingNode, ref minDistance, false, lineRenderer);
+            
 
             // Drawing at intervals
             if (drawspeed == 0) yield return null;
