@@ -20,7 +20,7 @@ public class Dijkstra : IPathfindingAlgorithm
 
     }
 
-    public void InitializeSearch(long start, Graph graph)
+    public void InitializeSearch(long start)
     {
         queue = new FastPriorityQueue<PriorityQueueNode>(graph.nodes.Length);
         priorityQueueNodes = new Dictionary<long, PriorityQueueNode>();
@@ -38,7 +38,7 @@ public class Dijkstra : IPathfindingAlgorithm
 
     public PathResult FindShortestPath(long start, long end)
     {
-        InitializeSearch(start, graph);
+        InitializeSearch(start);
         var stopwatch = System.Diagnostics.Stopwatch.StartNew();
 
         while (queue.Count > 0)
@@ -62,7 +62,7 @@ public class Dijkstra : IPathfindingAlgorithm
 
     public IEnumerator FindShortestPathWithVisual(long start, long end, int drawspeed)
     {
-        InitializeSearch(start, graph);
+        InitializeSearch(start);
         var stopwatch = System.Diagnostics.Stopwatch.StartNew();
         var stopwatch2 = System.Diagnostics.Stopwatch.StartNew();
         var lineRenderer = Camera.main.GetComponent<GLLineRenderer>(); // Ensure Camera has GLLineRenderer component

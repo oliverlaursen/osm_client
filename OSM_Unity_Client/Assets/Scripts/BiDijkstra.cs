@@ -10,7 +10,6 @@ public class BiDijkstra : MonoBehaviour, IPathfindingAlgorithm
     private Dijkstra backwardDijkstra;
     private long meetingNode;
     private float minDistance;
-    private long startNode, endNode;
 
     public BiDijkstra(Graph graph)
     {
@@ -19,19 +18,17 @@ public class BiDijkstra : MonoBehaviour, IPathfindingAlgorithm
         backwardDijkstra = new Dijkstra(graph);
     }
 
-    private void Initialize(long start, long end, Graph graph)
+    private void Initialize(long start, long end)
     {
-        forwardDijkstra.InitializeSearch(start, graph);
-        backwardDijkstra.InitializeSearch(end, graph);
+        forwardDijkstra.InitializeSearch(start);
+        backwardDijkstra.InitializeSearch(end);
         minDistance = float.PositiveInfinity;
         meetingNode = -1;
     }
 
     public PathResult FindShortestPath(long start, long end)
     {
-        startNode = start;
-        endNode = end;
-        Initialize(start, end, graph);
+        Initialize(start, end);
         var stopwatch = System.Diagnostics.Stopwatch.StartNew();
 
         while (forwardDijkstra.queue.Count > 0 && backwardDijkstra.queue.Count > 0)
@@ -44,12 +41,7 @@ public class BiDijkstra : MonoBehaviour, IPathfindingAlgorithm
                 stopwatch.Stop();
                 var allPrev = MergePrevious(forwardDijkstra.previous, backwardDijkstra.previous, meetingNode);
                 var path = MapController.ReconstructPath(allPrev, start, end);
-                // Recaculate distance from path
-                var distance = 0f;
-                for (int i = 0; i < path.Length - 1; i++)
-                {
-                    distance += Array.Find(graph.graph[path[i]], edge => edge.node == path[i + 1]).cost;
-                }
+                var distance = ComputeDistance(path, graph);
                 return new PathResult(start, end, distance, stopwatch.ElapsedMilliseconds, forwardDijkstra.nodesVisited + backwardDijkstra.nodesVisited, path);
             }
 
@@ -58,11 +50,22 @@ public class BiDijkstra : MonoBehaviour, IPathfindingAlgorithm
 
             // Process backward direction
             ProcessQueue(backwardDijkstra, forwardDijkstra, ref meetingNode, ref minDistance, false);
-            
+
         }
 
         stopwatch.Stop();
         return null;
+    }
+
+    public static float ComputeDistance(long[] path, Graph graph)
+    {
+        // Recaculate distance from path
+        var distance = 0f;
+        for (int i = 0; i < path.Length - 1; i++)
+        {
+            distance += Array.Find(graph.graph[path[i]], edge => edge.node == path[i + 1]).cost;
+        }
+        return distance;
     }
 
     private void ProcessQueue(Dijkstra activeDijkstra, Dijkstra otherDijkstra, ref long meetingNode, ref float minDistance, bool isForward, GLLineRenderer lineRenderer = null)
@@ -99,9 +102,7 @@ public class BiDijkstra : MonoBehaviour, IPathfindingAlgorithm
 
     public IEnumerator FindShortestPathWithVisual(long start, long end, int drawspeed)
     {
-        startNode = start;
-        endNode = end;
-        Initialize(start, end, graph);
+        Initialize(start, end);
         var lineRenderer = Camera.main.GetComponent<GLLineRenderer>(); // Ensure Camera has GLLineRenderer component
         var stopwatch = System.Diagnostics.Stopwatch.StartNew();
         var stopwatch2 = System.Diagnostics.Stopwatch.StartNew();
@@ -115,8 +116,10 @@ public class BiDijkstra : MonoBehaviour, IPathfindingAlgorithm
             {
                 stopwatch.Stop();
                 lineRenderer.ClearDiscoveryPath();
-                var path = MergePrevious(forwardDijkstra.previous, backwardDijkstra.previous, meetingNode);
-                var result = new PathResult(start, end, minDistance, stopwatch.ElapsedMilliseconds, forwardDijkstra.nodesVisited + backwardDijkstra.nodesVisited, MapController.ReconstructPath(path, start, end));
+                var allPrev = MergePrevious(forwardDijkstra.previous, backwardDijkstra.previous, meetingNode);
+                var path = MapController.ReconstructPath(allPrev, start, end);
+                var distance = ComputeDistance(path, graph);
+                var result = new PathResult(start, end, distance, stopwatch.ElapsedMilliseconds, forwardDijkstra.nodesVisited + backwardDijkstra.nodesVisited, path);
                 result.DisplayAndDrawPath(graph);
                 yield break;
             }
@@ -127,7 +130,7 @@ public class BiDijkstra : MonoBehaviour, IPathfindingAlgorithm
 
             // Process backward direction
             ProcessQueue(backwardDijkstra, forwardDijkstra, ref meetingNode, ref minDistance, false, lineRenderer);
-            
+
 
             // Drawing at intervals
             if (drawspeed == 0) yield return null;
@@ -142,7 +145,7 @@ public class BiDijkstra : MonoBehaviour, IPathfindingAlgorithm
         yield return null;
     }
 
-    private Dictionary<long, long> MergePrevious(Dictionary<long, long> previous, Dictionary<long, long> previous2, long meetingPoint)
+    public static Dictionary<long, long> MergePrevious(Dictionary<long, long> previous, Dictionary<long, long> previous2, long meetingPoint)
     {
         var merged = new Dictionary<long, long>(previous);
 

@@ -8,7 +8,7 @@ public class AStar : IPathfindingAlgorithm
 {
     public Graph graph;
     public FastPriorityQueue<PriorityQueueNode> queue;
-    private Dictionary<long, PriorityQueueNode> priorityQueueNodes;
+    public Dictionary<long, PriorityQueueNode> priorityQueueNodes;
     public HashSet<long> closedSet;
     public Dictionary<long, long> previous;
     public Dictionary<long, float> gScore;
