@@ -14,7 +14,7 @@ public class AStar : IPathfindingAlgorithm
     public Dictionary<long, long> parent;
     public Dictionary<long, float> gScore;
     public Dictionary<long, float> fScore;
-    private AStarHeuristic heuristic;
+    public AStarHeuristic heuristic;
     private IEnumerable<Landmark> landmarks;
     private int updateLandmarks;
     public int nodesVisited;
@@ -130,7 +130,7 @@ public class AStar : IPathfindingAlgorithm
         foreach (var neighbor in neighbors)
         {
             nodesVisited++;
-            //if (closedSet.Contains(neighbor.node)) continue;
+            if (closedSet.Contains(neighbor.node)) continue;
             TryEnqueueNeighbor(neighbor, current, end);
         }
     }
@@ -139,7 +139,7 @@ public class AStar : IPathfindingAlgorithm
     {
         foreach (var neighbor in neighbors)
         {
-            //if (closedSet.Contains(neighbor.node)) continue;
+            if (closedSet.Contains(neighbor.node)) continue;
             nodesVisited++;
             var result = TryEnqueueNeighbor(neighbor, current, end);
             if (result)
