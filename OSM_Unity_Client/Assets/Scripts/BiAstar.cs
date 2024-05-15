@@ -38,12 +38,12 @@ public class BiAStar : IPathfindingAlgorithm
         endNode = end;
         InitializeSearch(startNode, endNode);
 
-        while (forwardAstar.openList.Count > 0 && backwardAstar.openList.Count > 0)
+        while (forwardAstar.queue.Count > 0 && backwardAstar.queue.Count > 0)
         {
-            var distForward = forwardAstar.openList.First.Priority;
-            var distBackward = backwardAstar.openList.First.Priority;
-            var currentForward = forwardAstar.DequeueAndUpdateSets();
-            var currentBackward = backwardAstar.DequeueAndUpdateSets();
+            var distForward = forwardAstar.queue.First.Priority;
+            var distBackward = backwardAstar.queue.First.Priority;
+            var currentForward = forwardAstar.queue.Dequeue().Id;
+            var currentBackward = backwardAstar.queue.Dequeue().Id;
 
             var distSum = distBackward + distForward;
             var backwardsHeuristic = backwardAstar.heuristic.Calculate(currentBackward, startNode);
@@ -51,7 +51,7 @@ public class BiAStar : IPathfindingAlgorithm
             if (distSum >= minDistance + backwardsHeuristic)
             {
                 stopwatch.Stop();
-                var allPrev = MergePrevious(forwardAstar.parent, backwardAstar.parent, meetingNode);
+                var allPrev = MergePrevious(forwardAstar.previous, backwardAstar.previous, meetingNode);
                 var path = MapController.ReconstructPath(allPrev, start, end);
                 // Recaculate distance from path
                 var distance = 0f;
@@ -80,12 +80,12 @@ public class BiAStar : IPathfindingAlgorithm
         endNode = end;
         InitializeSearch(startNode, endNode);
 
-        while (forwardAstar.openList.Count > 0 && backwardAstar.openList.Count > 0)
+        while (forwardAstar.queue.Count > 0 && backwardAstar.queue.Count > 0)
         {
-            var distForward = forwardAstar.openList.First.Priority;
-            var distBackward = backwardAstar.openList.First.Priority;
-            var currentForward = forwardAstar.DequeueAndUpdateSets();
-            var currentBackward = backwardAstar.DequeueAndUpdateSets();
+            var distForward = forwardAstar.queue.First.Priority;
+            var distBackward = backwardAstar.queue.First.Priority;
+            var currentForward = forwardAstar.queue.Dequeue().Id;
+            var currentBackward = backwardAstar.queue.Dequeue().Id;
 
             var distSum = distBackward + distForward;
             var backwardsHeuristic = backwardAstar.heuristic.Calculate(currentBackward, startNode);
@@ -94,7 +94,7 @@ public class BiAStar : IPathfindingAlgorithm
             {
                 stopwatch.Stop();
                 lineRenderer.ClearDiscoveryPath();
-                var allPrev = MergePrevious(forwardAstar.parent, backwardAstar.parent, meetingNode);
+                var allPrev = MergePrevious(forwardAstar.previous, backwardAstar.previous, meetingNode);
                 var path = MapController.ReconstructPath(allPrev, start, end);
                 // Recaculate distance from path
                 var distance = 0f;
