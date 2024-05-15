@@ -7,11 +7,10 @@ using UnityEngine;
 public class AStar : IPathfindingAlgorithm
 {
     public Graph graph;
-    public FastPriorityQueue<PriorityQueueNode> openList;
+    public FastPriorityQueue<PriorityQueueNode> queue;
     private Dictionary<long, PriorityQueueNode> priorityQueueNodes;
-    private HashSet<long> openSet;
     public HashSet<long> closedSet;
-    public Dictionary<long, long> parent;
+    public Dictionary<long, long> previous;
     public Dictionary<long, float> gScore;
     public Dictionary<long, float> fScore;
     public AStarHeuristic heuristic;
@@ -34,26 +33,17 @@ public class AStar : IPathfindingAlgorithm
     public void InitializeSearch(long start, long end)
     {
         //openList = new SimplePriorityQueue<long, float>();
-        openList = new FastPriorityQueue<PriorityQueueNode>(graph.nodes.Count);
+        queue = new FastPriorityQueue<PriorityQueueNode>(graph.nodes.Count);
         priorityQueueNodes = new Dictionary<long, PriorityQueueNode>();
-        openSet = new HashSet<long>();
         closedSet = new HashSet<long>();
-        parent = new Dictionary<long, long>();
+        previous = new Dictionary<long, long>();
         gScore = new Dictionary<long, float>() { [start] = 0 };
         fScore = new Dictionary<long, float>() { [start] = heuristic.Calculate(start, end) };
 
         PriorityQueueNode startNode = new PriorityQueueNode(start);
-        openList.Enqueue(startNode, fScore[start]);
+        queue.Enqueue(startNode, fScore[start]);
         priorityQueueNodes[start] = startNode;
-        openSet.Add(start);
         nodesVisited = 0;
-    }
-
-    public long DequeueAndUpdateSets()
-    {
-        var node = openList.Dequeue().Id;
-        openSet.Remove(node);
-        return node;
     }
 
 
@@ -62,12 +52,12 @@ public class AStar : IPathfindingAlgorithm
         InitializeSearch(start, end);
         var stopwatch = System.Diagnostics.Stopwatch.StartNew();
 
-        while (openList.Count > 0)
+        while (queue.Count > 0)
         {
-            long current = DequeueAndUpdateSets();
+            long current = queue.Dequeue().Id;
             if (current == end){
                 stopwatch.Stop();
-                return new PathResult(start, end, gScore[end], stopwatch.ElapsedMilliseconds, nodesVisited, MapController.ReconstructPath(parent, start, end));
+                return new PathResult(start, end, gScore[end], stopwatch.ElapsedMilliseconds, nodesVisited, MapController.ReconstructPath(previous, start, end));
             }
             nodesVisited++;
             closedSet.Add(current);
@@ -100,14 +90,14 @@ public class AStar : IPathfindingAlgorithm
         var stopwatch = System.Diagnostics.Stopwatch.StartNew();
         var stopwatch2 = System.Diagnostics.Stopwatch.StartNew();
 
-        while (openList.Count > 0)
+        while (queue.Count > 0)
         {
-            long current = DequeueAndUpdateSets();
+            long current = queue.Dequeue().Id;
             if (current == end)
             {
                 stopwatch.Stop();
                 lineRenderer.ClearDiscoveryPath();
-                var result = new PathResult(start, end, gScore[end], stopwatch.ElapsedMilliseconds, nodesVisited, MapController.ReconstructPath(parent, start, end));
+                var result = new PathResult(start, end, gScore[end], stopwatch.ElapsedMilliseconds, nodesVisited, MapController.ReconstructPath(previous, start, end));
                 result.DisplayAndDrawPath(graph);
                 yield break;
             }
@@ -156,20 +146,19 @@ public class AStar : IPathfindingAlgorithm
         var tentativeGScore = gScore[current] + neighbor.cost;
         if (!gScore.ContainsKey(neighbor.node) || tentativeGScore < gScore[neighbor.node])
         {
-            parent[neighbor.node] = current;
+            previous[neighbor.node] = current;
             gScore[neighbor.node] = tentativeGScore;
             fScore[neighbor.node] = tentativeGScore + heuristic.Calculate(neighbor.node, end);
             PriorityQueueNode neighborNode = new PriorityQueueNode(neighbor.node);
-            if (!openSet.Contains(neighbor.node))
+            if (!queue.Contains(neighborNode))
             {
-                openList.Enqueue(neighborNode, fScore[neighbor.node]);
+                queue.Enqueue(neighborNode, fScore[neighbor.node]);
                 priorityQueueNodes[neighbor.node] = neighborNode;
-                openSet.Add(neighbor.node);
             }
             else
             {
                 PriorityQueueNode nodeToUpdate = priorityQueueNodes[neighbor.node];
-                openList.UpdatePriority(nodeToUpdate, fScore[neighbor.node]);
+                queue.UpdatePriority(nodeToUpdate, fScore[neighbor.node]);
             }
             return true;
         }
