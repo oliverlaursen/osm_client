@@ -16,7 +16,7 @@ public class AStar : IPathfindingAlgorithm
     public Dictionary<long, long> parent;
     public Dictionary<long, float> gScore;
     public Dictionary<long, float> fScore;
-    private AStarHeuristic heuristic;
+    public AStarHeuristic heuristic;
     private IEnumerable<Landmark> landmarks;
     private int updateLandmarks;
     public int nodesVisited;
