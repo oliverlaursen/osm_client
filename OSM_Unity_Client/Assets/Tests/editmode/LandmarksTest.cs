@@ -11,7 +11,7 @@ public class LandmarksTest
     public void InitializeTest()
     {
         denmarkGraph = MapController.DeserializeGraph("Assets/Maps/dach.graph");
-        landmarks = new Landmarks(denmarkGraph);
+        landmarks = new Landmarks(denmarkGraph, showLandmarks:false, updateLandmarks:300);
         dijkstra = new Dijkstra(denmarkGraph);
     }
 

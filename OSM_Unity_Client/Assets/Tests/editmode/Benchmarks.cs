@@ -20,7 +20,7 @@ public class Benchmarks
     {
         var random = new System.Random();
 
-         var denmarkGraph = MapController.DeserializeGraph("Assets/Maps/denmark.graph"); 
+        denmarkGraph = MapController.DeserializeGraph("Assets/Maps/dach.graph"); 
 
         var stPairs = new (long, long)[ROUTE_AMOUNT];
         for (int i = 0; i < ROUTE_AMOUNT; i++)

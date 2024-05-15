@@ -1,14 +1,11 @@
-using System.Collections;
 using System.Collections.Generic;
-using System.Threading.Tasks;
 using NUnit.Framework;
-using UnityEngine;
-using UnityEngine.TestTools;
+
 
 public class BiDijkstraTests
 {
     int COMPARISON_AMOUNT = 10; //amount of times to compare bidijkstra distance to dijkstra
-    Graph denmarkGraph;
+    Graph dachGraph;
     Dijkstra dijkstra;
     BiDijkstra biDijkstra;
 
@@ -17,9 +14,11 @@ public class BiDijkstraTests
     [OneTimeSetUp]
     public void InitializeTest()
     {
-        denmarkGraph = MapController.DeserializeGraph("Assets/Maps/denmark.graph");
-        dijkstra = new Dijkstra(denmarkGraph);
-        biDijkstra = new BiDijkstra(denmarkGraph);
+        dachGraph = MapController.DeserializeGraph("Assets/Maps/dach.graph");
+
+        dijkstra = new Dijkstra(dachGraph);
+        biDijkstra = new BiDijkstra(dachGraph);
+
     }
     
     [Test]
@@ -28,8 +27,8 @@ public class BiDijkstraTests
         var random = new System.Random();
         for (int i = 0; i < COMPARISON_AMOUNT; i++)
         {
-            var node = Benchmarks.GetRandomNode(random, denmarkGraph);
-            var node2 = Benchmarks.GetRandomNode(random, denmarkGraph);
+            var node = Benchmarks.GetRandomNode(random, dachGraph);
+            var node2 = Benchmarks.GetRandomNode(random, dachGraph);
 
             var startNode = node;
             var endNode = node2;
@@ -40,6 +39,16 @@ public class BiDijkstraTests
 
             Assert.AreEqual(dijkstraPathResult.distance, biDijkstraPathResult.distance);
         }
+    }
+
+    [Test]
+    public void GivenRouteBiDijkstra(){
+        var start = 679172;
+        var end = 1305004;
+        var dijkstraPathResult = dijkstra.FindShortestPath(start, end);
+        var biDijkstraPathResult = biDijkstra.FindShortestPath(start, end);
+        Assert.AreEqual(dijkstraPathResult.path, biDijkstraPathResult.path);
+        Assert.AreEqual(dijkstraPathResult.distance, biDijkstraPathResult.distance);
     }
 
 

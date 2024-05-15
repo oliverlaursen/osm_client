@@ -60,10 +60,10 @@ public class AStar : IPathfindingAlgorithm
                 return new PathResult(start, end, gScore[end], stopwatch.ElapsedMilliseconds, nodesVisited, MapController.ReconstructPath(previous, start, end));
             }
             nodesVisited++;
-            closedSet.Add(current);
             var neighbors = graph.GetNeighbors(current);
             UpdateNeighbors(current, end, neighbors);
             UpdateLandmarks(nodesVisited, current, end);
+            closedSet.Add(current);
         }
         return null;
     }
@@ -101,10 +101,10 @@ public class AStar : IPathfindingAlgorithm
                 result.DisplayAndDrawPath(graph);
                 yield break;
             }
-            nodesVisited++;
             var neighbors = graph.GetNeighbors(current);
             UpdateNeighborsWithVisual(current, end, neighbors, lineRenderer);
             UpdateLandmarks(nodesVisited, current, end, true);
+            closedSet.Add(current);
             if (drawspeed == 0) yield return null;
             else if (stopwatch2.ElapsedTicks > drawspeed)
             {
@@ -119,8 +119,6 @@ public class AStar : IPathfindingAlgorithm
     {
         foreach (var neighbor in neighbors)
         {
-            if (closedSet.Contains(neighbor.node)) continue;
-            nodesVisited++;
             TryEnqueueNeighbor(neighbor, current, end);
         }
     }
@@ -129,8 +127,6 @@ public class AStar : IPathfindingAlgorithm
     {
         foreach (var neighbor in neighbors)
         {
-            if (closedSet.Contains(neighbor.node)) continue;
-            nodesVisited++;
             var result = TryEnqueueNeighbor(neighbor, current, end);
             if (result)
             {
@@ -153,6 +149,7 @@ public class AStar : IPathfindingAlgorithm
             if (!queue.Contains(neighborNode))
             {
                 queue.Enqueue(neighborNode, fScore[neighbor.node]);
+                nodesVisited++;
                 priorityQueueNodes[neighbor.node] = neighborNode;
             }
             else

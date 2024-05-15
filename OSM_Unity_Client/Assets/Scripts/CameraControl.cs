@@ -44,7 +44,7 @@ public class CameraControl : MonoBehaviour
         biastar = new BiAStar(graph);
         dijkstra = new Dijkstra(graph);
         bidijkstra = new BiDijkstra(graph);
-        landmarks = new Landmarks(graph);
+        landmarks = new Landmarks(graph, updateLandmarks:300);
     }
 
     public void ChangeVisual()
