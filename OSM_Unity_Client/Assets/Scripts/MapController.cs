@@ -76,9 +76,11 @@ public class MapController : MonoBehaviour
         */
         var input = File.ReadAllBytes(mapFile);
         var deserialized = MessagePack.MessagePackSerializer.Deserialize<GraphReadFormat>(input);
-        var nodes = new Dictionary<long, (float[],double[])>();
-        var graph = new Edge[deserialized.nodes.Length][];
-        var bi_graph = new Edge[deserialized.nodes.Length][];
+        var n = deserialized.nodes.Length;
+
+        var nodes = new (float[],double[])[n];
+        var graph = new Edge[n][];
+        var bi_graph = new Edge[n][];
         foreach (var node in deserialized.nodes)
         {
             nodes[node.id] = (new float[] {node.x, node.y}, new double[] {node.lat, node.lon});
@@ -89,7 +91,7 @@ public class MapController : MonoBehaviour
         return full_graph;
     }
 
-    public void DrawAllEdges(Dictionary<long, (float[],double[])> nodes, Edge[][] graph)
+    public void DrawAllEdges((float[],double[])[] nodes, Edge[][] graph)
     {
         var meshGenerator = GetComponent<MeshGenerator>();
         foreach (var element in graph.Select((Value, Index) => new { Value, Index }))
@@ -110,18 +112,18 @@ public class MapController : MonoBehaviour
         meshGenerator.UpdateMesh();
     }
 
-    public void DrawPath(Dictionary<long, (float[],double[])> nodes, long[] path)
+    public void DrawPath((float[],double[])[] nodes, long[] path)
     {
         var lineRenderer = Camera.main.gameObject.GetComponent<GLLineRenderer>();
         var coords = Array.ConvertAll(path, node => new Vector3(nodes[node].Item1[0], nodes[node].Item1[1], 0)).ToList();
         lineRenderer.AddPath(coords);
     }
 
-    public float GetHeight(Dictionary<long, (float[],double[])> nodes)
+    public float GetHeight((float[],double[])[] nodes)
     {
         var min = float.MaxValue;
         var max = float.MinValue;
-        foreach (var node in nodes.Values)
+        foreach (var node in nodes)
         {
             min = Mathf.Min(min, node.Item1[1]);
             max = Mathf.Max(max, node.Item1[1]);

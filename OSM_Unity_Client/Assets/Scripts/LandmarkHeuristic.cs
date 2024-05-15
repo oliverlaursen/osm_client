@@ -3,7 +3,7 @@ using UnityEngine;
 
 public class LandmarkHeuristic : AStarHeuristic
 {
-    private readonly Dictionary<long, float> distances;
+    private readonly float[] distances;
     private bool behind;
 
     public LandmarkHeuristic(Landmark landmark, bool behind)

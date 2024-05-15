@@ -140,21 +140,21 @@ public class CameraControl : MonoBehaviour
         node_selection = selection;
     }
 
-    long ClosestNode(Vector2 position, Dictionary<long, (float[], double[])> nodes)
+    long ClosestNode(Vector2 position, (float[], double[])[] nodes)
     {
         float minDistance = float.MaxValue;
         long closestNode = 0;
-        foreach (var node in nodes)
+        foreach (var (i,node) in nodes.Select((Value, Index) => (Index, Value)))
         {
-            var x = node.Value.Item1[0];
-            var y = node.Value.Item1[1];
+            var x = node.Item1[0];
+            var y = node.Item1[1];
             var dX = position.x - x;
             var dY = position.y - y;
             var distance = dX * dX + dY * dY;
             if (distance < minDistance)
             {
                 minDistance = distance;
-                closestNode = node.Key;
+                closestNode = i;
             }
         }
         Debug.Log("Edges for " + closestNode + ":");

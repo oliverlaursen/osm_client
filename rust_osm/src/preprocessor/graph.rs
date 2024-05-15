@@ -380,11 +380,12 @@ impl Graph {
             // Compute distances from the current node
             let distances = Graph::dijkstra_all(graph, current);
             let bi_distances = Graph::dijkstra_all(bi_graph, current);
-    
+            
+        
             // Store the current landmark
             landmarks.push(Landmark {
                 node_id: current,
-                distances: distances.clone(),
+                distances,
                 bi_distances,
             });
     
@@ -394,7 +395,7 @@ impl Graph {
 
             for &node in graph.keys() {
                 let min_dist_to_landmarks = landmarks.iter()
-                    .map(|landmark| landmark.distances.get(&node).unwrap_or(&f32::MAX))
+                    .map(|landmark| landmark.distances.get(node.0 as usize).unwrap_or(&f32::MAX))
                     .map(|&dist| OrderedFloat(dist)) // Convert f64 to OrderedFloat<f64>
                     .min()
                     .unwrap()
@@ -413,7 +414,7 @@ impl Graph {
         landmarks
     }
 
-    pub fn dijkstra_all(graph: &HashMap<NodeId, Vec<Edge>>, start: NodeId) -> HashMap<NodeId, f32> {
+    pub fn dijkstra_all(graph: &HashMap<NodeId, Vec<Edge>>, start: NodeId) -> Vec<f32> {
         // Initialize the distance map with infinite distances
         let mut distances = HashMap::new();
         for node in graph.keys() {
@@ -453,6 +454,9 @@ impl Graph {
                 }
             }
         }
+        let mut distances = distances.iter().map(|(k, v)| (*k, *v)).collect::<Vec<(NodeId, f32)>>();
+        distances.sort_by(|a,b| a.0.cmp(&b.0));
+        let distances:Vec<f32> = distances.iter().map(|x|x.1).collect();
 
         distances
     }

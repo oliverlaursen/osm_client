@@ -33,7 +33,7 @@ public class AStar : IPathfindingAlgorithm
     public void InitializeSearch(long start, long end)
     {
         //openList = new SimplePriorityQueue<long, float>();
-        queue = new FastPriorityQueue<PriorityQueueNode>(graph.nodes.Count);
+        queue = new FastPriorityQueue<PriorityQueueNode>(graph.nodes.Length);
         priorityQueueNodes = new Dictionary<long, PriorityQueueNode>();
         closedSet = new HashSet<long>();
         previous = new Dictionary<long, long>();

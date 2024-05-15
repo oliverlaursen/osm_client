@@ -22,7 +22,7 @@ public class Dijkstra : IPathfindingAlgorithm
 
     public void InitializeSearch(long start, Graph graph)
     {
-        queue = new FastPriorityQueue<PriorityQueueNode>(graph.nodes.Count);
+        queue = new FastPriorityQueue<PriorityQueueNode>(graph.nodes.Length);
         priorityQueueNodes = new Dictionary<long, PriorityQueueNode>();
         distances = new Dictionary<long, float>();
         previous = new Dictionary<long, long>();

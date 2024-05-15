@@ -42,7 +42,7 @@ public class Graph
 {
     public Edge[][] graph { get; set; }
     public Edge[][] bi_graph { get; set; }
-    public Dictionary<long, (float[], double[])> nodes { get; set; }
+    public (float[], double[])[] nodes { get; set; }
     public List<Landmark> landmarks { get; set; }
     public Edge[] GetNeighbors(long node)
     {
@@ -73,9 +73,9 @@ public class Landmark{
     [Key(0)]
     public long node_id { get; set; }
     [Key(1)]
-    public Dictionary<long, float> distances { get; set; }
+    public float[] distances { get; set; }
     [Key(2)]
-    public Dictionary<long, float> bi_distances { get; set; }
+    public float[] bi_distances { get; set; }
 
 }
 

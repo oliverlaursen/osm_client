@@ -23,18 +23,16 @@ public class Benchmarks
         var stPairs = new (long, long)[ROUTE_AMOUNT];
         for (int i = 0; i < ROUTE_AMOUNT; i++)
         {
-            var startNode = GetRandomNode(random, denmarkGraph).Key;
-            var endNode = GetRandomNode(random, denmarkGraph).Key;
+            var startNode = GetRandomNode(random, denmarkGraph);
+            var endNode = GetRandomNode(random, denmarkGraph);
             stPairs[i] = (startNode, endNode);
         }
         this.stPairs = stPairs;
     }
 
-    public KeyValuePair<long, (float[], double[])> GetRandomNode(System.Random random, Graph graph)
+    public static long GetRandomNode(System.Random random, Graph graph)
     {
-        var index = random.Next(graph.nodes.Count);
-        var node = new List<KeyValuePair<long, (float[], double[])>>(graph.nodes)[index];
-        return node;
+        return random.Next(graph.nodes.Length-1);
     }
 
     /*

@@ -12,6 +12,7 @@ public class AstarTests
     Dijkstra dijkstra;
     AStar astar;
 
+    [SetUp]
     public void InitializeTest()
     {
         denmarkGraph = MapController.DeserializeGraph("Assets/Maps/denmark.graph");
@@ -19,24 +20,17 @@ public class AstarTests
         dijkstra = new Dijkstra(denmarkGraph);
     }
 
-    public KeyValuePair<long, (float[], double[])> GetRandomNode()
-    {
-        var random = new System.Random();
-        var index = random.Next(denmarkGraph.nodes.Count);
-        var node = new List<KeyValuePair<long, (float[], double[])>>(denmarkGraph.nodes)[index];
-        return node;
-    }
 
     // generates x amount of random nodes and checks that astar and dijkstra calculates the same distace
     [Test]
     public void AstarHasSameDistanceAndPathAsDijkstra()
     {
-        InitializeTest();
-        var node = GetRandomNode();
-        var node2 = GetRandomNode();
+        var random = new System.Random();
+        var node = Benchmarks.GetRandomNode(random, denmarkGraph);
+        var node2 = Benchmarks.GetRandomNode(random, denmarkGraph);
 
-        long startNode = node.Key;
-        long endNode = node2.Key;
+        long startNode = node;
+        long endNode = node2;
 
         for (int i = 0; i < COMPARISON_AMOUNT; i++)
         {

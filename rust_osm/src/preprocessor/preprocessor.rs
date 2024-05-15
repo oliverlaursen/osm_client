@@ -44,8 +44,8 @@ pub struct FullGraph {
 #[derive(Serialize, Clone)]
 pub struct Landmark {
     pub node_id: NodeId,
-    pub distances: HashMap<NodeId, f32>,
-    pub bi_distances: HashMap<NodeId, f32>,
+    pub distances: Vec<f32>,
+    pub bi_distances: Vec<f32>,
 }
 
 #[derive(Serialize,Debug)]
@@ -106,6 +106,7 @@ impl Preprocessor {
     ) {
         let time = std::time::Instant::now();
         let mut graph = Graph::build_graph(&self.nodes, &self.roads);
+        println!("Size of graph: {}", graph.len());
         self.roads = Vec::new(); // Clear the roads since we don't need them anymore
         println!("Time to build graph: {:?}", time.elapsed());
         let time = std::time::Instant::now();
@@ -117,7 +118,8 @@ impl Preprocessor {
         let bi_graph = Graph::get_bidirectional_graph(&graph);
         //let landmark_nodes = Graph::get_random_nodes(&graph, 16);
         //let landmarks = Graph::add_landmarks(&graph,&bi_graph, landmark_nodes);
-        let landmarks = Graph::farthest_nodes(&graph, &bi_graph, 16);
+        let mut landmarks = Graph::farthest_nodes(&graph, &bi_graph, 16);
+        landmarks.sort_by(|a, b| a.node_id.cmp(&b.node_id));
 
         (graph, bi_graph, landmarks.to_vec())
     }
