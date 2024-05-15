@@ -75,6 +75,7 @@ public class BiAStar : IPathfindingAlgorithm
     {
         var lineRenderer = Camera.main.GetComponent<GLLineRenderer>();
         var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+        var stopwatch2 = System.Diagnostics.Stopwatch.StartNew();
         startNode = start;
         endNode = end;
         InitializeSearch(startNode, endNode);
@@ -92,6 +93,7 @@ public class BiAStar : IPathfindingAlgorithm
             {
                 Debug.Log("dist" + max);
                 stopwatch.Stop();
+                lineRenderer.ClearDiscoveryPath();
                 var allPrev = MergePrevious(forwardAstar.parent, backwardAstar.parent, meetingNode);
                 var path = MapController.ReconstructPath(allPrev, start, end);
                 // Recaculate distance from path
@@ -108,9 +110,14 @@ public class BiAStar : IPathfindingAlgorithm
             ProcessQueue(forwardAstar, backwardAstar, currentForward, end, true, lineRenderer);
             backwardAstar.closedSet.Add(currentBackward);
             ProcessQueue(backwardAstar, forwardAstar, currentBackward, start, false, lineRenderer);
+            if (drawspeed == 0) yield return null;
+            else if (stopwatch2.ElapsedTicks > drawspeed)
+            {
+                yield return null;
+                stopwatch2.Restart();
+            }
         }
 
-        stopwatch.Stop();
         yield return null;
     }
 
