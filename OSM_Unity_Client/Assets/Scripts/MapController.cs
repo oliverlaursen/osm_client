@@ -109,11 +109,8 @@ public class MapController : MonoBehaviour
         }
     }
 
-    public static Graph DeserializeGraph(string mapFile, GameObject loadingText = null)
+    public static Graph DeserializeGraph(string mapFile)
     {
-        if (loadingText != null){
-            loadingText.SetActive(true);
-        }
         // Using stream and async deserialization
         using (var stream = File.OpenRead(mapFile))
         {
@@ -139,11 +136,6 @@ public class MapController : MonoBehaviour
                 bi_graph = bi_graph,
                 landmarks = deserialized.landmarks
             };
-
-            if (loadingText != null){
-                loadingText.SetActive(false);
-            }
-
             return full_graph;
         }
     }
