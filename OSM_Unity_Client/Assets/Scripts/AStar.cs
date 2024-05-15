@@ -140,7 +140,7 @@ public class AStar : IPathfindingAlgorithm
         foreach (var neighbor in neighbors)
         {
             nodesVisited++;
-            //if (closedSet.Contains(neighbor.node)) continue;
+            if (closedSet.Contains(neighbor.node)) continue;
             TryEnqueueNeighbor(neighbor, current, end);
         }
     }
@@ -149,7 +149,7 @@ public class AStar : IPathfindingAlgorithm
     {
         foreach (var neighbor in neighbors)
         {
-            //if (closedSet.Contains(neighbor.node)) continue;
+            if (closedSet.Contains(neighbor.node)) continue;
             nodesVisited++;
             var result = TryEnqueueNeighbor(neighbor, current, end);
             if (result)
