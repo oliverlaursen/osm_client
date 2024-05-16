@@ -9,7 +9,6 @@ public class AStar : IPathfindingAlgorithm
     public Graph graph;
     public FastPriorityQueue<PriorityQueueNode> queue;
     public Dictionary<long, PriorityQueueNode> priorityQueueNodes;
-    public HashSet<long> closedSet;
     public Dictionary<long, long> previous;
     public Dictionary<long, float> gScore;
     public Dictionary<long, float> fScore;
@@ -35,7 +34,6 @@ public class AStar : IPathfindingAlgorithm
         //openList = new SimplePriorityQueue<long, float>();
         queue = new FastPriorityQueue<PriorityQueueNode>(graph.nodes.Length);
         priorityQueueNodes = new Dictionary<long, PriorityQueueNode>();
-        closedSet = new HashSet<long>();
         previous = new Dictionary<long, long>();
         gScore = new Dictionary<long, float>() { [start] = 0 };
         fScore = new Dictionary<long, float>() { [start] = heuristic.Calculate(start, end) };
@@ -59,7 +57,6 @@ public class AStar : IPathfindingAlgorithm
                 stopwatch.Stop();
                 return new PathResult(start, end, gScore[end], stopwatch.ElapsedMilliseconds, nodesVisited, MapController.ReconstructPath(previous, start, end));
             }
-            closedSet.Add(current);
             var neighbors = graph.GetNeighbors(current);
             UpdateNeighbors(current, end, neighbors);
             UpdateLandmarks(nodesVisited, current, end);
@@ -100,7 +97,6 @@ public class AStar : IPathfindingAlgorithm
                 result.DisplayAndDrawPath(graph);
                 yield break;
             }
-            closedSet.Add(current);
             var neighbors = graph.GetNeighbors(current);
             UpdateNeighborsWithVisual(current, end, neighbors, lineRenderer);
             UpdateLandmarks(nodesVisited, current, end, true);

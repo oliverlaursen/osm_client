@@ -32,14 +32,17 @@ public class BiAStar : IPathfindingAlgorithm
     {
         Initialize(start, end);
         var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+        var beta = 0.5 * forwardAStar.heuristic.Calculate(start, end);
 
         while (forwardAStar.queue.Count > 0 && backwardAStar.queue.Count > 0)
         {
             var topf = forwardAStar.queue.First;
             var topr = backwardAStar.queue.First;
 
-            if (forwardAStar.fScore[topf.Id] >= minDistance || backwardAStar.fScore[topr.Id] >= minDistance)
+            if (forwardAStar.gScore[topf.Id] + backwardAStar.gScore[topr.Id] >= minDistance + beta)
             {
+                Debug.Log("Start: " + start + " End: " + end);
+                Debug.Log("topf.Priority: " + topf.Priority + " topr.Priority: " + topr.Priority + " minDistance: " + minDistance + " beta: " + beta);
                 stopwatch.Stop();
                 var allPrev = BiDijkstra.MergePrevious(forwardAStar.previous, backwardAStar.previous, meetingNode);
                 var path = MapController.ReconstructPath(allPrev, start, end);
@@ -60,7 +63,6 @@ public class BiAStar : IPathfindingAlgorithm
     {
         // Dequeue the closest node
         var currentNode = activeAstar.queue.Dequeue().Id;
-        activeAstar.closedSet.Add(currentNode);
 
         // Get neighbors based on direction
         var neighbors = isForward ? graph.graph[currentNode] : graph.bi_graph[currentNode];
@@ -71,9 +73,9 @@ public class BiAStar : IPathfindingAlgorithm
         foreach (var edge in neighbors)
         {
             var neighbor = edge.node;
-            if (otherAstar.closedSet.Contains(neighbor))
+            if (otherAstar.gScore.ContainsKey(neighbor))
             {
-                var potentialMinDistance = activeAstar.gScore[currentNode] + edge.cost + otherAstar.gScore[neighbor];
+                var potentialMinDistance = activeAstar.gScore[neighbor] + otherAstar.gScore[neighbor];
                 if (potentialMinDistance < minDistance)
                 {
                     minDistance = potentialMinDistance;
@@ -94,6 +96,7 @@ public class BiAStar : IPathfindingAlgorithm
     public IEnumerator FindShortestPathWithVisual(long start, long end, int drawspeed)
     {
         Initialize(start, end);
+        var beta = 0.5 * forwardAStar.heuristic.Calculate(start,end);
         var lineRenderer = Camera.main.gameObject.GetComponent<GLLineRenderer>();
         var stopwatch = System.Diagnostics.Stopwatch.StartNew();
         var stopwatch2 = System.Diagnostics.Stopwatch.StartNew();
@@ -103,7 +106,7 @@ public class BiAStar : IPathfindingAlgorithm
             var topf = forwardAStar.queue.First;
             var topr = backwardAStar.queue.First;
 
-            if (forwardAStar.fScore[topf.Id] >= minDistance || backwardAStar.fScore[topr.Id] >= minDistance)
+            if (forwardAStar.gScore[topf.Id] + backwardAStar.gScore[topr.Id] >= minDistance + beta)
             {
                 stopwatch.Stop();
                 lineRenderer.ClearDiscoveryPath();
