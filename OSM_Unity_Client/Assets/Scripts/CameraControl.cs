@@ -29,11 +29,11 @@ public class CameraControl : MonoBehaviour
     private Dijkstra dijkstra;
     private BiDijkstra bidijkstra;
     private Landmarks landmarks;
+    private Landmarks landmarks300;
 
     private Graph graph;
 
     public bool visual = true;
-    private bool bidirectional = true;
 
     private int drawspeed = 0;
 
@@ -45,16 +45,12 @@ public class CameraControl : MonoBehaviour
         dijkstra = new Dijkstra(graph);
         bidijkstra = new BiDijkstra(graph);
         landmarks = new Landmarks(graph);
+        landmarks300 = new Landmarks(graph, updateLandmarks: 300);
     }
 
     public void ChangeVisual()
     {
         visual = !visual;
-    }
-
-    public void ChangeBidirectional()
-    {
-        bidirectional = !bidirectional;
     }
 
     void Update()
@@ -170,43 +166,44 @@ public class CameraControl : MonoBehaviour
         return closestNode;
     }
 
-    public void DijkstraOnSelection()
+    public void DijkstraOnSelection(bool bidirectional)
     {
         ClearLandmarks();
-        ShortestPathAlgoOnSelection(dijkstra, bidijkstra);
+        IPathfindingAlgorithm chosen_algo = bidirectional ? bidijkstra : dijkstra;
+        ShortestPathAlgoOnSelection(chosen_algo);
     }
 
-    private void ShortestPathAlgoOnSelection(IPathfindingAlgorithm algo, IPathfindingAlgorithm bi_algo = null)
+    private void ShortestPathAlgoOnSelection(IPathfindingAlgorithm algo)
     {
         StopAllCoroutines();
         var lineRenderer = Camera.main.gameObject.GetComponent<GLLineRenderer>();
         lineRenderer.ClearDiscoveryPath();
         lineRenderer.ClearPath();
-        bi_algo ??= algo;
-        IPathfindingAlgorithm chosen_algo = bidirectional ? bi_algo : algo;
         if (visual)
         {
-            StartCoroutine(chosen_algo.FindShortestPathWithVisual(nodeA, nodeB, drawspeed));
+            StartCoroutine(algo.FindShortestPathWithVisual(nodeA, nodeB, drawspeed));
         }
         else
         {
-            var result = chosen_algo.FindShortestPath(nodeA, nodeB);
+            var result = algo.FindShortestPath(nodeA, nodeB);
             if (result == null) { return; }
             result.DisplayAndDrawPath(graph);
         }
     }
 
-    public void AstarOnSelection()
+    public void AstarOnSelection(bool bidirectional)
     {
         ClearLandmarks();
-        ShortestPathAlgoOnSelection(astar, biastar);
+        IPathfindingAlgorithm chosen_algo = bidirectional ? biastar : astar;
+        ShortestPathAlgoOnSelection(chosen_algo);
     }
 
-    public void LandmarksOnSelection()
+    public void LandmarksOnSelection(bool updateLandmarks)
     {
         ClearLandmarks();
         DrawLandmarks();
-        ShortestPathAlgoOnSelection(landmarks);
+        IPathfindingAlgorithm algo = updateLandmarks ? landmarks300 : landmarks;
+        ShortestPathAlgoOnSelection(algo);
     }
 
     public void ClearLandmarks()

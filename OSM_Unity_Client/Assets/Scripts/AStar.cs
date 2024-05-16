@@ -59,7 +59,6 @@ public class AStar : IPathfindingAlgorithm
                 stopwatch.Stop();
                 return new PathResult(start, end, gScore[end], stopwatch.ElapsedMilliseconds, nodesVisited, MapController.ReconstructPath(previous, start, end));
             }
-            nodesVisited++;
             closedSet.Add(current);
             var neighbors = graph.GetNeighbors(current);
             UpdateNeighbors(current, end, neighbors);
@@ -101,7 +100,7 @@ public class AStar : IPathfindingAlgorithm
                 result.DisplayAndDrawPath(graph);
                 yield break;
             }
-            nodesVisited++;
+            closedSet.Add(current);
             var neighbors = graph.GetNeighbors(current);
             UpdateNeighborsWithVisual(current, end, neighbors, lineRenderer);
             UpdateLandmarks(nodesVisited, current, end, true);
@@ -119,8 +118,6 @@ public class AStar : IPathfindingAlgorithm
     {
         foreach (var neighbor in neighbors)
         {
-            if (closedSet.Contains(neighbor.node)) continue;
-            nodesVisited++;
             TryEnqueueNeighbor(neighbor, current, end);
         }
     }
@@ -129,8 +126,6 @@ public class AStar : IPathfindingAlgorithm
     {
         foreach (var neighbor in neighbors)
         {
-            if (closedSet.Contains(neighbor.node)) continue;
-            nodesVisited++;
             var result = TryEnqueueNeighbor(neighbor, current, end);
             if (result)
             {
@@ -152,6 +147,7 @@ public class AStar : IPathfindingAlgorithm
             PriorityQueueNode neighborNode = new PriorityQueueNode(neighbor.node);
             if (!queue.Contains(neighborNode))
             {
+                nodesVisited++;
                 queue.Enqueue(neighborNode, fScore[neighbor.node]);
                 priorityQueueNodes[neighbor.node] = neighborNode;
             }

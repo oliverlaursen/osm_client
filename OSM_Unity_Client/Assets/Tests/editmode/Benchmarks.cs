@@ -1,26 +1,20 @@
-using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.InteropServices;
-using System.Threading.Tasks;
 using NUnit.Framework;
-using NUnit.Framework.Constraints;
 using UnityEngine;
-using UnityEngine.TestTools;
 
 public class Benchmarks
 {
     Graph denmarkGraph;
     (long, long)[] stPairs;
-    int ROUTE_AMOUNT = 200; //amount of routes to benchmark
+    int ROUTE_AMOUNT = 100; //amount of routes to benchmark
 
     [OneTimeSetUp]
     public void TestInitialize()
     {
         var random = new System.Random();
 
-         var denmarkGraph = MapController.DeserializeGraph("Assets/Maps/denmark.graph"); 
+        denmarkGraph = MapController.DeserializeGraph("Assets/Maps/denmark.graph"); 
 
         var stPairs = new (long, long)[ROUTE_AMOUNT];
         for (int i = 0; i < ROUTE_AMOUNT; i++)
@@ -70,7 +64,7 @@ public class Benchmarks
         csv.AppendLine("StartNode;EndNode;Distance;Time;Nodes visited");
         foreach (var result in results)
         {
-            csv.AppendLine(result.start + ";" + result.end + ";" + result.distance + ";" + result.miliseconds + ";" + result.nodesVisited);
+            csv.AppendLine(result.start + ";" + result.end + ";" + result.distance.ToString().Replace('.',',') + ";" + result.miliseconds + ";" + result.nodesVisited);
         }
         System.IO.File.WriteAllText(filePath, csv.ToString());
         return results;

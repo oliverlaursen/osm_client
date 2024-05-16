@@ -10,7 +10,7 @@ public class LandmarksTest
     [OneTimeSetUp]
     public void InitializeTest()
     {
-        denmarkGraph = MapController.DeserializeGraph("Assets/Maps/dach.graph");
+        denmarkGraph = MapController.DeserializeGraph("Assets/Maps/denmark.graph");
         landmarks = new Landmarks(denmarkGraph);
         dijkstra = new Dijkstra(denmarkGraph);
     }

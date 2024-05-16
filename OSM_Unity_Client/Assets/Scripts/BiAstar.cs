@@ -106,6 +106,7 @@ public class BiAStar : IPathfindingAlgorithm
             if (forwardAStar.fScore[topf.Id] >= minDistance || backwardAStar.fScore[topr.Id] >= minDistance)
             {
                 stopwatch.Stop();
+                lineRenderer.ClearDiscoveryPath();
                 var allPrev = BiDijkstra.MergePrevious(forwardAStar.previous, backwardAStar.previous, meetingNode);
                 var path = MapController.ReconstructPath(allPrev, start, end);
                 var distance = BiDijkstra.ComputeDistance(path, graph);
