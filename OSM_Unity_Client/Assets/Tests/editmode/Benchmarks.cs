@@ -7,7 +7,7 @@ public class Benchmarks
 {
     Graph denmarkGraph;
     (long, long)[] stPairs;
-    int ROUTE_AMOUNT = 100; //amount of routes to benchmark
+    int ROUTE_AMOUNT = 100    ; //amount of routes to benchmark
 
     [OneTimeSetUp]
     public void TestInitialize()
@@ -51,22 +51,40 @@ public class Benchmarks
         {
             var startNode = pair.Item1;
             var endNode = pair.Item2;
-            var pathResult = algorithm.FindShortestPath(startNode, endNode);
-            if (pathResult == null) continue;   // If no path is found, skip the result
-            results.Add(pathResult);
+            var expectedDistance = 0f;
             if (expectedResults != null)
             {
-                var expectedDistance = expectedResults.First(x => x.start == startNode && x.end == endNode).distance;
-                Assert.AreEqual(expectedDistance, pathResult.distance, message: "Distance mismatch for " + startNode + " -> " + endNode);
-            }   
+                expectedDistance = expectedResults.FirstOrDefault(x => x.start == startNode && x.end == endNode)?.distance ?? 0;
+                if (expectedDistance != 0)
+                {
+                    var pathResult = algorithm.FindShortestPath(startNode, endNode);
+                    if (pathResult == null) continue;   // If no path is found, skip the result
+                    results.Add(pathResult);
+                    Assert.AreEqual(expectedDistance, pathResult.distance, message: "Distance mismatch for " + startNode + " -> " + endNode);
+                }
+            }
+            else {
+                var pathResult = algorithm.FindShortestPath(startNode, endNode);
+                if (pathResult == null) continue;   // If no path is found, skip the result
+                results.Add(pathResult);
+            }
+
         }
         var csv = new System.Text.StringBuilder();
-        csv.AppendLine("StartNode;EndNode;Distance;Time;Nodes visited");
         foreach (var result in results)
         {
             csv.AppendLine(result.start + ";" + result.end + ";" + result.distance.ToString().Replace('.',',') + ";" + result.miliseconds + ";" + result.nodesVisited);
         }
-        System.IO.File.WriteAllText(filePath, csv.ToString());
+        // If file already exists, append the lines to the file
+        if (System.IO.File.Exists(filePath))
+        {
+            System.IO.File.AppendAllText(filePath, csv.ToString());
+            return results;
+        }
+        else {
+            csv.Insert(0, "StartNode;EndNode;Distance;Time;Nodes visited\n");  
+            System.IO.File.WriteAllText(filePath, csv.ToString());
+        }
         return results;
     }
 
