@@ -97,7 +97,6 @@ public class Dijkstra : IPathfindingAlgorithm
     {
         foreach (var edge in neighbors)
         {
-            nodesVisited++;
             var neighbor = edge.node;
             var newDistance = distance + edge.cost;
             if (!distances.ContainsKey(neighbor) || newDistance < distances[neighbor])
@@ -108,6 +107,7 @@ public class Dijkstra : IPathfindingAlgorithm
                 PriorityQueueNode neighborNode = new(neighbor);
                 if (!queue.Contains(neighborNode))
                 {
+                    nodesVisited++;
                     queue.Enqueue(neighborNode, newDistance);
                     priorityQueueNodes[neighbor] = neighborNode;
                 }

@@ -1586,7 +1586,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0e7d19701430f4f9087b25f2765f71f1, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  mapFileName: denmark.graph
+  mapFileName: dach.graph
   mapText: {fileID: 1437284859}
   loadingText: {fileID: 2001604062}
 --- !u!114 &693338888
@@ -1976,11 +1976,11 @@ RectTransform:
   - {fileID: 867877933}
   m_Father: {fileID: 213622679}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.5, y: 0.5}
-  m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 818.52, y: 333.7}
+  m_AnchorMin: {x: 1, y: 1}
+  m_AnchorMax: {x: 1, y: 1}
+  m_AnchoredPosition: {x: 8.360291, y: -140}
   m_SizeDelta: {x: 299.68054, y: 111.405396}
-  m_Pivot: {x: 0.5, y: 0.5}
+  m_Pivot: {x: 1, y: 1}
 --- !u!1 &843594656
 GameObject:
   m_ObjectHideFlags: 0

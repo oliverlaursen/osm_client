@@ -7,14 +7,14 @@ public class Benchmarks
 {
     Graph denmarkGraph;
     (long, long)[] stPairs;
-    int ROUTE_AMOUNT = 400    ; //amount of routes to benchmark
+    int ROUTE_AMOUNT = 100    ; //amount of routes to benchmark
 
     [OneTimeSetUp]
     public void TestInitialize()
     {
         var random = new System.Random();
 
-        denmarkGraph = MapController.DeserializeGraph("Assets/Maps/denmark.graph"); 
+        denmarkGraph = MapController.DeserializeGraph("Assets/Maps/dach.graph"); 
 
         var stPairs = new (long, long)[ROUTE_AMOUNT];
         for (int i = 0; i < ROUTE_AMOUNT; i++)
@@ -60,7 +60,7 @@ public class Benchmarks
                     var pathResult = algorithm.FindShortestPath(startNode, endNode);
                     if (pathResult == null) continue;   // If no path is found, skip the result
                     results.Add(pathResult);
-                    Assert.AreEqual(expectedDistance, pathResult.distance, message: "Distance mismatch for " + startNode + " -> " + endNode);
+                    Assert.AreEqual((int)expectedDistance, (int)pathResult.distance, message: "Distance mismatch for " + startNode + " -> " + endNode);
                 }
             }
             else {

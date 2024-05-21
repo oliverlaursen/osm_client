@@ -104,7 +104,7 @@ public class MapController : MonoBehaviour
             if (loadingText != null){
                 loadingText.SetActive(false);
             }
-
+            UnityEngine.Debug.Log("Deserialized " + mapFile + " with " + n + " nodes");
             return full_graph;
         }
     }

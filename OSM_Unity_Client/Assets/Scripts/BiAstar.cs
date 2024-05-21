@@ -41,8 +41,6 @@ public class BiAStar : IPathfindingAlgorithm
 
             if (forwardAStar.gScore[topf.Id] + backwardAStar.gScore[topr.Id] >= minDistance + beta)
             {
-                Debug.Log("Start: " + start + " End: " + end);
-                Debug.Log("topf.Priority: " + topf.Priority + " topr.Priority: " + topr.Priority + " minDistance: " + minDistance + " beta: " + beta);
                 stopwatch.Stop();
                 var allPrev = BiDijkstra.MergePrevious(forwardAStar.previous, backwardAStar.previous, meetingNode);
                 var path = MapController.ReconstructPath(allPrev, start, end);
