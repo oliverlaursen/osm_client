@@ -105,7 +105,7 @@ public class Dijkstra : IPathfindingAlgorithm
                 distances[neighbor] = newDistance;
                 previous[neighbor] = currentNode;
                 PriorityQueueNode neighborNode = new(neighbor);
-                if (!queue.Contains(neighborNode))
+                if (!priorityQueueNodes.ContainsKey(neighbor))
                 {
                     nodesVisited++;
                     queue.Enqueue(neighborNode, newDistance);

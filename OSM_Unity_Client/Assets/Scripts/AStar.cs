@@ -141,7 +141,7 @@ public class AStar : IPathfindingAlgorithm
             gScore[neighbor.node] = tentativeGScore;
             fScore[neighbor.node] = tentativeGScore + heuristic.Calculate(neighbor.node, end);
             PriorityQueueNode neighborNode = new PriorityQueueNode(neighbor.node);
-            if (!queue.Contains(neighborNode))
+            if (!priorityQueueNodes.ContainsKey(neighbor.node))
             {
                 nodesVisited++;
                 queue.Enqueue(neighborNode, fScore[neighbor.node]);
