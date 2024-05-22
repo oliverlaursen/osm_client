@@ -66,7 +66,7 @@ public class BiAStar : IPathfindingAlgorithm
         var neighbors = isForward ? graph.graph[currentNode] : graph.bi_graph[currentNode];
 
         // Process all neighbors
-        activeAstar.UpdateNeighbors(currentNode, end, neighbors);
+        activeAstar.UpdateNeighbors(currentNode, end, neighbors, lineRenderer);
 
         foreach (var edge in neighbors)
         {
@@ -79,12 +79,6 @@ public class BiAStar : IPathfindingAlgorithm
                     minDistance = potentialMinDistance;
                     meetingNode = neighbor;
                 }
-            }
-            if (lineRenderer != null)
-            {
-                var startCoord = graph.nodes[currentNode];
-                var endCoord = graph.nodes[neighbor];
-                lineRenderer.AddDiscoveryPath(new List<Vector3> { new Vector3(startCoord.Item1[0], startCoord.Item1[1], 0), new Vector3(endCoord.Item1[0], endCoord.Item1[1], 0) });
             }
         }
     }

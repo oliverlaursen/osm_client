@@ -98,7 +98,7 @@ public class AStar : IPathfindingAlgorithm
                 yield break;
             }
             var neighbors = graph.GetNeighbors(current);
-            UpdateNeighborsWithVisual(current, end, neighbors, lineRenderer);
+            UpdateNeighbors(current, end, neighbors, lineRenderer);
             UpdateLandmarks(nodesVisited, current, end, true);
             if (drawspeed == 0) yield return null;
             else if (stopwatch2.ElapsedTicks > drawspeed)
@@ -110,20 +110,12 @@ public class AStar : IPathfindingAlgorithm
     }
 
 
-    public void UpdateNeighbors(long current, long end, IEnumerable<Edge> neighbors)
-    {
-        foreach (var neighbor in neighbors)
-        {
-            TryEnqueueNeighbor(neighbor, current, end);
-        }
-    }
-
-    public void UpdateNeighborsWithVisual(long current, long end, IEnumerable<Edge> neighbors, GLLineRenderer lineRenderer)
+    public void UpdateNeighbors(long current, long end, IEnumerable<Edge> neighbors, GLLineRenderer lineRenderer = null)
     {
         foreach (var neighbor in neighbors)
         {
             var result = TryEnqueueNeighbor(neighbor, current, end);
-            if (result)
+            if (lineRenderer != null && result)
             {
                 var startCoord = graph.nodes[current];
                 var endCoord = graph.nodes[neighbor.node];
