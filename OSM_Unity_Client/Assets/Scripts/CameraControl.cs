@@ -1,7 +1,5 @@
 using System.Collections.Generic;
 using System.Linq;
-using log4net.Config;
-using Unity.VisualScripting;
 using UnityEngine;
 
 public class CameraControl : MonoBehaviour

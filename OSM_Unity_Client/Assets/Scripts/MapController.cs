@@ -6,12 +6,11 @@ using System.Linq;
 
 using System.IO;
 using System.Threading.Tasks;
-using System.Collections;
+using SimpleFileBrowser;
 
 public class MapController : MonoBehaviour
 {
     public Graph graph;
-    public string mapFileName = "andorra.graph";
     public GameObject mapText;
     public GameObject loadingText;
 
@@ -72,7 +71,8 @@ public class MapController : MonoBehaviour
 
     public static async Task<Graph> DeserializeGraphAsync(string mapFile, GameObject loadingText = null)
     {
-        if (loadingText != null){
+        if (loadingText != null)
+        {
             loadingText.SetActive(true);
         }
         // Using stream and async deserialization
@@ -83,12 +83,12 @@ public class MapController : MonoBehaviour
             var n = deserialized.nodes.Length;
             var graph = new Edge[n][];
             var bi_graph = new Edge[n][];
-            var nodes = new (float[],double[])[n];
+            var nodes = new (float[], double[])[n];
 
             foreach (var node in deserialized.nodes)
             {
                 int index = (int)node.id;  // Ensure this casting is valid based on your node ID generation logic.
-                nodes[index] = (new float[] {node.x, node.y}, new double[] {node.lat, node.lon});
+                nodes[index] = (new float[] { node.x, node.y }, new double[] { node.lat, node.lon });
                 graph[index] = node.neighbours;
                 bi_graph[index] = node.bi_neighbours;
             }
@@ -101,7 +101,8 @@ public class MapController : MonoBehaviour
                 landmarks = deserialized.landmarks
             };
 
-            if (loadingText != null){
+            if (loadingText != null)
+            {
                 loadingText.SetActive(false);
             }
             UnityEngine.Debug.Log("Deserialized " + mapFile + " with " + n + " nodes");
@@ -119,12 +120,12 @@ public class MapController : MonoBehaviour
             var n = deserialized.nodes.Length;
             var graph = new Edge[n][];
             var bi_graph = new Edge[n][];
-            var nodes = new (float[],double[])[n];
+            var nodes = new (float[], double[])[n];
 
             foreach (var node in deserialized.nodes)
             {
                 int index = (int)node.id;  // Ensure this casting is valid based on your node ID generation logic.
-                nodes[index] = (new float[] {node.x, node.y}, new double[] {node.lat, node.lon});
+                nodes[index] = (new float[] { node.x, node.y }, new double[] { node.lat, node.lon });
                 graph[index] = node.neighbours;
                 bi_graph[index] = node.bi_neighbours;
             }
@@ -183,20 +184,22 @@ public class MapController : MonoBehaviour
 
     async void Start()
     {
-        mapText.GetComponent<TMPro.TMP_Text>().text = mapFileName;
-        var time = new Stopwatch();
-        time.Start();
-        var graph = await DeserializeGraphAsync("Assets/Maps/" + mapFileName, loadingText: loadingText);
-        UnityEngine.Debug.Log("Deserialization time: " + time.ElapsedMilliseconds + "ms");
-        time.Reset();
-        time.Start();
-        var height = GetHeight(graph.nodes);
-        Camera.main.GetComponent<CameraControl>().maxOrthoSize = height / 2;
-        Camera.main.orthographicSize = height / 2;
-        this.graph = graph;
-        Camera.main.GetComponent<CameraControl>().InitializeAlgorithms(graph);
-        DrawAllEdges(graph.nodes, graph.graph);
-        UnityEngine.Debug.Log("Draw time: " + time.ElapsedMilliseconds + "ms");
-        time.Stop();
+        Application.targetFrameRate = 144;
+        QualitySettings.vSyncCount = 1;
+        FileBrowser.SetFilters(true, new FileBrowser.Filter("Graph Files", ".graph"));
+        FileBrowser.SetDefaultFilter(".graph");
+        FileBrowser.ShowLoadDialog(async (p) =>
+        {
+            var path = p.First();
+            mapText.GetComponent<TMPro.TMP_Text>().text = path.Split('\\').Last();
+            graph = await DeserializeGraphAsync(path, loadingText: loadingText);
+            var height = GetHeight(graph.nodes);
+            Camera.main.GetComponent<CameraControl>().maxOrthoSize = height / 2;
+            Camera.main.orthographicSize = height / 2;
+            Camera.main.GetComponent<CameraControl>().InitializeAlgorithms(graph);
+            DrawAllEdges(graph.nodes, graph.graph);
+
+        }, null, FileBrowser.PickMode.Files, false, Application.dataPath + "/Maps", "Select a graph", "Select");
+
     }
 }
