@@ -5,22 +5,24 @@ using UnityEngine;
 
 public class Benchmarks
 {
-    Graph denmarkGraph;
+    Graph dach_farthest;
+    Graph dach_random;
     (long, long)[] stPairs;
-    int ROUTE_AMOUNT = 100    ; //amount of routes to benchmark
+    int ROUTE_AMOUNT = 500    ; //amount of routes to benchmark
 
     [OneTimeSetUp]
     public void TestInitialize()
     {
         var random = new System.Random();
 
-        denmarkGraph = MapController.DeserializeGraph("Assets/Maps/dach.graph"); 
+        dach_farthest = MapController.DeserializeGraph("Assets/Maps/dach.graph"); 
+        dach_random = MapController.DeserializeGraph("Assets/Maps/dach_random_landmarks.graph");
 
         var stPairs = new (long, long)[ROUTE_AMOUNT];
         for (int i = 0; i < ROUTE_AMOUNT; i++)
         {
-            var startNode = GetRandomNode(random, denmarkGraph);
-            var endNode = GetRandomNode(random, denmarkGraph);
+            var startNode = GetRandomNode(random, dach_farthest);
+            var endNode = GetRandomNode(random, dach_farthest);
             stPairs[i] = (startNode, endNode);
         }
         this.stPairs = stPairs;
@@ -43,7 +45,7 @@ public class Benchmarks
     * 
     * The method returns a list of PathResults, which contain the results of the benchmark for each start-target pair.
     */
-    public List<PathResult> BenchmarkAlgorithm((long, long)[] stPairs, IPathfindingAlgorithm algorithm, string fileout, List<PathResult> expectedResults = null)
+    public List<PathResult> BenchmarkAlgorithm((long, long)[] stPairs, IPathfindingAlgorithm algorithm, string fileout, float epsilon = 1, List<PathResult> expectedResults = null)
     {
         var filePath = Application.dataPath + "/../BenchmarkData/" + fileout + ".csv";
         var results = new List<PathResult>();
@@ -60,7 +62,7 @@ public class Benchmarks
                     var pathResult = algorithm.FindShortestPath(startNode, endNode);
                     if (pathResult == null) continue;   // If no path is found, skip the result
                     results.Add(pathResult);
-                    Assert.AreEqual((int)expectedDistance, (int)pathResult.distance, message: "Distance mismatch for " + startNode + " -> " + endNode);
+                    Assert.AreEqual(expectedDistance, pathResult.distance, epsilon, message: "Distance mismatch for " + startNode + " -> " + endNode);
                 }
             }
             else {
@@ -91,19 +93,24 @@ public class Benchmarks
     [Test]
     public void BenchmarkAllAlgorithms()
     {
-        var dijkstra = new Dijkstra(denmarkGraph);
+        var dijkstra = new Dijkstra(dach_farthest);
         var dijkstraResults = BenchmarkAlgorithm(stPairs, dijkstra, "dijkstra");
 
-        var biDijkstra = new BiDijkstra(denmarkGraph);
-        var biAstar = new BiAStar(denmarkGraph);
-        var aStar = new AStar(denmarkGraph);
-        var landmarks = new Landmarks(denmarkGraph, showLandmarks: false);
-        var landmarks_300 = new Landmarks(denmarkGraph, showLandmarks: false, updateLandmarks: 300);
+        var biDijkstra = new BiDijkstra(dach_farthest);
+        var biAstar = new BiAStar(dach_farthest);
+        var aStar = new AStar(dach_farthest);
+        var landmarks = new Landmarks(dach_farthest, showLandmarks: false);
+        var landmarks_300 = new Landmarks(dach_farthest, showLandmarks: false, updateLandmarks: 300);
+
+        var landmarks_random = new Landmarks(dach_random, showLandmarks: false);
+        var landmarks_300_random = new Landmarks(dach_random, showLandmarks: false, updateLandmarks: 300);
         BenchmarkAlgorithm(stPairs, biDijkstra, "biDijkstra", expectedResults: dijkstraResults);
         BenchmarkAlgorithm(stPairs, biAstar, "biAstar", expectedResults: dijkstraResults);
         BenchmarkAlgorithm(stPairs, aStar, "aStar", expectedResults: dijkstraResults);
         BenchmarkAlgorithm(stPairs, landmarks, "landmarks", expectedResults: dijkstraResults);
         BenchmarkAlgorithm(stPairs, landmarks_300, "landmarks_300", expectedResults: dijkstraResults);
+        BenchmarkAlgorithm(stPairs, landmarks_random, "landmarks_random", epsilon:1000,expectedResults: dijkstraResults);
+        BenchmarkAlgorithm(stPairs, landmarks_300_random, "landmarks_300_random", epsilon:1000, expectedResults: dijkstraResults);
 
     }
 }

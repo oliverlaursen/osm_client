@@ -46,10 +46,10 @@ public class BiDijkstra : MonoBehaviour, IPathfindingAlgorithm
             }
 
             // Process forward direction
-            ProcessQueue(forwardDijkstra, backwardDijkstra, ref meetingNode, ref minDistance, true);
+            ProcessQueue(forwardDijkstra, backwardDijkstra, true);
 
             // Process backward direction
-            ProcessQueue(backwardDijkstra, forwardDijkstra, ref meetingNode, ref minDistance, false);
+            ProcessQueue(backwardDijkstra, forwardDijkstra, false);
 
         }
 
@@ -68,7 +68,7 @@ public class BiDijkstra : MonoBehaviour, IPathfindingAlgorithm
         return distance;
     }
 
-    private void ProcessQueue(Dijkstra activeDijkstra, Dijkstra otherDijkstra, ref long meetingNode, ref float minDistance, bool isForward, GLLineRenderer lineRenderer = null)
+    private void ProcessQueue(Dijkstra activeDijkstra, Dijkstra otherDijkstra, bool isForward, GLLineRenderer lineRenderer = null)
     {
         // Dequeue the closest node
         var currentNode = activeDijkstra.queue.Dequeue().Id;
@@ -84,7 +84,7 @@ public class BiDijkstra : MonoBehaviour, IPathfindingAlgorithm
             var neighbor = edge.node;
             if (otherDijkstra.distances.ContainsKey(neighbor))
             {
-                var potentialMinDistance = activeDijkstra.distances[currentNode] + edge.cost + otherDijkstra.distances[neighbor];
+                var potentialMinDistance = activeDijkstra.distances[neighbor] + otherDijkstra.distances[neighbor];
                 if (potentialMinDistance < minDistance)
                 {
                     minDistance = potentialMinDistance;
@@ -119,11 +119,11 @@ public class BiDijkstra : MonoBehaviour, IPathfindingAlgorithm
             }
 
             // Process forward direction
-            ProcessQueue(forwardDijkstra, backwardDijkstra, ref meetingNode, ref minDistance, true, lineRenderer);
+            ProcessQueue(forwardDijkstra, backwardDijkstra, true, lineRenderer);
 
 
             // Process backward direction
-            ProcessQueue(backwardDijkstra, forwardDijkstra, ref meetingNode, ref minDistance, false, lineRenderer);
+            ProcessQueue(backwardDijkstra, forwardDijkstra, false, lineRenderer);
 
 
             // Drawing at intervals

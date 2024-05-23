@@ -6,16 +6,18 @@ using UnityEngine;
 
 public class AStar : IPathfindingAlgorithm
 {
-    public Graph graph;
+    private Graph graph;
     public FastPriorityQueue<PriorityQueueNode> queue;
-    public Dictionary<long, PriorityQueueNode> priorityQueueNodes;
+    private Dictionary<long, PriorityQueueNode> priorityQueueNodes;
     public Dictionary<long, long> previous;
     public Dictionary<long, float> gScore;
-    public Dictionary<long, float> fScore;
     public AStarHeuristic heuristic;
     private IEnumerable<Landmark> landmarks;
     private int updateLandmarks;
     public int nodesVisited;
+
+    private const int DefaultBestLandmarkCount = 3;
+
     public AStar(Graph graph, IEnumerable<Landmark> landmarks = null, int updateLandmarks = 0)
     {
         this.graph = graph;
@@ -31,19 +33,16 @@ public class AStar : IPathfindingAlgorithm
 
     public void InitializeSearch(long start, long end)
     {
-        //openList = new SimplePriorityQueue<long, float>();
         queue = new FastPriorityQueue<PriorityQueueNode>(graph.nodes.Length);
         priorityQueueNodes = new Dictionary<long, PriorityQueueNode>();
         previous = new Dictionary<long, long>();
         gScore = new Dictionary<long, float>() { [start] = 0 };
-        fScore = new Dictionary<long, float>() { [start] = heuristic.Calculate(start, end) };
 
         PriorityQueueNode startNode = new PriorityQueueNode(start);
-        queue.Enqueue(startNode, fScore[start]);
+        queue.Enqueue(startNode, heuristic.Calculate(start, end));
         priorityQueueNodes[start] = startNode;
         nodesVisited = 0;
     }
-
 
     public PathResult FindShortestPath(long start, long end)
     {
@@ -53,7 +52,9 @@ public class AStar : IPathfindingAlgorithm
         while (queue.Count > 0)
         {
             long current = queue.Dequeue().Id;
-            if (current == end){
+
+            if (current == end)
+            {
                 stopwatch.Stop();
                 return new PathResult(start, end, gScore[end], stopwatch.ElapsedMilliseconds, nodesVisited, MapController.ReconstructPath(previous, start, end));
             }
@@ -69,13 +70,13 @@ public class AStar : IPathfindingAlgorithm
         if (landmarks == null || updateLandmarks == 0) return;
         if (nodesVisited % updateLandmarks == 0)
         {
-            var bestLandmarks = Landmarks.FindBestLandmark(landmarks, start, end, 3);
+            var bestLandmarks = Landmarks.FindBestLandmark(landmarks, start, end, DefaultBestLandmarkCount);
             if (visual)
             {
                 Landmarks.MarkLandmarks(landmarks.ToArray(), Color.blue);
                 Landmarks.MarkLandmarks(bestLandmarks.Select(x => x.Item1).ToArray(), Color.yellow);
             }
-            ChangeHeuristic(new MultLandmarkHeuristic(bestLandmarks.Select(x => new LandmarkHeuristic(x.Item1,x.Item2)).ToArray()));
+            ChangeHeuristic(new MultLandmarkHeuristic(bestLandmarks.Select(x => new LandmarkHeuristic(x.Item1, x.Item2)).ToArray()));
         }
     }
 
@@ -109,7 +110,6 @@ public class AStar : IPathfindingAlgorithm
         }
     }
 
-
     public void UpdateNeighbors(long current, long end, IEnumerable<Edge> neighbors, GLLineRenderer lineRenderer = null)
     {
         foreach (var neighbor in neighbors)
@@ -119,31 +119,40 @@ public class AStar : IPathfindingAlgorithm
             {
                 var startCoord = graph.nodes[current];
                 var endCoord = graph.nodes[neighbor.node];
-                lineRenderer.AddDiscoveryPath(new List<Vector3> { new(startCoord.Item1[0], startCoord.Item1[1], 0), new(endCoord.Item1[0], endCoord.Item1[1], 0) });
+                lineRenderer.AddDiscoveryPath(new List<Vector3> { new Vector3(startCoord.Item1[0], startCoord.Item1[1], 0), new Vector3(endCoord.Item1[0], endCoord.Item1[1], 0) });
             }
         }
     }
 
-    private bool TryEnqueueNeighbor(Edge neighbor, long current, long end)
+    private bool TryEnqueueNeighbor(Edge edge, long current, long end)
     {
-        var tentativeGScore = gScore[current] + neighbor.cost;
-        if (!gScore.ContainsKey(neighbor.node) || tentativeGScore < gScore[neighbor.node])
+        var neighbor = edge.node;
+        var tentativeGScore = gScore[current] + edge.cost;
+        if (!gScore.ContainsKey(neighbor) || tentativeGScore < gScore[neighbor])
         {
-            previous[neighbor.node] = current;
-            gScore[neighbor.node] = tentativeGScore;
-            fScore[neighbor.node] = tentativeGScore + heuristic.Calculate(neighbor.node, end);
-            PriorityQueueNode neighborNode = new PriorityQueueNode(neighbor.node);
-            if (!priorityQueueNodes.ContainsKey(neighbor.node))
-            {
-                nodesVisited++;
-                queue.Enqueue(neighborNode, fScore[neighbor.node]);
-                priorityQueueNodes[neighbor.node] = neighborNode;
-            }
-            else
-            {
-                PriorityQueueNode nodeToUpdate = priorityQueueNodes[neighbor.node];
-                queue.UpdatePriority(nodeToUpdate, fScore[neighbor.node]);
-            }
+            previous[neighbor] = current;
+            gScore[neighbor] = tentativeGScore;
+            var fscore = tentativeGScore + heuristic.Calculate(neighbor, end);
+            PriorityQueueNode neighborNode = new(neighbor);
+
+                // If the node has NEVER been to the queue, add it
+                if (!priorityQueueNodes.ContainsKey(neighbor))      
+                {
+                    nodesVisited++;
+                    queue.Enqueue(neighborNode, fscore);
+                    priorityQueueNodes[neighbor] = neighborNode;
+                }
+                // If the node is already in the queue, update its priority
+                else if (queue.Contains(priorityQueueNodes[neighbor]))  
+                {
+                    PriorityQueueNode nodeToUpdate = priorityQueueNodes[neighbor];
+                    queue.UpdatePriority(nodeToUpdate, fscore);
+                }
+                // If the node has been in the queue before but is not in the queue now, add it
+                else {                                                  
+                    nodesVisited++;
+                    queue.Enqueue(priorityQueueNodes[neighbor], fscore);
+                }
             return true;
         }
         return false;

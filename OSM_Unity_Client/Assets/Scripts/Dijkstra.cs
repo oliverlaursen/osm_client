@@ -8,11 +8,10 @@ public class Dijkstra : IPathfindingAlgorithm
     public Graph graph;
     public FastPriorityQueue<PriorityQueueNode> queue;
     private Dictionary<long, PriorityQueueNode> priorityQueueNodes;
-    public Dictionary<long, float> distances;
     public Dictionary<long, long> previous;
+    public Dictionary<long, float> distances;
     public HashSet<long> visited;
     public int nodesVisited = 0;
-    public Dictionary<(long, long), float> pairDistances = new Dictionary<(long, long), float>();
 
     public Dijkstra(Graph graph)
     {
@@ -45,6 +44,8 @@ public class Dijkstra : IPathfindingAlgorithm
         {
             var currentNode = queue.Dequeue().Id;
             var distance = distances[currentNode];
+
+            // If current node has already been visited, go next
             if (!visited.Add(currentNode)) continue;
 
             if (currentNode == end)
@@ -101,20 +102,27 @@ public class Dijkstra : IPathfindingAlgorithm
             var newDistance = distance + edge.cost;
             if (!distances.ContainsKey(neighbor) || newDistance < distances[neighbor])
             {
-                pairDistances[(currentNode, neighbor)] = distance;
                 distances[neighbor] = newDistance;
                 previous[neighbor] = currentNode;
                 PriorityQueueNode neighborNode = new(neighbor);
-                if (!priorityQueueNodes.ContainsKey(neighbor))
+
+                // If the node has NEVER been to the queue, add it
+                if (!priorityQueueNodes.ContainsKey(neighbor))      
                 {
                     nodesVisited++;
                     queue.Enqueue(neighborNode, newDistance);
                     priorityQueueNodes[neighbor] = neighborNode;
                 }
-                else
+                // If the node is already in the queue, update its priority
+                else if (queue.Contains(priorityQueueNodes[neighbor]))  
                 {
                     PriorityQueueNode nodeToUpdate = priorityQueueNodes[neighbor];
                     queue.UpdatePriority(nodeToUpdate, newDistance);
+                }
+                // If the node has been in the queue before but is not in the queue now, add it
+                else {                                                  
+                    nodesVisited++;
+                    queue.Enqueue(priorityQueueNodes[neighbor], newDistance);
                 }
 
                 if (lineRenderer != null)

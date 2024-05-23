@@ -1170,7 +1170,7 @@ Camera:
   far clip plane: 1000
   field of view: 60
   orthographic: 1
-  orthographic size: 318
+  orthographic size: 511760.1
   m_Depth: -1
   m_CullingMask:
     serializedVersion: 2
@@ -1216,7 +1216,7 @@ MonoBehaviour:
   speedSlider: {fileID: 782623886}
   zoomSpeed: 100
   minOrthoSize: 20
-  maxOrthoSize: 320
+  maxOrthoSize: 511760.1
   node_selection: 0
   nodeA: 0
   nodeB: 0
@@ -1586,7 +1586,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0e7d19701430f4f9087b25f2765f71f1, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  mapFileName: denmark.graph
+  mapFileName: dach_random_landmarks.graph
   mapText: {fileID: 1437284859}
   loadingText: {fileID: 2001604062}
 --- !u!114 &693338888

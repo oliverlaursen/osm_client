@@ -36,10 +36,10 @@ public class BiAStar : IPathfindingAlgorithm
 
         while (forwardAStar.queue.Count > 0 && backwardAStar.queue.Count > 0)
         {
-            var topf = forwardAStar.queue.First;
-            var topr = backwardAStar.queue.First;
+            var topf = forwardAStar.queue.First.Id;
+            var topr = backwardAStar.queue.First.Id;
 
-            if (forwardAStar.gScore[topf.Id] + backwardAStar.gScore[topr.Id] >= minDistance + beta)
+            if (forwardAStar.gScore[topf] + backwardAStar.gScore[topr] >= minDistance + beta)
             {
                 stopwatch.Stop();
                 var allPrev = BiDijkstra.MergePrevious(forwardAStar.previous, backwardAStar.previous, meetingNode);
@@ -49,15 +49,15 @@ public class BiAStar : IPathfindingAlgorithm
             }
 
             // Process forward direction
-            ProcessQueue(forwardAStar, backwardAStar, ref meetingNode, ref minDistance, true, end);
+            ProcessQueue(forwardAStar, backwardAStar, true, end);
 
             // Process backward direction
-            ProcessQueue(backwardAStar, forwardAStar, ref meetingNode, ref minDistance, false, start);
+            ProcessQueue(backwardAStar, forwardAStar, false, start);
         }
         return null; // No path found
     }
 
-    private void ProcessQueue(AStar activeAstar, AStar otherAstar, ref long meetingNode, ref float minDistance, bool isForward, long end, GLLineRenderer lineRenderer = null)
+    private void ProcessQueue(AStar activeAstar, AStar otherAstar, bool isForward, long end, GLLineRenderer lineRenderer = null)
     {
         // Dequeue the closest node
         var currentNode = activeAstar.queue.Dequeue().Id;
@@ -82,7 +82,6 @@ public class BiAStar : IPathfindingAlgorithm
             }
         }
     }
-
 
 
     public IEnumerator FindShortestPathWithVisual(long start, long end, int drawspeed)
@@ -110,10 +109,10 @@ public class BiAStar : IPathfindingAlgorithm
                 yield break;
             }
             // Process forward direction
-            ProcessQueue(forwardAStar, backwardAStar, ref meetingNode, ref minDistance, true, end, lineRenderer);
+            ProcessQueue(forwardAStar, backwardAStar, true, end, lineRenderer);
 
             // Process backward direction
-            ProcessQueue(backwardAStar, forwardAStar, ref meetingNode, ref minDistance, false, start, lineRenderer);
+            ProcessQueue(backwardAStar, forwardAStar, false, start, lineRenderer);
 
             // Drawing at intervals
             if (drawspeed == 0) yield return null;

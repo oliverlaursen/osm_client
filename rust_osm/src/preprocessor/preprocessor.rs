@@ -116,9 +116,8 @@ impl Preprocessor {
         Preprocessor::rewrite_ids(&mut self.nodes, &mut graph);
 
         let bi_graph = Graph::get_bidirectional_graph(&graph);
-        //let landmark_nodes = Graph::get_random_nodes(&graph, 16);
-        //let landmarks = Graph::add_landmarks(&graph,&bi_graph, landmark_nodes);
-        let mut landmarks = Graph::farthest_nodes(&graph, &bi_graph, 16);
+        let mut landmarks = Graph::random_landmarks(&graph, &bi_graph, 16);
+        //let mut landmarks = Graph::farthest_landmarks(&graph, &bi_graph, 16);
         landmarks.sort_by(|a, b| a.node_id.cmp(&b.node_id));
 
         (graph, bi_graph, landmarks.to_vec())
@@ -127,9 +126,12 @@ impl Preprocessor {
     pub fn rewrite_ids(nodes: &mut HashMap<NodeId, Coord>, graph: &mut HashMap<NodeId, Vec<Edge>>) {
         let mut new_id = 0;
         let mut old_to_new: HashMap<NodeId, NodeId> = HashMap::new();
-
+    
         let mut new_graph = HashMap::new();
-        for (node, edges) in graph.iter_mut() {
+        let mut sorted_nodes: Vec<NodeId> = graph.keys().cloned().collect();
+        sorted_nodes.sort();
+        for node in &sorted_nodes {
+            let edges = graph.get_mut(node).unwrap();
             let mut new_edges = Vec::new();
             if !old_to_new.contains_key(node) {
                 old_to_new.insert(*node, NodeId(new_id));
@@ -140,7 +142,7 @@ impl Preprocessor {
                     old_to_new.insert(edge.node, NodeId(new_id));
                     new_id += 1;
                 }
-
+    
                 new_edges.push(Edge {
                     node: old_to_new[&edge.node],
                     cost: edge.cost,
@@ -149,9 +151,12 @@ impl Preprocessor {
             new_graph.insert(old_to_new[node], new_edges);
         }
         *graph = new_graph;
-
+    
         let mut new_nodes = HashMap::new();
-        for (node, coord) in nodes.iter() {
+        let mut sorted_nodes: Vec<&NodeId> = nodes.keys().collect();
+        sorted_nodes.sort();
+        for node in sorted_nodes {
+            let coord = nodes.get(node).unwrap();
             if !old_to_new.contains_key(node) {
                 old_to_new.insert(*node, NodeId(new_id));
                 new_id += 1;

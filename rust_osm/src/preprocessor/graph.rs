@@ -307,9 +307,11 @@ impl Graph {
         nodes: &HashMap<NodeId, Coord>,
         roads: &Vec<Road>,
     ) -> HashMap<NodeId, Vec<Edge>> {
-        let mut graph: HashMap<NodeId, Vec<Edge>> = HashMap::new();
-        for node in nodes.keys() {
-            graph.insert(*node, Vec::new());
+        let mut graph: HashMap<NodeId, Vec<Edge>> = HashMap::with_capacity(nodes.len());
+        let mut sorted_nodes: Vec<&NodeId> = nodes.keys().collect();
+        sorted_nodes.sort();
+        for node in &sorted_nodes {
+            graph.insert(**node, Vec::new());
         }
         for road in roads {
             for win in road.node_refs.windows(2) {
@@ -325,15 +327,20 @@ impl Graph {
             }
         }
         // Remove duplicate edges
-        for (_, edges) in graph.iter_mut() {
+        for node in sorted_nodes {
+            let edges = graph.get_mut(node).unwrap();
             edges.sort_by(|a, b| a.node.0.cmp(&b.node.0));
             edges.dedup_by(|a, b| a.node == b.node);
         }
-
+    
         graph
     }
 
-    pub fn get_random_nodes(graph: &HashMap<NodeId, Vec<Edge>>, n: i32) -> Vec<NodeId> {
+    pub fn random_landmarks(
+        graph: &HashMap<NodeId, Vec<Edge>>,
+        bi_graph: &HashMap<NodeId, Vec<Edge>>,
+        n: u32,
+    ) -> Vec<Landmark> {
         /*
            Returns n random node-ids
         */
@@ -341,32 +348,19 @@ impl Graph {
         let mut it = graph.iter();
         for i in 0..n {
             let node = it.next().unwrap();
-            landmarks.push(*node.0);
-        }
-        landmarks
-    }
-
-    pub fn add_landmarks(
-        graph: &HashMap<NodeId, Vec<Edge>>,
-        bi_graph: &HashMap<NodeId, Vec<Edge>>,
-        landmarks: Vec<NodeId>,
-    ) -> Vec<Landmark> {
-        let time = std::time::Instant::now();
-        let mut landmarks_with_distances = Vec::new();
-        for landmark in landmarks {
-            let distances = Graph::dijkstra_all(&graph, landmark);
-            let bi_distances = Graph::dijkstra_all(&bi_graph, landmark);
-            landmarks_with_distances.push(Landmark {
-                node_id: landmark,
+            let node_id = node.0.clone();
+            let distances = Graph::dijkstra_all(&graph, node_id);
+            let bi_distances = Graph::dijkstra_all(&bi_graph, node_id);
+            landmarks.push(Landmark {
+                node_id,
                 distances,
                 bi_distances,
             });
         }
-        println!("Time to add landmarks: {:?}", time.elapsed());
-        landmarks_with_distances
+        landmarks
     }
 
-    pub fn farthest_nodes(
+    pub fn farthest_landmarks(
         graph: &HashMap<NodeId, Vec<Edge>>,
         bi_graph: &HashMap<NodeId, Vec<Edge>>,
         n: u32,
@@ -475,7 +469,7 @@ fn can_build_full_graph() {
     // should minimize to 0
     let mut preprocessor = initialize("src/test_data/minimal_twoway.osm.testpbf");
     let graph = preprocessor.build_graph();
-    assert_eq!(graph.len(), 0);
+    assert_eq!(graph.0.len(), 0);
     assert_eq!(preprocessor.nodes.len(), 2);
 }
 
@@ -485,15 +479,14 @@ fn can_minimize_graph() {
     // and all ends
     let mut preprocessor = initialize("src/test_data/minimize_correctly.osm.testpbf");
     let graph = preprocessor.build_graph();
-    println!("{:?}", graph);
-    assert_eq!(graph.len(), 0);
+    assert_eq!(graph.0.len(), 0);
 }
 
 #[test]
 fn one_way_roads_minimization() {
     let mut graph: HashMap<NodeId, Vec<Edge>> = HashMap::new();
-    graph.insert(NodeId(1), vec![Edge::new(NodeId(2), 1)]);
-    graph.insert(NodeId(2), vec![Edge::new(NodeId(3), 1)]);
+    graph.insert(NodeId(1), vec![Edge::new(NodeId(2), 1.0)]);
+    graph.insert(NodeId(2), vec![Edge::new(NodeId(3), 1.0)]);
     let mut node_ids = Vec::new();
     for node in graph.keys() {
         node_ids.push(*node);
@@ -501,16 +494,16 @@ fn one_way_roads_minimization() {
     Graph::minimize_graph(&mut graph, false);
     assert_eq!(graph.len(), 1);
     assert_eq!(graph.get(&NodeId(1)).unwrap()[0].node, NodeId(3));
-    assert_eq!(graph.get(&NodeId(1)).unwrap()[0].cost, 2);
+    assert_eq!(graph.get(&NodeId(1)).unwrap()[0].cost, 2.0);
 }
 
 #[test]
 fn one_way_roads_minimization_long() {
     let mut graph: HashMap<NodeId, Vec<Edge>> = HashMap::new();
-    graph.insert(NodeId(1), vec![Edge::new(NodeId(2), 1)]);
-    graph.insert(NodeId(2), vec![Edge::new(NodeId(3), 1)]);
-    graph.insert(NodeId(3), vec![Edge::new(NodeId(4), 1)]);
-    graph.insert(NodeId(4), vec![Edge::new(NodeId(5), 1)]);
+    graph.insert(NodeId(1), vec![Edge::new(NodeId(2), 1.0)]);
+    graph.insert(NodeId(2), vec![Edge::new(NodeId(3), 1.0)]);
+    graph.insert(NodeId(3), vec![Edge::new(NodeId(4), 1.0)]);
+    graph.insert(NodeId(4), vec![Edge::new(NodeId(5), 1.0)]);
     let mut node_ids = Vec::new();
     for node in graph.keys() {
         node_ids.push(*node);
@@ -518,19 +511,19 @@ fn one_way_roads_minimization_long() {
     Graph::minimize_graph(&mut graph, false);
     assert_eq!(graph.len(), 1);
     assert_eq!(graph.get(&NodeId(1)).unwrap()[0].node, NodeId(5));
-    assert_eq!(graph.get(&NodeId(1)).unwrap()[0].cost, 4);
+    assert_eq!(graph.get(&NodeId(1)).unwrap()[0].cost, 4.0);
 }
 
 #[test]
 fn one_way_roads_with_cross() {
     let mut graph: HashMap<NodeId, Vec<Edge>> = HashMap::new();
-    graph.insert(NodeId(1), vec![Edge::new(NodeId(2), 1)]);
-    graph.insert(NodeId(2), vec![Edge::new(NodeId(3), 1)]);
-    graph.insert(NodeId(3), vec![Edge::new(NodeId(4), 1)]);
-    graph.insert(NodeId(4), vec![Edge::new(NodeId(5), 1)]);
+    graph.insert(NodeId(1), vec![Edge::new(NodeId(2), 1.0)]);
+    graph.insert(NodeId(2), vec![Edge::new(NodeId(3), 1.0)]);
+    graph.insert(NodeId(3), vec![Edge::new(NodeId(4), 1.0)]);
+    graph.insert(NodeId(4), vec![Edge::new(NodeId(5), 1.0)]);
     graph.insert(NodeId(5), Vec::new());
-    graph.insert(NodeId(6), vec![Edge::new(NodeId(4), 1)]);
-    graph.insert(NodeId(7), vec![Edge::new(NodeId(6), 1)]);
+    graph.insert(NodeId(6), vec![Edge::new(NodeId(4), 1.0)]);
+    graph.insert(NodeId(7), vec![Edge::new(NodeId(6), 1.0)]);
 
     let mut node_ids = Vec::new();
     for node in graph.keys() {
@@ -544,12 +537,12 @@ fn one_way_roads_with_cross() {
 #[test]
 fn two_way_roads_simple() {
     let mut graph: HashMap<NodeId, Vec<Edge>> = HashMap::new();
-    graph.insert(NodeId(1), vec![Edge::new(NodeId(2), 1)]);
+    graph.insert(NodeId(1), vec![Edge::new(NodeId(2), 1.0)]);
     graph.insert(
         NodeId(2),
-        vec![Edge::new(NodeId(1), 1), Edge::new(NodeId(3), 1)],
+        vec![Edge::new(NodeId(1), 1.0), Edge::new(NodeId(3), 1.0)],
     );
-    graph.insert(NodeId(3), vec![Edge::new(NodeId(2), 1)]);
+    graph.insert(NodeId(3), vec![Edge::new(NodeId(2), 1.0)]);
 
     let mut node_ids = Vec::new();
     for node in graph.keys() {
@@ -558,23 +551,23 @@ fn two_way_roads_simple() {
     Graph::minimize_graph(&mut graph, false);
     assert_eq!(graph.len(), 2);
     assert_eq!(graph.get(&NodeId(1)).unwrap()[0].node, NodeId(3));
-    assert_eq!(graph.get(&NodeId(1)).unwrap()[0].cost, 2);
+    assert_eq!(graph.get(&NodeId(1)).unwrap()[0].cost, 2.0);
     assert_eq!(graph.get(&NodeId(3)).unwrap()[0].node, NodeId(1));
-    assert_eq!(graph.get(&NodeId(3)).unwrap()[0].cost, 2);
+    assert_eq!(graph.get(&NodeId(3)).unwrap()[0].cost, 2.0);
 }
 
 #[test]
 fn one_way_cycle() {
     let mut graph: HashMap<NodeId, Vec<Edge>> = HashMap::new();
     let _node_ids = vec![NodeId(1), NodeId(2), NodeId(3), NodeId(4), NodeId(5)];
-    graph.insert(NodeId(1), vec![Edge::new(NodeId(2), 1)]);
+    graph.insert(NodeId(1), vec![Edge::new(NodeId(2), 1.0)]);
     graph.insert(
         NodeId(2),
-        vec![Edge::new(NodeId(1), 1), Edge::new(NodeId(3), 1)],
+        vec![Edge::new(NodeId(1), 1.0), Edge::new(NodeId(3), 1.0)],
     );
-    graph.insert(NodeId(3), vec![Edge::new(NodeId(4), 1)]);
-    graph.insert(NodeId(4), vec![Edge::new(NodeId(5), 1)]);
-    graph.insert(NodeId(5), vec![Edge::new(NodeId(2), 1)]);
+    graph.insert(NodeId(3), vec![Edge::new(NodeId(4), 1.0)]);
+    graph.insert(NodeId(4), vec![Edge::new(NodeId(5), 1.0)]);
+    graph.insert(NodeId(5), vec![Edge::new(NodeId(2), 1.0)]);
     Graph::minimize_graph(&mut graph, false);
     println!("{:?}", graph);
 }
@@ -584,19 +577,19 @@ fn advanced_one_way_cycle() {
     let mut graph: HashMap<NodeId, Vec<Edge>> = HashMap::new();
     graph.insert(
         NodeId(1),
-        vec![Edge::new(NodeId(2), 1), Edge::new(NodeId(10), 1)],
+        vec![Edge::new(NodeId(2), 1.0), Edge::new(NodeId(10), 1.0)],
     );
-    graph.insert(NodeId(2), vec![Edge::new(NodeId(3), 1)]);
-    graph.insert(NodeId(3), vec![Edge::new(NodeId(4), 1)]);
-    graph.insert(NodeId(4), vec![Edge::new(NodeId(5), 1)]);
+    graph.insert(NodeId(2), vec![Edge::new(NodeId(3), 1.0)]);
+    graph.insert(NodeId(3), vec![Edge::new(NodeId(4), 1.0)]);
+    graph.insert(NodeId(4), vec![Edge::new(NodeId(5), 1.0)]);
     graph.insert(
         NodeId(5),
-        vec![Edge::new(NodeId(6), 1), Edge::new(NodeId(11), 1)],
+        vec![Edge::new(NodeId(6), 1.0), Edge::new(NodeId(11), 1.0)],
     );
-    graph.insert(NodeId(6), vec![Edge::new(NodeId(7), 1)]);
-    graph.insert(NodeId(7), vec![Edge::new(NodeId(8), 1)]);
-    graph.insert(NodeId(8), vec![Edge::new(NodeId(9), 1)]);
-    graph.insert(NodeId(9), vec![Edge::new(NodeId(1), 1)]);
+    graph.insert(NodeId(6), vec![Edge::new(NodeId(7), 1.0)]);
+    graph.insert(NodeId(7), vec![Edge::new(NodeId(8), 1.0)]);
+    graph.insert(NodeId(8), vec![Edge::new(NodeId(9), 1.0)]);
+    graph.insert(NodeId(9), vec![Edge::new(NodeId(1), 1.0)]);
     graph.insert(NodeId(10), Vec::new());
     graph.insert(NodeId(11), Vec::new());
     Graph::minimize_graph(&mut graph, false);
@@ -606,26 +599,26 @@ fn advanced_one_way_cycle() {
 #[test]
 fn two_time_minimize() {
     let mut graph: HashMap<NodeId, Vec<Edge>> = HashMap::new();
-    graph.insert(NodeId(1), vec![Edge::new(NodeId(2), 1)]);
+    graph.insert(NodeId(1), vec![Edge::new(NodeId(2), 1.0)]);
     graph.insert(
         NodeId(2),
-        vec![Edge::new(NodeId(3), 1), Edge::new(NodeId(6), 1)],
+        vec![Edge::new(NodeId(3), 1.0), Edge::new(NodeId(6), 1.0)],
     );
-    graph.insert(NodeId(3), vec![Edge::new(NodeId(4), 1)]);
-    graph.insert(NodeId(4), vec![Edge::new(NodeId(5), 1)]);
-    graph.insert(NodeId(5), vec![Edge::new(NodeId(2), 1)]);
+    graph.insert(NodeId(3), vec![Edge::new(NodeId(4), 1.0)]);
+    graph.insert(NodeId(4), vec![Edge::new(NodeId(5), 1.0)]);
+    graph.insert(NodeId(5), vec![Edge::new(NodeId(2), 1.0)]);
     Graph::minimize_graph(&mut graph, false);
     assert_eq!(graph.len(), 1);
-    assert!(graph.get(&NodeId(1)).unwrap()[0] == Edge::new(NodeId(6), 2));
+    assert!(graph.get(&NodeId(1)).unwrap()[0] == Edge::new(NodeId(6), 2.0));
 }
 
 #[test]
 fn remove_ends() {
     let mut graph: HashMap<NodeId, Vec<Edge>> = HashMap::new();
-    graph.insert(NodeId(1), vec![Edge::new(NodeId(2), 1)]);
-    graph.insert(NodeId(2), vec![Edge::new(NodeId(3), 1)]);
-    graph.insert(NodeId(3), vec![Edge::new(NodeId(4), 1)]);
-    graph.insert(NodeId(4), vec![Edge::new(NodeId(5), 1)]);
+    graph.insert(NodeId(1), vec![Edge::new(NodeId(2), 1.0)]);
+    graph.insert(NodeId(2), vec![Edge::new(NodeId(3), 1.0)]);
+    graph.insert(NodeId(3), vec![Edge::new(NodeId(4), 1.0)]);
+    graph.insert(NodeId(4), vec![Edge::new(NodeId(5), 1.0)]);
     graph.insert(NodeId(5), Vec::new());
     Graph::minimize_graph(&mut graph, true);
     assert_eq!(graph.len(), 0);
@@ -634,22 +627,22 @@ fn remove_ends() {
 #[test]
 fn two_way_cycle() {
     let mut graph: HashMap<NodeId, Vec<Edge>> = HashMap::new();
-    graph.insert(NodeId(1), vec![Edge::new(NodeId(2), 1)]);
+    graph.insert(NodeId(1), vec![Edge::new(NodeId(2), 1.0)]);
     graph.insert(
         NodeId(2),
         vec![
-            Edge::new(NodeId(1), 1),
-            Edge::new(NodeId(3), 1),
-            Edge::new(NodeId(4), 1),
+            Edge::new(NodeId(1), 1.0),
+            Edge::new(NodeId(3), 1.0),
+            Edge::new(NodeId(4), 1.0),
         ],
     );
     graph.insert(
         NodeId(3),
-        vec![Edge::new(NodeId(2), 1), Edge::new(NodeId(4), 1)],
+        vec![Edge::new(NodeId(2), 1.0), Edge::new(NodeId(4), 1.0)],
     );
     graph.insert(
         NodeId(4),
-        vec![Edge::new(NodeId(3), 1), Edge::new(NodeId(2), 1)],
+        vec![Edge::new(NodeId(3), 1.0), Edge::new(NodeId(2), 1.0)],
     );
     Graph::minimize_graph(&mut graph, false);
     assert_eq!(graph.len(), 2);
@@ -659,46 +652,46 @@ fn two_way_cycle() {
 #[test]
 fn problematic_two_way_cycle() {
     let mut graph: HashMap<NodeId, Vec<Edge>> = HashMap::new();
-    graph.insert(NodeId(0), vec![Edge::new(NodeId(1), 1)]);
+    graph.insert(NodeId(0), vec![Edge::new(NodeId(1), 1.0)]);
     graph.insert(
         NodeId(1),
-        vec![Edge::new(NodeId(2), 1), Edge::new(NodeId(0), 1)],
+        vec![Edge::new(NodeId(2), 1.0), Edge::new(NodeId(0), 1.0)],
     );
     graph.insert(
         NodeId(2),
         vec![
-            Edge::new(NodeId(1), 1),
-            Edge::new(NodeId(3), 1),
-            Edge::new(NodeId(7), 1),
+            Edge::new(NodeId(1), 1.0),
+            Edge::new(NodeId(3), 1.0),
+            Edge::new(NodeId(7), 1.0),
         ],
     );
     graph.insert(
         NodeId(3),
-        vec![Edge::new(NodeId(2), 1), Edge::new(NodeId(4), 1)],
+        vec![Edge::new(NodeId(2), 1.0), Edge::new(NodeId(4), 1.0)],
     );
     graph.insert(
         NodeId(4),
         vec![
-            Edge::new(NodeId(3), 1),
-            Edge::new(NodeId(5), 1),
-            Edge::new(NodeId(6), 1),
+            Edge::new(NodeId(3), 1.0),
+            Edge::new(NodeId(5), 1.0),
+            Edge::new(NodeId(6), 1.0),
         ],
     );
     graph.insert(
         NodeId(5),
-        vec![Edge::new(NodeId(4), 1), Edge::new(NodeId(6), 1)],
+        vec![Edge::new(NodeId(4), 1.0), Edge::new(NodeId(6), 1.0)],
     );
     graph.insert(
         NodeId(6),
         vec![
-            Edge::new(NodeId(5), 1),
-            Edge::new(NodeId(4), 1),
-            Edge::new(NodeId(7), 1),
+            Edge::new(NodeId(5), 1.0),
+            Edge::new(NodeId(4), 1.0),
+            Edge::new(NodeId(7), 1.0),
         ],
     );
     graph.insert(
         NodeId(7),
-        vec![Edge::new(NodeId(6), 1), Edge::new(NodeId(2), 1)],
+        vec![Edge::new(NodeId(6), 1.0), Edge::new(NodeId(2), 1.0)],
     );
     Graph::minimize_graph(&mut graph, false);
     println!("{:?}", graph);
