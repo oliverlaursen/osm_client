@@ -30,7 +30,6 @@ pub enum CarDirection {
 
 #[derive(Clone)]
 pub struct Preprocessor {
-    pub nodes_to_keep: HashSet<NodeId>,
     pub nodes: HashMap<NodeId, Coord>,
     pub roads: Vec<Road>,
 }
@@ -116,8 +115,8 @@ impl Preprocessor {
         Preprocessor::rewrite_ids(&mut self.nodes, &mut graph);
 
         let bi_graph = Graph::get_bidirectional_graph(&graph);
-        let mut landmarks = Graph::random_landmarks(&graph, &bi_graph, 16);
-        //let mut landmarks = Graph::farthest_landmarks(&graph, &bi_graph, 16);
+        //let mut landmarks = Graph::random_landmarks(&graph, &bi_graph, 16);
+        let mut landmarks = Graph::farthest_landmarks(&graph, &bi_graph, 16);
         landmarks.sort_by(|a, b| a.node_id.cmp(&b.node_id));
 
         (graph, bi_graph, landmarks.to_vec())
@@ -218,7 +217,6 @@ impl Preprocessor {
     pub fn get_roads_and_nodes(&mut self, filename: &str) {
         let r = std::fs::File::open(&std::path::Path::new(filename)).unwrap();
         let mut pbf = osmpbfreader::OsmPbfReader::new(r);
-        let mut roads: Vec<Road> = Vec::new();
         let mut nodes_to_keep: Vec<NodeId> = Vec::new();
         let blacklist = create_blacklist();
         for obj in pbf.par_iter().map(Result::unwrap) {
@@ -230,7 +228,7 @@ impl Preprocessor {
                     nodes_to_keep.extend(&way.nodes);
                     let oneway = way.tags.get("oneway").map_or(false, |v| v == "yes");
                     let roundabout = way.tags.values().any(|v| v == "roundabout");
-                    roads.push(Road {
+                    self.roads.push(Road {
                         node_refs: way.nodes,
                         direction: if oneway || roundabout {
                             CarDirection::Forward
@@ -244,41 +242,25 @@ impl Preprocessor {
         }
         let nodes_to_keep_hashset = HashSet::from_par_iter(nodes_to_keep);
 
-        let nodes = self.get_nodes(filename, &nodes_to_keep_hashset);
-        let nodes_hashmap: HashMap<NodeId, Coord> = nodes
-            .par_iter()
-            .map(|node| (node.id, node.coord.clone()))
-            .collect();
-        self.nodes_to_keep = nodes_to_keep_hashset;
-        self.nodes = nodes_hashmap;
-        self.roads = roads;
+        self.get_nodes(filename, &nodes_to_keep_hashset);
     }
 
-    pub fn get_nodes(&mut self, filename: &str, nodes_to_keep: &HashSet<NodeId>) -> Vec<Node> {
-        let mut nodes: Vec<Node> = Vec::new();
+    pub fn get_nodes(&mut self, filename: &str, nodes_to_keep: &HashSet<NodeId>)  {
         let r = std::fs::File::open(&std::path::Path::new(filename)).unwrap();
         let mut pbf = osmpbfreader::OsmPbfReader::new(r);
         for obj in pbf.par_iter().map(Result::unwrap) {
             match obj {
                 osmpbfreader::OsmObj::Node(node) if nodes_to_keep.contains(&node.id) => {
-                    nodes.push(Node {
-                        id: node.id,
-                        coord: Coord {
-                            lat: node.lat(),
-                            lon: node.lon(),
-                        },
-                    })
+                    self.nodes.insert(node.id, Coord { lat: node.lat(), lon: node.lon() });
                 }
                 osmpbfreader::OsmObj::Node(_) => continue,
                 _ => break, // Can return early since nodes are at the start of the file
             }
         }
-        nodes
     }
 
     pub fn new() -> Self {
         Preprocessor {
-            nodes_to_keep: HashSet::new(),
             nodes: HashMap::new(),
             roads: Vec::new(),
         }

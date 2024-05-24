@@ -2,11 +2,11 @@ use crate::preprocessor::edge::*;
 use crate::preprocessor::preprocessor::*;
 use crate::Coord;
 
+use ordered_float::OrderedFloat;
 use osmpbfreader::NodeId;
 use std::collections::BinaryHeap;
 use std::collections::HashMap;
 use std::collections::HashSet;
-use ordered_float::OrderedFloat;
 
 pub struct Graph;
 
@@ -115,12 +115,7 @@ impl Graph {
                 );
             }
         }
-        // Remove loops and duplicate edges
-        for (node, edges) in graph.iter_mut() {
-            edges.retain(|x| x.node != *node);
-            edges.sort_by(|a, b| a.node.0.cmp(&b.node.0));
-            edges.dedup_by(|a, b| a.node == b.node);
-        }
+        Self::remove_duplicate_edges(graph);
     }
 
     pub fn find_end_nodes(
@@ -259,12 +254,15 @@ impl Graph {
                     Self::find_end_nodes(graph, &nodes_pointing_to_node);
             }
         }
-        // Remove duplicate edges
+        Self::remove_duplicate_edges(graph);
+    }
+
+    fn remove_duplicate_edges(graph: &mut HashMap<NodeId, Vec<Edge>>) {
         for (node, edges) in graph.iter_mut() {
-            edges.sort_by(|a, b| a.node.0.cmp(&b.node.0));
+            edges.retain(|x| x.node != *node);
+            edges.sort_unstable_by_key(|e| e.node.0);
             edges.dedup_by(|a, b| a.node == b.node);
         }
-        
     }
 
     fn update_edges_and_remove_node(
@@ -326,13 +324,8 @@ impl Graph {
                 }
             }
         }
-        // Remove duplicate edges
-        for node in sorted_nodes {
-            let edges = graph.get_mut(node).unwrap();
-            edges.sort_by(|a, b| a.node.0.cmp(&b.node.0));
-            edges.dedup_by(|a, b| a.node == b.node);
-        }
-    
+        Self::remove_duplicate_edges(&mut graph);
+
         graph
     }
 
@@ -366,45 +359,47 @@ impl Graph {
         n: u32,
     ) -> Vec<Landmark> {
         let mut landmarks = Vec::new();
-    
+
         // Select an initial random node
         let mut current = *graph.keys().next().unwrap();
-    
+
         for _ in 0..n {
             // Compute distances from the current node
             let distances = Graph::dijkstra_all(graph, current);
             let bi_distances = Graph::dijkstra_all(bi_graph, current);
-            
-        
+
             // Store the current landmark
             landmarks.push(Landmark {
                 node_id: current,
                 distances,
                 bi_distances,
             });
-    
+
             // Find the node farthest from all current landmarks
             let mut max_dist = 0.0;
             let mut next_node = current;
 
             for &node in graph.keys() {
-                let min_dist_to_landmarks = landmarks.iter()
+                let min_dist_to_landmarks = landmarks
+                    .iter()
                     .map(|landmark| landmark.distances.get(node.0 as usize).unwrap_or(&f32::MAX))
                     .map(|&dist| OrderedFloat(dist)) // Convert f64 to OrderedFloat<f64>
                     .min()
                     .unwrap()
                     .into_inner(); // Convert OrderedFloat<f64> back to f64
 
-                if min_dist_to_landmarks > max_dist && min_dist_to_landmarks != f32::MAX && min_dist_to_landmarks != 0.0 {
+                if min_dist_to_landmarks > max_dist
+                    && min_dist_to_landmarks != f32::MAX
+                    && min_dist_to_landmarks != 0.0
+                {
                     max_dist = min_dist_to_landmarks;
                     next_node = node;
                 }
             }
 
-    
-            current = next_node;  // Update the current node to the next landmark
+            current = next_node; // Update the current node to the next landmark
         }
-    
+
         landmarks
     }
 
@@ -419,7 +414,7 @@ impl Graph {
         let mut heap = BinaryHeap::new();
 
         // Initialize the distance of the start node to 0 and add it to the priority queue
-        distances.insert(start, 0.0); 
+        distances.insert(start, 0.0);
         heap.push(Edge {
             cost: 0.0,
             node: start,
@@ -448,9 +443,12 @@ impl Graph {
                 }
             }
         }
-        let mut distances = distances.iter().map(|(k, v)| (*k, *v)).collect::<Vec<(NodeId, f32)>>();
-        distances.sort_by(|a,b| a.0.cmp(&b.0));
-        let distances:Vec<f32> = distances.iter().map(|x|x.1).collect();
+        let mut distances = distances
+            .iter()
+            .map(|(k, v)| (*k, *v))
+            .collect::<Vec<(NodeId, f32)>>();
+        distances.sort_by(|a, b| a.0.cmp(&b.0));
+        let distances: Vec<f32> = distances.iter().map(|x| x.1).collect();
 
         distances
     }
