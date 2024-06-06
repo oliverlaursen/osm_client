@@ -77,7 +77,7 @@ public class Dijkstra : IPathfindingAlgorithm
             if (currentNode == end)
             {
                 stopwatch.Stop();
-                lineRenderer.ClearDiscoveryPath();
+                //lineRenderer.ClearDiscoveryPath();
                 var result = new PathResult(start, end, distance, stopwatch.ElapsedMilliseconds, nodesVisited, MapController.ReconstructPath(previous, start, end));
                 result.DisplayAndDrawPath(graph);
                 yield break;

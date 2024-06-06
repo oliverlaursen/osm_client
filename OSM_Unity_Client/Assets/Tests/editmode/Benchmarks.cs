@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.IO.Enumeration;
 using System.Linq;
 using NUnit.Framework;
 using UnityEngine;
@@ -8,7 +9,7 @@ public class Benchmarks
     Graph dach_farthest;
     Graph dach_random;
     (long, long)[] stPairs;
-    int ROUTE_AMOUNT = 500    ; //amount of routes to benchmark
+    int ROUTE_AMOUNT = 28    ; //amount of routes to benchmark
 
     [OneTimeSetUp]
     public void TestInitialize()
@@ -90,6 +91,48 @@ public class Benchmarks
         return results;
     }
 
+    public (long,long)[] GetStPairs(string filename){
+        var lines = System.IO.File.ReadAllLines(Application.dataPath + "/../BenchmarkData/" + filename + ".csv");
+        var stPairs = new (long, long)[lines.Length-1];
+        for (int i = 1; i < lines.Length; i++)
+        {
+            var line = lines[i];
+            if (line == "") continue;
+            var split = line.Split(';');
+            stPairs[i-1] = (long.Parse(split[0]), long.Parse(split[1]));
+        }
+        return stPairs;
+    }
+
+    public void FillMissingPairs((long,long)[] pairs1, (long,long)[] pairs2, IPathfindingAlgorithm algorithm, string filename){
+        var filePath = Application.dataPath + "/../BenchmarkData/" + filename + ".csv";
+        var results = new List<PathResult>();
+        var diff = pairs1.Except(pairs2).ToArray();
+        foreach (var pair in diff)
+        {
+            var startNode = pair.Item1;
+            var endNode = pair.Item2;
+            var pathResult = algorithm.FindShortestPath(startNode, endNode);
+            if (pathResult == null) continue;   // If no path is found, skip the result
+            results.Add(pathResult);
+        }
+        var csv = new System.Text.StringBuilder();
+        foreach (var result in results)
+        {
+            csv.AppendLine(result.start + ";" + result.end + ";" + result.distance.ToString().Replace('.',',') + ";" + result.miliseconds + ";" + result.nodesVisited);
+        }
+        // If file already exists, append the lines to the file
+        if (System.IO.File.Exists(filePath))
+        {
+            System.IO.File.AppendAllText(filePath, csv.ToString());
+            return;
+        }
+        else {
+            csv.Insert(0, "StartNode;EndNode;Distance;Time;Nodes visited\n");  
+            System.IO.File.WriteAllText(filePath, csv.ToString());
+        }
+    }
+
     [Test]
     public void BenchmarkAllAlgorithms()
     {
@@ -111,6 +154,34 @@ public class Benchmarks
         BenchmarkAlgorithm(stPairs, landmarks_300, "landmarks_300", expectedResults: dijkstraResults);
         BenchmarkAlgorithm(stPairs, landmarks_random, "landmarks_random", epsilon:1000,expectedResults: dijkstraResults);
         BenchmarkAlgorithm(stPairs, landmarks_300_random, "landmarks_300_random", epsilon:1000, expectedResults: dijkstraResults);
+    }
 
+    [Test]
+    public void FixBenchmarks(){
+        var dijkstraPairs = GetStPairs("dijkstra");
+        var biDijkstraPairs = GetStPairs("biDijkstra");
+        var biAstarPairs = GetStPairs("biAstar");
+        var aStarPairs = GetStPairs("aStar");
+        var landmarksPairs = GetStPairs("landmarks");
+        var landmarks_300Pairs = GetStPairs("landmarks_300");
+        var landmarks_randomPairs = GetStPairs("landmarks_random");
+        var landmarks_300_randomPairs = GetStPairs("landmarks_300_random");
+
+        var biDijkstra = new BiDijkstra(dach_farthest);
+        var biAstar = new BiAStar(dach_farthest);
+        var aStar = new AStar(dach_farthest);
+        var landmarks = new Landmarks(dach_farthest, showLandmarks: false);
+        var landmarks_300 = new Landmarks(dach_farthest, showLandmarks: false, updateLandmarks: 300);
+        var landmarks_random = new Landmarks(dach_random, showLandmarks: false);
+        var landmarks_300_random = new Landmarks(dach_random, showLandmarks: false, updateLandmarks: 300);
+        Debug.Log("Filling missing pairs for bidijkstra...");
+        FillMissingPairs(dijkstraPairs, biDijkstraPairs, biDijkstra, "biDijkstra");
+        Debug.Log("Filling missing pairs for biAstar...");
+        FillMissingPairs(dijkstraPairs, biAstarPairs, biAstar, "biAstar");
+        FillMissingPairs(dijkstraPairs, aStarPairs, aStar, "aStar");
+        FillMissingPairs(dijkstraPairs, landmarksPairs, landmarks, "landmarks");
+        FillMissingPairs(dijkstraPairs, landmarks_300Pairs, landmarks_300, "landmarks_300");
+        FillMissingPairs(dijkstraPairs, landmarks_randomPairs, landmarks_random, "landmarks_random");
+        FillMissingPairs(dijkstraPairs, landmarks_300_randomPairs, landmarks_300_random, "landmarks_300_random");
     }
 }

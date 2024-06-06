@@ -144,6 +144,8 @@ public class MapController : MonoBehaviour
 
     public void DrawAllEdges((float[], double[])[] nodes, Edge[][] graph)
     {
+        var stopwatch = new Stopwatch();
+        stopwatch.Start();
         var meshGenerator = GetComponent<MeshGenerator>();
         foreach (var element in graph.Select((Value, Index) => new { Value, Index }))
         {
@@ -161,6 +163,8 @@ public class MapController : MonoBehaviour
             }
         }
         meshGenerator.UpdateMesh();
+        stopwatch.Stop();
+        UnityEngine.Debug.Log("Drawing mesh " + stopwatch.ElapsedMilliseconds + " ms");
     }
 
     public void DrawPath((float[], double[])[] nodes, long[] path)

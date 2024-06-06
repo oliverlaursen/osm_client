@@ -109,7 +109,7 @@ public class BiDijkstra : MonoBehaviour, IPathfindingAlgorithm
             if (topf + topr >= minDistance)
             {
                 stopwatch.Stop();
-                lineRenderer.ClearDiscoveryPath();
+                //lineRenderer.ClearDiscoveryPath();
                 var allPrev = MergePrevious(forwardDijkstra.previous, backwardDijkstra.previous, meetingNode);
                 var path = MapController.ReconstructPath(allPrev, start, end);
                 var distance = ComputeDistance(path, graph);

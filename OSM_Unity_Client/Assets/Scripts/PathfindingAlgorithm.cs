@@ -10,8 +10,9 @@ public class PathResult {
     public long miliseconds;
     public int nodesVisited;
     public long[] path;
+    public bool astarCriteria;
 
-    public PathResult(long start, long end, float distance, long miliseconds, int nodesVisited, long[] path)
+    public PathResult(long start, long end, float distance, long miliseconds, int nodesVisited, long[] path, bool astarCriteria = false)
     {
         this.start = start;
         this.end = end;
@@ -19,6 +20,7 @@ public class PathResult {
         this.miliseconds = miliseconds;
         this.nodesVisited = nodesVisited;
         this.path = path;
+        this.astarCriteria = astarCriteria;
     }
     public void DisplayAndDrawPath(Graph graph){
         MapController.DisplayStatistics(start, end, distance, miliseconds, nodesVisited);

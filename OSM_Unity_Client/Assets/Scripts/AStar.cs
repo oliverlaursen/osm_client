@@ -93,7 +93,7 @@ public class AStar : IPathfindingAlgorithm
             if (current == end)
             {
                 stopwatch.Stop();
-                lineRenderer.ClearDiscoveryPath();
+                //lineRenderer.ClearDiscoveryPath();
                 var result = new PathResult(start, end, gScore[end], stopwatch.ElapsedMilliseconds, nodesVisited, MapController.ReconstructPath(previous, start, end));
                 result.DisplayAndDrawPath(graph);
                 yield break;
