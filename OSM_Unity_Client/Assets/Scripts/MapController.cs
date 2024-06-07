@@ -195,7 +195,7 @@ public class MapController : MonoBehaviour
         FileBrowser.ShowLoadDialog(async (p) =>
         {
             var path = p.First();
-            mapText.GetComponent<TMPro.TMP_Text>().text = path.Split('\\').Last();
+            mapText.GetComponent<TMPro.TMP_Text>().text = path.Split('\\').Split('/').Last();
             graph = await DeserializeGraphAsync(path, loadingText: loadingText);
             var height = GetHeight(graph.nodes);
             Camera.main.GetComponent<CameraControl>().maxOrthoSize = height / 2;
