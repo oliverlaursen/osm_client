@@ -158,52 +158,40 @@ impl Graph {
         two_way_end_nodes: &Vec<NodeId>,
         dead_nodes: &Vec<NodeId>,
     ) {
-        // Remove start nodes from the graph and update references
         for node in start_nodes {
-            if let Some(edges) = graph.remove(node) {
-                for edge in edges {
-                    if let Some(pointing) = nodes_pointing_to_node.get_mut(&edge.node) {
-                        pointing.retain(|&n| n != *node);
-                    }
-                }
-            }
-            nodes_pointing_to_node.remove(node);
+            let edges = graph.get_mut(&node).unwrap();
+            nodes_pointing_to_node
+                .get_mut(&edges[0].node)
+                .unwrap()
+                .clear();
+            graph.remove(&node);
         }
-
-        // Remove end nodes and update the pointers from other nodes
         for node in end_nodes {
-            if let Some(pointers) = nodes_pointing_to_node.remove(node) {
-                for pointer in pointers {
-                    if let Some(edges) = graph.get_mut(&pointer) {
-                        edges.retain(|e| e.node != *node);
-                    }
-                }
+            let pred_nodes = nodes_pointing_to_node.get(&node);
+            if let Some(p) = pred_nodes {
+                let pred = p[0];
+                let edges = graph.get_mut(&pred).unwrap();
+                edges.retain(|x| x.node != *node);
             }
-            graph.remove(node);
+            graph.remove(&node);
         }
 
-        // Two-way end nodes handling
         for node in two_way_end_nodes {
-            if let Some(edges) = graph.remove(node) {
-                for edge in edges {
-                    if let Some(pointing) = nodes_pointing_to_node.get_mut(&edge.node) {
-                        pointing.retain(|&n| n != *node);
-                    }
+            let pred_edges = nodes_pointing_to_node.get(&node).unwrap();
+            if !pred_edges.is_empty() {
+                let edges = graph.get_mut(&pred_edges[0]);
+                if let Some(edges) = edges {
+                    nodes_pointing_to_node
+                        .get_mut(&edges[0].node)
+                        .unwrap()
+                        .retain(|x| *x != *node);
+                    edges.retain(|x| x.node != *node);
                 }
             }
-            if let Some(pointers) = nodes_pointing_to_node.remove(node) {
-                for pointer in pointers {
-                    if let Some(edges) = graph.get_mut(&pointer) {
-                        edges.retain(|e| e.node != *node);
-                    }
-                }
-            }
+            graph.remove(&node);
         }
-
-        // Simply remove dead nodes as they are disconnected
         for node in dead_nodes {
-            graph.remove(node);
-            nodes_pointing_to_node.remove(node);
+            graph.remove(&node);
         }
     }
 
@@ -217,6 +205,7 @@ impl Graph {
                 &mut nodes_pointing_to_node,
                 intermediate_nodes.clone(),
             );
+            nodes_pointing_to_node = Self::find_nodes_pointing_to_node(graph);
             intermediate_nodes = Self::find_intermediate_nodes(graph, &nodes_pointing_to_node);
         }
         if remove_ends {
@@ -246,6 +235,7 @@ impl Graph {
                         &two_way_end_nodes,
                         &dead_nodes,
                     );
+                    nodes_pointing_to_node = Self::find_nodes_pointing_to_node(graph);
                     (end_nodes, start_nodes, two_way_end_nodes, dead_nodes) =
                         Self::find_end_nodes(graph, &nodes_pointing_to_node);
                 }
@@ -256,6 +246,7 @@ impl Graph {
                         &mut nodes_pointing_to_node,
                         intermediate_nodes.clone(),
                     );
+                    nodes_pointing_to_node = Self::find_nodes_pointing_to_node(graph);
                     intermediate_nodes =
                         Self::find_intermediate_nodes(graph, &nodes_pointing_to_node);
                 }

@@ -47,7 +47,7 @@ fn main() {
     let projected_points = &preprocessor.project_nodes_to_2d();
     let time2 = std::time::Instant::now();
     let full_graph = preprocessor.build_full_graph(graph, bi_graph, landmarks.to_vec(), &projected_points);
-    Preprocessor::write_graph(full_graph, "denmark.graph");
+    Preprocessor::write_graph(full_graph, "denmark1.graph");
     println!("Time to write graph: {:?}", time2.elapsed());
     println!("Total time: {:?}", time.elapsed());
 }
